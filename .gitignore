@@ -45,3 +45,7 @@ global_rule_sync/GEMINI.md
 
 # local data
 chroma_db/
+
+# local secrets
+GITHUB_TOKEN.txt
+token.json
