@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "project": "M2 Contexto e padronizacao",
+  "overview": "Consolidar governanca de contexto com ai-coders-context e padroes operacionais unicos para garantir planejamento macro e execucao incremental sem drift.",
+  "goals": [
+    "Atualizar contexto local antes de planejar e apos executar ciclos",
+    "Manter coerencia entre .context, .context/docs/planning_gsd e roteiro de execucao",
+    "Registrar convencoes operacionais para os tres clientes"
+  ],
+  "nonGoals": [
+    "Criar nova arquitetura de servicos fora do escopo de governanca",
+    "Executar implementacoes de features alem do necessario para padronizacao"
+  ],
+  "successMetrics": [
+    "Artefatos em .context refletem estado atual do codigo",
+    "Roadmap e requisitos apontam explicitamente para fontes de contexto",
+    "Checklist de operacao restrita fica unico e rastreavel"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "ai-coders-context + GSD + Ralph em repositorio existente",
+    "hosting": "Execucao local em Linux",
+    "database": "Nao aplicavel",
+    "auth": "Nao aplicavel"
+  },
+  "routes": [
+    {
+      "path": ".context/docs",
+      "name": "Fonte de contexto",
+      "purpose": "Documentacao de contexto atualizada automaticamente"
+    },
+    {
+      "path": ".context/docs/planning_gsd",
+      "name": "Planejamento macro",
+      "purpose": "Roadmap, requisitos e estado do projeto"
+    }
+  ],
+  "uiNotes": [
+    "Sem interface grafica, operacao via comandos e arquivos markdown"
+  ],
+  "dataModel": [
+    {
+      "entity": "ContextArtifact",
+      "fields": [
+        "name",
+        "generatedAt",
+        "sourceScope",
+        "outputPath"
+      ]
+    },
+    {
+      "entity": "PlanningArtifact",
+      "fields": [
+        "phase",
+        "file",
+        "status",
+        "lastUpdated"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Nao aplicavel para esta fase",
+    "example": {}
+  },
+  "rules": [
+    "Nao manter fonte paralela de contexto fora de .context e README",
+    "Toda alteracao relevante precisa refletir em .context/docs/planning_gsd/STATE.md",
+    "Padrao operacional deve ser comum entre codex, codex sudo e gemini"
+  ],
+  "qualityGates": [
+    "python3 -m py_compile super_server_v6.py",
+    "bash -n start_oci.sh",
+    "./migration_gsd_ralph/scripts/06_smoke_test.sh",
+    "codex mcp list",
+    "gemini mcp list"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Padronizar rotina de atualizacao de contexto",
+      "status": "open",
+      "dependsOn": [],
+      "description": "Como operador, quero uma rotina unica de atualizacao de contexto para reduzir inconsistencias antes e depois de cada ciclo.",
+      "acceptanceCriteria": [
+        "Documentar e validar os comandos padrao de init, fill e report do ai-coders-context",
+        "Registrar saida de validacao em arquivo de exportacao da migracao",
+        "Example: rotina executada gera report com timestamp e sem erro",
+        "Negative case: se faltar qualquer etapa da rotina, a story nao pode ser concluida"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Alinhar roadmap e requisitos ao contexto atualizado",
+      "status": "open",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Como planejador, quero que roadmap e requisitos usem contexto atualizado para evitar backlog desatualizado.",
+      "acceptanceCriteria": [
+        "Atualizar arquivos de planejamento com referencia explicita a artefatos de contexto",
+        "Garantir que dependencias de fases permanecem coerentes",
+        "Example: ROADMAP e REQUIREMENTS referenciam fontes atuais em .context",
+        "Negative case: se houver requisito sem rastreabilidade para contexto, a story falha"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Consolidar convencoes de operacao restrita",
+      "status": "open",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Como operador, quero convencoes claras para operacao restrita entre clientes para manter previsibilidade do fluxo.",
+      "acceptanceCriteria": [
+        "Consolidar regras de inclusao e exclusao de MCP por cliente em documentacao operacional",
+        "Validar que as regras estao aplicadas sem conflito",
+        "Example: gemini segue exclusoes obrigatorias e codex preserva integracoes necessarias",
+        "Negative case: se regra de exclusao for violada em qualquer cliente, a story nao fecha"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Fechar fase com rastreabilidade completa",
+      "status": "open",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Como operador, quero fechar a fase com rastreabilidade entre contexto, planejamento e evidencias para liberar execucao incremental.",
+      "acceptanceCriteria": [
+        "Atualizar status da migracao com links para artefatos da fase",
+        "Executar quality gates e anexar resultados no fechamento",
+        "Example: arquivo de status aponta para reports e gates aprovados",
+        "Negative case: se faltar evidencia de qualquer gate ou referencia, a fase permanece aberta"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "created_at": "2026-02-23T17:26:17.410548Z",
+  "captcha_timeout_sec": 900,
+  "session_ttl_sec": 43200,
+  "state": "pending_manual_login",
+  "started_at": "2026-02-25T11:16:36.486206Z",
+  "message": "Sessão expirada por inatividade.",
+  "bootstrapped_at": "2026-02-23T20:03:46.290337Z",
+  "last_validated_at": "2026-02-23T20:12:20.508371Z",
+  "expired_at": "2026-02-24T10:43:48.015701Z"
+}

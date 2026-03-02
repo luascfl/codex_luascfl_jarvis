@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "project": "M4 Documentacao operacional",
+  "overview": "Fechar a migracao com documentacao operacional completa, handoff padronizado entre contexto, planejamento e execucao, e rotina continua para manter o fluxo sem drift.",
+  "goals": [
+    "Documentar handoff unico entre ai-coders-context, GSD e Ralph",
+    "Consolidar evidencias por fase em trilha auditavel",
+    "Definir rotina continua semanal, diaria e quinzenal"
+  ],
+  "nonGoals": [
+    "Adicionar funcionalidades novas fora da governanca operacional",
+    "Redefinir objetivos macro ja aprovados nas fases anteriores"
+  ],
+  "successMetrics": [
+    "Handoff documentado e executavel sem duvidas",
+    "Arquivos de status por fase atualizados e consistentes",
+    "Cadencias operacionais definidas com checklist acionavel"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "Markdown operacional + scripts de validacao existentes",
+    "hosting": "Repositorio local e sincronizacao de configuracao global",
+    "database": "Nao aplicavel",
+    "auth": "Nao aplicavel"
+  },
+  "routes": [
+    {
+      "path": "migration_gsd_ralph/PLAN_GSD_RALPH_AI_CONTEXT.md",
+      "name": "Plano integrado",
+      "purpose": "Fonte de status da migracao por fase"
+    },
+    {
+      "path": "migration_gsd_ralph/exports",
+      "name": "Evidencias",
+      "purpose": "Artefatos de validacao e fechamento"
+    }
+  ],
+  "uiNotes": [
+    "Sem UI, foco em rastreabilidade documental e comandos CLI"
+  ],
+  "dataModel": [
+    {
+      "entity": "PhaseStatus",
+      "fields": [
+        "phase",
+        "status",
+        "updatedAt",
+        "evidenceLinks"
+      ]
+    },
+    {
+      "entity": "OperationalCadence",
+      "fields": [
+        "frequency",
+        "owner",
+        "commands",
+        "outputArtifact"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Nao aplicavel para esta fase",
+    "example": {}
+  },
+  "rules": [
+    "Toda fase encerrada precisa apontar para evidencias concretas",
+    "Handoff deve ser executavel com passos objetivos e ordem fixa",
+    "Rotina continua deve ter donos e comandos claros"
+  ],
+  "qualityGates": [
+    "python3 -m py_compile super_server_v6.py",
+    "bash -n start_oci.sh",
+    "./migration_gsd_ralph/scripts/06_smoke_test.sh",
+    "codex mcp list",
+    "gemini mcp list"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Documentar handoff padrao de ciclo",
+      "status": "open",
+      "dependsOn": [],
+      "description": "Como operador, quero um handoff padrao para repetir o ciclo sem ambiguidade de dono e de ferramenta.",
+      "acceptanceCriteria": [
+        "Descrever passo a passo do ciclo com ordem fixa: contexto, planejamento, execucao, atualizacao de contexto",
+        "Indicar responsabilidade de codex, codex sudo e gemini em cada passo",
+        "Example: novo ciclo segue o handoff e chega ao fechamento sem duvida operacional",
+        "Negative case: se houver passo sem dono definido, a story deve permanecer aberta"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Consolidar trilha de evidencias por fase",
+      "status": "open",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Como operador, quero consolidar a trilha de evidencias para auditoria simples do progresso da migracao.",
+      "acceptanceCriteria": [
+        "Garantir arquivo de status por fase apontando para exportacoes de evidencia",
+        "Padronizar nomenclatura minima de artefatos em migration_gsd_ralph/exports",
+        "Example: cada fase possui arquivo de status com data e links validos",
+        "Negative case: se fase nao tiver evidencia vinculada, ela nao pode constar como concluida"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Definir rotina continua de operacao",
+      "status": "open",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Como operador, quero uma rotina continua para manter contexto e backlog atualizados apos a migracao.",
+      "acceptanceCriteria": [
+        "Definir cadencia semanal, diaria e quinzenal com comandos e responsavel",
+        "Incluir checklist objetivo para cada cadencia",
+        "Example: rotina diaria executa ciclo curto e atualiza estado no mesmo dia",
+        "Negative case: se cadencia nao tiver comando ou responsavel, a definicao esta incompleta"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Encerrar migracao com validacao final",
+      "status": "open",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Como operador, quero encerrar a migracao com validacao final para oficializar o novo fluxo de trabalho.",
+      "acceptanceCriteria": [
+        "Executar quality gates finais e anexar resultados no plano integrado",
+        "Atualizar estado final da migracao e declarar fase 4 concluida",
+        "Example: gates finais aprovados e plano marca migracao como encerrada",
+        "Negative case: se houver gate pendente ou falho, encerramento deve ser bloqueado"
+      ]
+    }
+  ]
+}

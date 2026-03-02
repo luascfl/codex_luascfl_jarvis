@@ -1,0 +1,42 @@
+ℹ️  Docs MCP desativado via env.
+DEBUG: [__main__] Starting...
+DEBUG: [__main__] Starting sub-services...
+❌ Erro ao iniciar Filesystem MCP: name 'StdioServerParameters' is not defined
+🧠 Sequential Thinking (Nativo) ativado e pronto.
+DEBUG: [__main__] mcp_mode=http
+🚀 [INIT] Starting Uvicorn on 0.0.0.0:7860...
+🚀 Iniciando Uvicorn Server...
+INFO:     Started server process [97192]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:7860 (Press CTRL+C to quit)
+WARNING:mcp.server.sse:Received invalid session ID: stateless-session
+INFO:     127.0.0.1:37302 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:37306 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37302 - "POST /messages/?session_id=1f01f0968dca4160ba2da02ca55aedfd HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:37302 - "POST /messages/?session_id=1f01f0968dca4160ba2da02ca55aedfd HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:37322 - "POST /messages/?session_id=1f01f0968dca4160ba2da02ca55aedfd HTTP/1.1" 202 Accepted
+WARNING:mcp.server.sse:Received invalid session ID: stateless-session
+INFO:     127.0.0.1:48162 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48172 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48162 - "POST /messages/?session_id=8a18b83c7ef04cde8eae1462c3385e32 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:48162 - "POST /messages/?session_id=8a18b83c7ef04cde8eae1462c3385e32 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:48176 - "POST /messages/?session_id=8a18b83c7ef04cde8eae1462c3385e32 HTTP/1.1" 202 Accepted
+WARNING:mcp.server.sse:Received invalid session ID: stateless-session
+INFO:     127.0.0.1:40760 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:40774 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40760 - "POST /messages/?session_id=b65aaeac5c0948329a1eaca05e02b3f1 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:40760 - "POST /messages/?session_id=b65aaeac5c0948329a1eaca05e02b3f1 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:40782 - "POST /messages/?session_id=b65aaeac5c0948329a1eaca05e02b3f1 HTTP/1.1" 202 Accepted
+WARNING:mcp.server.sse:Received invalid session ID: stateless-session
+INFO:     127.0.0.1:60060 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60064 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60060 - "POST /messages/?session_id=bfc83d8276694981b09f5574e495eefb HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:60060 - "POST /messages/?session_id=bfc83d8276694981b09f5574e495eefb HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:60080 - "POST /messages/?session_id=bfc83d8276694981b09f5574e495eefb HTTP/1.1" 202 Accepted
+WARNING:mcp.server.sse:Received invalid session ID: stateless-session
+INFO:     127.0.0.1:44684 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:44692 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44684 - "POST /messages/?session_id=c0f1224681304cfb89d10f294c560969 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:44684 - "POST /messages/?session_id=c0f1224681304cfb89d10f294c560969 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:44706 - "POST /messages/?session_id=c0f1224681304cfb89d10f294c560969 HTTP/1.1" 202 Accepted

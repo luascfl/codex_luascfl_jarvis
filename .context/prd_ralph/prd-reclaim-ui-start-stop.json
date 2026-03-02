@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "project": "Reclaim UI automation start stop restart no Jarvis",
+  "overview": "Adicionar automação experimental de UI no Jarvis para iniciar, parar e reiniciar tarefas já sincronizadas via Google Tasks, com sessão manual, fallback assistido e rollback por feature flag.",
+  "goals": [
+    "Permitir iniciar tarefa do Reclaim sem depender de clique manual no add-on",
+    "Permitir parar e reiniciar tarefa ativa com rastreabilidade",
+    "Manter reversibilidade imediata sem quebrar o fluxo atual de Google Tasks"
+  ],
+  "nonGoals": [
+    "Criar integração oficial com API privada do Reclaim",
+    "Automatizar SCIM ou webhooks de Scheduling Links",
+    "Alterar o comportamento atual de criação, conclusão e exclusão no Google Tasks"
+  ],
+  "successMetrics": [
+    "Tool reclaim_task_start executa ação real com sucesso em sessão válida",
+    "Tools reclaim_task_stop e reclaim_task_restart executam em sessão válida",
+    "Falhas de seletor ou captcha entram em modo assistido sem interromper o servidor",
+    "Feature flag permite desligar toda a automação de UI sem impacto nas tools gtasks_*"
+  ],
+  "openQuestions": [
+    "Definir timeout padrão do modo assistido para encerrar automaticamente sem travar o ciclo"
+  ],
+  "stack": {
+    "framework": "Python FastMCP no arquivo super_server_v6.py",
+    "hosting": "Execução local e OCI já existente no projeto",
+    "database": "Arquivos locais para estado de sessão e trilha de auditoria",
+    "auth": "Login manual no Reclaim com perfil persistente até expiração"
+  },
+  "routes": [
+    {
+      "path": "tool:reclaim_session_bootstrap",
+      "name": "Bootstrap de sessão",
+      "purpose": "Abrir navegador visual para login manual e salvar sessão persistente"
+    },
+    {
+      "path": "tool:reclaim_session_status",
+      "name": "Status de sessão",
+      "purpose": "Informar sessão válida, expirada ou ausente"
+    },
+    {
+      "path": "tool:reclaim_task_start",
+      "name": "Iniciar tarefa",
+      "purpose": "Localizar tarefa por título exato e acionar Start"
+    },
+    {
+      "path": "tool:reclaim_task_stop",
+      "name": "Parar tarefa",
+      "purpose": "Parar tarefa ativa no Reclaim"
+    },
+    {
+      "path": "tool:reclaim_task_restart",
+      "name": "Reiniciar tarefa",
+      "purpose": "Reiniciar tarefa ativa ou recém parada"
+    }
+  ],
+  "uiNotes": [
+    "Fluxo obrigatório em modo visual para bootstrap e captcha",
+    "Execução real por padrão, sem dry run automático",
+    "Ao quebrar seletor ou sessão, entrar em modo assistido visual para ação manual"
+  ],
+  "dataModel": [
+    {
+      "entity": "ReclaimUiSession",
+      "fields": [
+        "sessionId",
+        "profilePath",
+        "status",
+        "createdAt",
+        "lastValidatedAt",
+        "expiresAt"
+      ]
+    },
+    {
+      "entity": "ReclaimTaskActionRequest",
+      "fields": [
+        "title",
+        "action",
+        "taskListId",
+        "requestedAt"
+      ]
+    },
+    {
+      "entity": "ReclaimUiAudit",
+      "fields": [
+        "auditId",
+        "action",
+        "title",
+        "result",
+        "fallbackUsed",
+        "timestamp"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "As tools recebem título exato da tarefa sincronizada no Google Tasks e ação de UI desejada",
+    "example": {
+      "title": "[18/02/2026] [Trabalho, Projeto X] Revisar backlog (duration:60m due:02/18/2026 priority:P1 type:work)",
+      "action": "start"
+    }
+  },
+  "rules": [
+    "Localização de tarefa para iniciar usa título exato vindo do fluxo gtasks atual",
+    "Escopo inicial inclui start, stop e restart",
+    "Execução real é padrão, com controle por feature flag",
+    "Sessão fica persistente até expiração",
+    "Se seletor quebrar, sessão expirar ou captcha bloquear, ativar modo assistido visual",
+    "Toda ação registra auditoria com resultado e fallback"
+  ],
+  "qualityGates": [
+    "python3 -m py_compile super_server_v6.py",
+    "bash -n start_oci.sh",
+    "./migration_gsd_ralph/scripts/06_smoke_test.sh",
+    "python3 -m pytest tests/test_reclaim_ui_parser.py -q",
+    "python3 -m pytest tests/test_reclaim_ui_audit.py -q",
+    "python3 -m pytest tests/test_reclaim_ui_executor.py -q",
+    "python3 -m pytest tests/test_reclaim_ui_assist.py -q"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Criar feature flag e contrato base das tools de UI do Reclaim",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Como operador, quero ligar ou desligar a automação de UI por flag para manter rollback imediato.",
+      "acceptanceCriteria": [
+        "Adicionar flag RECLAIM_UI_AUTOMATION_ENABLE com default false e leitura no startup",
+        "Adicionar stubs de reclaim_session_bootstrap, reclaim_session_status, reclaim_task_start, reclaim_task_stop e reclaim_task_restart",
+        "Retornar erro estruturado quando a flag estiver desligada, sem alterar tools gtasks_*",
+        "Example: com flag true, tool retorna status operacional inicial",
+        "Negative case: com flag false, tentativa de start retorna erro controlado e sem side effects"
+      ],
+      "startedAt": "2026-02-18T06:35:10.210110+00:00",
+      "completedAt": "2026-02-18T06:41:53.033145+00:00",
+      "updatedAt": "2026-02-18T06:41:53.033002+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Implementar bootstrap de sessão manual com persistência",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Como operador, quero abrir sessão visual e concluir login manual para reutilizar a sessão em ações de start stop restart.",
+      "acceptanceCriteria": [
+        "Tool reclaim_session_bootstrap abre fluxo visual, permite login manual e salva sessão persistente em arquivo local",
+        "Tool reclaim_session_status valida se a sessão está válida, expirada ou ausente",
+        "Persistência usa timestamp de última validação para rastrear expiração",
+        "Example: após login manual concluído, status retorna valida com metadata de sessão",
+        "Negative case: se captcha não for resolvido no timeout, retorno indica bloqueio e próximo passo"
+      ],
+      "startedAt": "2026-02-18T15:47:32.346043+00:00",
+      "completedAt": "2026-02-18T15:52:30.969925+00:00",
+      "updatedAt": "2026-02-18T15:52:30.969925+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Resolver tarefa por título exato no fluxo integrado com Google Tasks",
+      "status": "done",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Como operador, quero que a automação localize a tarefa certa pelo título exato para evitar clique na tarefa errada.",
+      "acceptanceCriteria": [
+        "Implementar resolução por comparação exata de título conforme padrão existente no gtasks",
+        "Normalizar espaços iniciais e finais sem alterar conteúdo interno do título",
+        "Quando houver mais de um candidato visual, bloquear ação e pedir confirmação assistida",
+        "Example: título único exato retorna alvo único e pronto para ação",
+        "Negative case: título não encontrado retorna erro estruturado de não correspondência"
+      ],
+      "startedAt": "2026-02-18T15:55:05.194904+00:00",
+      "completedAt": "2026-02-18T16:04:17.788398+00:00",
+      "updatedAt": "2026-02-18T16:04:17.788398+00:00"
+    },
+    {
+      "id": "US-004",
+      "title": "Implementar ação reclaim_task_start com clique real por padrão",
+      "status": "done",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Como operador, quero iniciar uma tarefa sincronizada para começar foco sem abrir manualmente o painel do Reclaim.",
+      "acceptanceCriteria": [
+        "reclaim_task_start executa clique real em Start por padrão quando sessão estiver válida",
+        "Retorno inclui resultado, título alvo e horário da ação",
+        "Registrar auditoria de sucesso ou falha em arquivo local",
+        "Example: start em tarefa válida retorna sucesso com action=start",
+        "Negative case: botão Start indisponível retorna falha estruturada sem clicar em outro elemento"
+      ],
+      "startedAt": "2026-02-18T16:09:27.779401+00:00",
+      "completedAt": "2026-02-18T16:09:27.779401+00:00",
+      "updatedAt": "2026-02-18T16:09:27.779401+00:00"
+    },
+    {
+      "id": "US-005",
+      "title": "Implementar ações reclaim_task_stop e reclaim_task_restart",
+      "status": "done",
+      "dependsOn": [
+        "US-004"
+      ],
+      "description": "Como operador, quero parar ou reiniciar a tarefa ativa para controlar a execução em tempo real.",
+      "acceptanceCriteria": [
+        "reclaim_task_stop executa parada da tarefa ativa com validação de estado pré ação",
+        "reclaim_task_restart executa retomada por ação Restart quando disponível",
+        "Ambas as ações registram auditoria e resposta estruturada",
+        "Example: tarefa ativa recebe stop e retorna status stopped",
+        "Negative case: sem tarefa ativa, stop e restart retornam erro controlado"
+      ],
+      "startedAt": "2026-02-18T16:11:17.202034+00:00",
+      "completedAt": "2026-02-18T16:11:17.202034+00:00",
+      "updatedAt": "2026-02-18T16:11:17.202034+00:00"
+    },
+    {
+      "id": "US-006",
+      "title": "Adicionar fallback assistido visual para quebra de seletor e bloqueios",
+      "status": "done",
+      "dependsOn": [
+        "US-005"
+      ],
+      "description": "Como operador, quero fallback assistido quando a automação falhar para concluir manualmente sem perder o fluxo.",
+      "acceptanceCriteria": [
+        "Quando seletor quebrar, sessão expirar ou captcha bloquear, ativar modo assistido visual",
+        "Modo assistido mostra passo objetivo para concluir a ação manual e captura resultado final",
+        "Registrar no audit se houve fallback assistido",
+        "Example: falha de seletor ativa modo assistido e operador conclui start manual",
+        "Negative case: operador cancela modo assistido e tool retorna cancelado sem estado inconsistente"
+      ],
+      "startedAt": "2026-02-18T16:25:40.227959+00:00",
+      "completedAt": "2026-02-18T16:25:40.227959+00:00",
+      "updatedAt": "2026-02-18T16:25:40.227959+00:00"
+    },
+    {
+      "id": "US-007",
+      "title": "Cobrir parser e auditoria com testes automatizados e atualizar documentação",
+      "status": "done",
+      "dependsOn": [
+        "US-006"
+      ],
+      "description": "Como operador, quero testes e documentação mínima para manter a automação sustentável.",
+      "acceptanceCriteria": [
+        "Criar tests/test_reclaim_ui_parser.py cobrindo match exato e falhas de correspondência",
+        "Criar tests/test_reclaim_ui_audit.py cobrindo formato e persistência de auditoria",
+        "Atualizar README.md com seção experimental, riscos, flag e rollback",
+        "Example: todos os quality gates passam com a feature ativa",
+        "Negative case: log de auditoria inválido faz teste falhar e bloqueia fechamento"
+      ],
+      "completedAt": "2026-02-18T16:27:43.833905+00:00",
+      "updatedAt": "2026-02-18T16:27:43.833905+00:00",
+      "startedAt": "2026-02-18T16:27:43.833905+00:00"
+    }
+  ]
+}
