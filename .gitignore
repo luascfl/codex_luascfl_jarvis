@@ -42,3 +42,6 @@ GEMINI.md
 global_rule_sync/AGENTS.md
 global_rule_sync/GEMINI.md
 # END AlignTrue Generated Files
+
+# local data
+chroma_db/
