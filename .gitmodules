@@ -1,6 +1,3 @@
-[submodule "jarvis_mcp"]
-	path = jarvis_mcp
-	url = https://codehost.com/luascfl/super_mcp_servers.git
 [submodule "prompts_backup"]
 	path = prompts_backup
 	url = https://codehost.com/luascfl/prompts_backup.git
