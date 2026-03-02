@@ -1,0 +1,11 @@
+{"timestamp": "2026-02-23T17:23:42.720101Z", "action": "reclaim_session_status", "state": "not_bootstrapped", "result": "not_bootstrapped"}
+{"timestamp": "2026-02-23T17:26:17.442064Z", "action": "reclaim_session_bootstrap", "state": "pending_manual_login", "manual_login_confirmed": false, "captcha_resolved": true, "result": "pending_manual_login"}
+{"timestamp": "2026-02-23T18:48:19.807996Z", "action": "reclaim_session_bootstrap", "state": "blocked_captcha", "manual_login_confirmed": false, "captcha_resolved": true, "result": "captcha_blocked"}
+{"timestamp": "2026-02-23T20:03:00.705890Z", "action": "reclaim_session_status", "state": "blocked_captcha", "result": "captcha_blocked"}
+{"timestamp": "2026-02-23T20:03:19.577808Z", "action": "reclaim_session_status", "state": "blocked_captcha", "result": "captcha_blocked"}
+{"timestamp": "2026-02-23T20:03:46.299277Z", "action": "reclaim_session_bootstrap", "state": "valid", "manual_login_confirmed": true, "captcha_resolved": true, "result": "bootstrapped"}
+{"timestamp": "2026-02-23T20:03:48.981004Z", "action": "reclaim_session_status", "state": "valid", "result": "valid"}
+{"timestamp": "2026-02-23T20:12:34.862800Z", "action": "reclaim_next_task", "result": "next_task_found", "task_title": "From meeting: RD - Comercial at Tue, Feb 10th - 04:30 PM-03:00 GMT", "task_list_id": "TUZuVGxQZkRxSjRrWkNtbw", "resolution_source": "google_tasks"}
+{"timestamp": "2026-02-24T10:44:05.398640Z", "action": "reclaim_next_task", "result": "next_task_found", "task_title": "From meeting: RD - Comercial at Tue, Feb 10th - 04:30 PM-03:00 GMT", "task_list_id": "TUZuVGxQZkRxSjRrWkNtbw", "resolution_source": "google_tasks"}
+{"timestamp": "2026-02-25T02:17:20.975753Z", "action": "reclaim_next_task", "result": "next_task_found", "task_title": "From meeting: RD - Comercial at Tue, Feb 10th - 04:30 PM-03:00 GMT", "task_list_id": "TUZuVGxQZkRxSjRrWkNtbw", "resolution_source": "google_tasks"}
+{"timestamp": "2026-02-25T11:16:36.984044Z", "action": "reclaim_session_bootstrap", "state": "pending_manual_login", "manual_login_confirmed": false, "captcha_resolved": true, "result": "pending_manual_login"}

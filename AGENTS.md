@@ -9,162 +9,180 @@
 This file contains the canonical rules from `.aligntrue/rules/`.
 AI agents should follow these guidelines.
 
-<!-- aligntrue:rule global.md -->
+<!-- aligntrue:rule readme_context.md -->
 
-## Global
+## Readme Context
 
-Regras globais para todos os projetos
+Forca leitura do README como contexto de projeto
 
 Always applied. For files: `**/*`.
 
-# Regras Globais
+# Contexto de README
 
-Estas regras se aplicam a todos os arquivos em todos os projetos, garantindo consistência independente do repositório.
+O README.md do projeto deve ser tratado como fonte de contexto obrigatoria, no mesmo nivel de importancia dos arquivos de instrucoes globais.
+
+## Regras por agente
+
+- Se estiver rodando no Codex: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
+- Se estiver rodando no Gemini: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
+- GEMINI.md e CLAUDE.md sao arquivos de compatibilidade quando AGENTS.md nao estiver disponivel.
 
 
-<!-- aligntrue:rule AGENTS.md -->
+<!-- aligntrue:rule prompts_catalog.md -->
 
-## Agents
+## Prompts Catalog
 
-Always applied.
+# 📜 Catálogo de Prompts & Skills (AGCAO)
 
-# AGCAO - Ambiente de Configuração de Agentes (Codex, Gemini, Cline, Aider, Opencode)
+Este documento descreve os prompts especializados disponíveis no ecossistema (Gemini, Codex, etc.) e como criar novos.
 
-Este repositório centraliza as configurações, regras e instruções de estilo para múltiplos assistentes de programação de IA.
-Este arquivo (`AGENTS.md`) atua como a **Fonte da Verdade** e o **README** do projeto.
+## 🧠 Brainstorm & Criatividade
+**Comando:** `/brainstorm` (Gemini) ou `/prompts:brainstorm` (Codex)
+**Objetivo:** Transformar uma ideia vaga em um conceito sólido através de um loop iterativo.
+**Mecânica:** 1 Pergunta + 1 Sugestão por turno.
+**Quando usar:** Início de projetos, bloqueio criativo.
 
 ---
 
-# 1. Visão geral e definições
-visão_geral:
-  objetivo: "Manter a consistência entre instruções personalizadas do sistema do Codex, Gemini, Cline, Aider e Opencode utilizando de symlinks."
-  locais_agcao:
-    - "AGENTS.md (~/.codex/AGENTS.md)"
-    - "GEMINI.md (~/.gemini/GEMINI.md)"
-    - "Cline rules (~/Documentos/Cline/Rules/AGENTS.md)"
-    - "Aider conventions (.aider.conf.yml >> ~/Documentos/CONVENTIONS.md)"
-conteúdo fixo para ~/.aider.conf.yml:
-```yaml
-read: ~/Documents/CONVENTIONS.md
+## 🏗️ Gestão de Projetos (AI Coders Context + GSD + Ralph + Gemini)
+**Comando:** `/projeto` (Gemini) ou `/prompts:projeto` (Codex)
+**Objetivo:** Operar como orquestrador de execução com contexto eficiente, baixo risco de bug e rastreabilidade.
+**Mecânica:** Lê o contexto canônico, faz bootstrap automático de PRD via skill `prd` no Codex quando faltar `.context/prd_ralph/prd.json`, planeja milestones com GSD, escolhe 1 story por ciclo no Ralph e prepara prompt fechado para o Gemini executor.
+**Quando usar:** Início de projeto, retomada de contexto e definição do próximo ciclo de execução.
+
+---
+
+
+
+## ✅ Verificação de Confiança
+**Comando:** `/prompts:confidence-check`
+**Objetivo:** Validar soluções críticas antes do deploy.
+
+---
+
+## ⚙️ Guia Técnico: Criando Novos Prompts
+
+O sistema AGCAO sincroniza prompts automaticamente.
+
+1.  **Crie o arquivo:** Salve um arquivo Markdown em `prompts/<nome>.md`.
+2.  **Adicione Metadados:** O arquivo deve começar com o frontmatter YAML:
+    ```markdown
+    ---
+    description: "Descrição curta do que o prompt faz"
+    ---
+    # Título do Prompt
+    ...instruções...
+    ```
+3.  **Sincronize:** Rode `python3 jarvis.py mcp-sync-clients`.
+
+
+<!-- aligntrue:rule mcp_strategy.md -->
+
+## MCP Strategy
+
+# 🧠 MCP Orchestration Strategy & Tooling Guide
+
+Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas de forma objetiva no workflow restrito.
+
+## 🛠️ Inventário de Ferramentas Ativas
+
+| Servidor / Namespace | Ferramentas Chave | Função Primária | Disponibilidade |
+| :--- | :--- | :--- | :--- |
+| **Jarvis (Core)** | `gtasks_*`, `gcal_*`, `rag_*`, `editorial_*`, `sequential_thought` | Execução operacional, agenda, memória local e qualidade | ✅ Todos |
+| **Brave Search** | `brave_web_search` | Pesquisa web rápida | ⚠️ Apenas Codex |
+| **AI Coders Context** | `analysis`, `structure` | Mapeamento e leitura estrutural do projeto | ⚠️ Apenas Codex |
+
+---
+
+## 🚦 Matriz de Decisão (Gatilhos de Contexto)
+
+### 1. Contexto: Planejamento & Execução
+**Gatilho:** "o que fazer agora", "planeje a fase", "executar story".
+* **Planejamento macro:** GSD em `.context/docs/planning_gsd/`.
+* **Execução incremental:** Ralph com PRD ativo em `.context/prd_ralph/prd.json`.
+* **Tarefas pessoais/calendário:** `jarvis:gtasks_*` e `jarvis:gcal_*`.
+
+### 2. Contexto: Memória & Conhecimento
+**Gatilho:** "busque nos docs", "o que decidimos", "resuma contexto".
+* **Ação primária:** `jarvis:rag_search`.
+* **Indexação quando houver material novo:** `jarvis:rag_index`.
+
+### 3. Contexto: Código & Arquitetura
+**Gatilho:** "mapeie dependências", "entenda impacto", "como esse módulo se conecta".
+* **No Codex:** use AI Coders Context para mapa estrutural e dependências.
+* **Fallback:** use busca local por arquivo quando necessário.
+
+### 4. Contexto: Web & Escrita
+**Gatilho:** "acesse o site", "valide fluxo", "revise texto", "analise SEO".
+* **Web interativa:** use navegador apenas quando necessário.
+* **Escrita e revisão:** `editorial_*`, `audit_seo`, `speedgrapher_fog_index`.
+
+---
+
+## ⚠️ Restrições
+
+1. Operar no modo restrito: `gsd + ralph + ai-coders-context`.
+2. Contexto único: `.context/docs` + `README.md` + `.context/docs/planning_gsd/STATE.md` + `.context/prd_ralph/README.md`.
+3. Fechamento de ciclo obrigatório: evidências técnicas e atualização de contexto.
+
+
+<!-- aligntrue:rule context_governance.md -->
+
+## Context Governance
+
+Protocolos de integridade de contexto, higiene de arquivos e hierarquia de regras.
+
+Always applied. For files: `**/*`.
+
+# 🛡️ Governança de Contexto & Higiene
+
+Estas regras garantem que o Agente nunca opere "cego" e mantenha a documentação limpa.
+
+## 1. Protocolo de Visão (Context Check)
+Ao iniciar uma sessão ou antes de tarefas complexas, verifique silenciosamente se você tem acesso de leitura ao contexto global (`../AGENTS.md` ou `~/.codex/AGENTS.md`).
+- **Se falhar:** PARE IMEDIATAMENTE. Avise o usuário:
+  > 🚫 **ERRO CRÍTICO DE PERMISSÃO:** Não consigo ler as regras globais. Por favor, rode: `sudo chown $USER:$USER ../AGENTS.md`
+
+## 2. Higiene Documental (Zero Lixo)
+O `README.md` é a fachada do projeto.
+- **PROIBIDO:** Colocar logs brutos, outputs de terminal, dumps de `grep` ou base64 no `README.md`.
+- **Alternativa:** Salve logs em arquivos `.log` (ex: `server.log`, `install.log`) e apenas mencione-os.
+- **Exceção:** Pequenos snippets de erro (1-3 linhas) são permitidos em seções de "Troubleshooting".
+
+## 3. Hierarquia de Verdade
+1. **Projeto Local (`./AGENTS.md`):** Regras de infraestrutura (IPs, Comandos, Venvs) específicas deste projeto.
+2. **Global (`../AGENTS.md`):** Comportamento padrão e ferramentas genéricas.
+3. **AI Context (`.context/`):** Detalhes técnicos profundos (Arquitetura, Mapas).
+
+Se você encontrar um `AGENTS.md` local, leia-o com prioridade máxima. Ele contém o "Como Rodar" deste ambiente específico.
+
+## 4. Fluxo de Atualização (Sync)
+Para aplicar novas regras ou propagar mudanças:
+1. Edite os arquivos em `.aligntrue/rules/`.
+2. Rode `python3 jarvis.py mcp-sync-clients` na raiz.
+3. O script cuida da compilação e distribuição. Não rode `aligntrue` manualmente.
+
+
+<!-- aligntrue:rule codex_header_symlink.md -->
+
+## Codex Header Symlink
+
+Instrucao para corrigir header do Codex com AGENTS.md no projeto
+
+Always applied. For files: `**/*`.
+
+# Agents header no codex
+
+O header do Codex mostra Agents.md como none quando nao existe um AGENTS.md dentro do diretorio do projeto. Isso acontece mesmo que o link global em ~/.codex/AGENTS.md esteja correto. Para manter o header consistente, crie um symlink do AGENTS.md global dentro do projeto.
+
+Exemplo:
+
+```bash
+ln -s /home/lucas/Downloads/codex_luascfl/AGENTS.md /caminho/do/projeto/AGENTS.md
 ```
-    - "Opencode AGENTS.md (~/.config/opencode/AGENTS.md)"
 
-Todos devem apontar para o local atual do script e fazer symlink para AGENTS.md na pasta do local atual do script.
-ex: ~/Downloads/codex_luascfl/copy_agcao_files.sh
-arquivos symlink dos locais AGCAO devem apontar para: ~/Downloads/codex_luascfl/AGENTS.md
+Para este projeto:
 
-# 2. Instruções personalizadas de estilo
-estilo_escrita:
-  - "Escreva de forma fluida e articulada, conectando ideias logicamente, mas utilize um registro de linguagem natural e acessível, evitando estritamente o academicismo excessivo, jargões complexos ou orações labirínticas que prejudiquem a leitura."
-  - "Busque um equilíbrio rítmico: combine frases articuladas com pausas claras e vocabulário cotidiano, garantindo que a sofisticação esteja na clareza do raciocínio e não na dificuldade das palavras, tornando o texto envolvente sem ser denso ou cansativo."
-  - "Evite estruturas de frase que criem uma expectativa para depois negá-la ou expandi-la. Em vez disso, use afirmações diretas e positivas."
-  - "Sinta-se à vontade para ser criativo na construção das frases e nos estilos de expressão."
-
-formatação:
-  - "Não use maiúscula para fins estilísticos, use sentence case sempre que possível."
-  - "Não use emojis."
-  - "Não use em dashes, travessões ou hífens no lugar de vírgula."
-
-# 3. Perfil do usuário
-perfil_usuário:
-  nome: "Lucas Camilo Carvalho"
-  localização: "Salvador, Bahia"
-  idiomas:
-    - "Português (Primário)"
-    - "Inglês (Secundário)"
-
-# 4. Protocolos de leitura, execução e configurações do ambiente
-ambiente:
-  sistema_operacional: "Lubuntu"
-  caminho_base_gdrive: "/run/user/1000/gvfs/dav:host=app.koofr.net,ssl=true,user=lucascamr107%40gmail.com,prefix=%2Fdav/Google Drive/"
-  diretório_gemini_gems: "/run/user/1000/gvfs/dav:host=app.koofr.net,ssl=true,user=lucascamr107%40gmail.com,prefix=%2Fdav/Google Drive/Gemini Gems/"
- 
-protocolos:
-  leitura_gems:
-    comando: 'cat "Nome do Arquivo.gem"'
-    observação: "Use sempre aspas duplas para caminhos com espaços. Arquivos podem iniciar com emojis (ex.: ❗)."
-  criação_gems:
-    padrão_nome: "❗ Estrutura {Nome do prompt}"
-    extensões: [".txt", ".json", ".md"]
-    observação: "Crie arquivos com extensões explícitas para conteúdo legível."
-
-
-# 5. Instruções para adicionar MCP e extensões
-
-codex:
-
-Edite `~/.codex/config.toml` e adicione a tabela `[mcp_servers]` seguindo a sintaxe TOML.
-
-exemplo_codex_mcp:
-```toml
-[mcp_servers.filesystem]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "/home/lucas"]
+```bash
+ln -s /home/lucas/Downloads/codex_luascfl/AGENTS.md /home/lucas/Downloads/codex_luascfl/super_mcp_servers/AGENTS.md
 ```
-
-cline e gemini:
-Para ferramentas locais específicas que não estão empacotadas como extensões, edite diretamente os arquivos de configuração (preferencialmente ~/.gemini/settings.json).
-O Cline permite gerenciar ferramentas MCP através de uma interface dedicada ou edição manual de arquivos JSON.
-
-- Instalação via interface: clique no ícone MCP na barra de ferramentas do Cline, selecione o servidor desejado (ex.: Slack) e clique para instalar. O Cline tentará configurar o ambiente automaticamente.
-- Configuração manual (cline_mcp_settings.json): caso a configuração automática falhe ou precise de ajustes, edite o arquivo cline_mcp_settings.json.
-
-exemplo_cline_gemini_mcp:
-  slack:
-    comando: "npx"
-    args: ["-y", "@modelcontextprotocol/server-slack"]
-    env:
-      SLACK_BOT_TOKEN: "xoxb-seu-token"
-      SLACK_TEAM_ID: "T01234567"
-  filesystem:
-    comando: "npx"
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/lucas"]
-
-
-# 6. Instruções para Skills do Codex
-skills:
-  codex:
-    local_padrão: "~/.codex/skills"
-    estrutura:
-      pasta: true
-      arquivo_obrigatório: "SKILL.md"
-      frontmatter:
-        - name
-        - description
-        - metadata.short-description
-    invocação:
-      explícita: "/skills ou $"
-      implícita: "Codex decide com base na descrição"
-    instalação:
-      comando: "$skill-installer <nome-da-skill>"
-      exemplo: "$skill-installer linear"
-    criação:
-      automática: "$skill-creator"
-      manual: "Crie pasta com SKILL.md contendo frontmatter YAML"
-  gemini_cli:
-    nota: "O Gemini e o Cline não suportam o padrão de Agent Skills do Codex. Descreva capacidades específicas no arquivo .clinerules ou crie ferramentas MCP via linguagem natural."
-
-# 7. Arquitetura de Sincronização
-arquitetura:
-  - "O **AlignTrue** atua como o 'compilador' de conteúdo: ele processa as regras em `.aligntrue/rules/` e gera o arquivo mestre `AGENTS.md` validado na raiz do repositório."
-  - "O script **copy_agcao_files.sh** atua como o 'distribuidor' global: ele vincula o arquivo `AGENTS.md` gerado às pastas do sistema (~/.gemini, ~/.codex, etc.) via links simbólicos, garantindo que a mudança ocorra em nível global."
-
-
-
-# 8. Instruções para Prompts do Codex
-prompts:
-  codex:
-    local: "~/.codex/prompts/"
-    formato: "Markdown com frontmatter YAML"
-    invocação: "/prompts:nome-do-arquivo"
-  gemini:
-    nota: "Prompts reutilizáveis servem para tarefas rápidas e repetitivas. Crie arquivos Markdown em ~/.codex/prompts/ com frontmatter YAML."
-
-# 9. Comandos úteis
-comandos:
-  verificação_codex: 'codex --ask-for-approval never "Show which instruction files are active."'
-  instalação_extensões_gemini: "gemini extensions install <url-do-repositorio>"
-  instalação_skills_codex: "$skill-installer <nome-da-skill>"
-  criação_skills_codex: "$skill-creator"
-  verificação_mcp: "/mcp"
-

@@ -1,0 +1,10 @@
+Playwright MCP: configurado
+Brave MCP: não configurado (falta BRAVE_API_KEY ou npx)
+Chart MCP: não configurado (npx ausente ou desativado)
+Zotero MCP: não configurado (faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx)
+Firecrawl MCP: não configurado (falta FIRECRAWL_API_KEY ou npx)
+Fireflies MCP: não configurado (falta FIREFLIES_API_KEY ou npx)
+OpenRouter (tool): não configurado (falta OPENROUTER_API_KEY/OPENAI_API_KEY)
+Sequential MCP: configurado
+
+(Falha ao listar ferramentas: 'FastMCP' object has no attribute 'tools')

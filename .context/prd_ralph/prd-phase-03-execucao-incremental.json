@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "project": "M3 Execucao incremental",
+  "overview": "Operar ciclos curtos de entrega com Ralph, um story por iteracao, exigindo evidencias tecnicas, diffs objetivos e atualizacao de contexto ao final de cada ciclo.",
+  "goals": [
+    "Executar stories priorizadas com escopo pequeno e verificavel",
+    "Padronizar fechamento tecnico por ciclo com quality gates",
+    "Manter progresso acumulado em logs e documentos de estado"
+  ],
+  "nonGoals": [
+    "Executar multiplas stories no mesmo ciclo",
+    "Pular verificacoes tecnicas para ganhar velocidade"
+  ],
+  "successMetrics": [
+    "Cada ciclo fecha exatamente uma story com status concluido",
+    "Cada ciclo inclui evidencias de comandos executados",
+    "Cada ciclo atualiza progresso e contexto sem lacunas"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "Ralph loop + skills locais no repositorio existente",
+    "hosting": "Execucao local em Linux",
+    "database": "Nao aplicavel",
+    "auth": "Nao aplicavel"
+  },
+  "routes": [
+    {
+      "path": ".agents/tasks/prd.json",
+      "name": "PRD ativo do Ralph",
+      "purpose": "Fonte de historias para execucao no loop"
+    },
+    {
+      "path": ".ralph",
+      "name": "Estado de execucao",
+      "purpose": "Progresso, logs e rastros por iteracao"
+    }
+  ],
+  "uiNotes": [
+    "Fluxo estritamente via CLI"
+  ],
+  "dataModel": [
+    {
+      "entity": "StoryRun",
+      "fields": [
+        "runId",
+        "storyId",
+        "iteration",
+        "result",
+        "logPath"
+      ]
+    },
+    {
+      "entity": "CycleEvidence",
+      "fields": [
+        "command",
+        "status",
+        "timestamp",
+        "artifactPath"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Nao aplicavel para esta fase",
+    "example": {}
+  },
+  "rules": [
+    "Executar uma story por ciclo, sem ampliar escopo",
+    "Nao alterar PRD durante execucao de uma story",
+    "Atualizar progresso e evidencias no fechamento de cada ciclo"
+  ],
+  "qualityGates": [
+    "python3 -m py_compile super_server_v6.py",
+    "bash -n start_oci.sh",
+    "./migration_gsd_ralph/scripts/06_smoke_test.sh",
+    "codex mcp list",
+    "gemini mcp list"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Definir template padrao de ciclo de story",
+      "status": "open",
+      "dependsOn": [],
+      "description": "Como operador, quero um template unico de ciclo para garantir repetibilidade do processo de execucao.",
+      "acceptanceCriteria": [
+        "Definir formato obrigatorio de evidencias, diff e anotacao de progresso",
+        "Registrar template em arquivo operacional acessivel pelo time",
+        "Example: ciclo piloto usa o template e gera registro completo",
+        "Negative case: se qualquer campo obrigatorio faltar no fechamento, a story falha"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Executar ciclo piloto com uma story priorizada",
+      "status": "open",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Como operador, quero executar um ciclo piloto completo para validar o fluxo do Ralph em condicao real.",
+      "acceptanceCriteria": [
+        "Selecionar uma story de maior prioridade e executar ate conclusao",
+        "Anexar resultado dos quality gates ao registro da iteracao",
+        "Example: story concluida com log de execucao e gates aprovados",
+        "Negative case: se a story extrapolar escopo ou falhar gate, deve voltar para aberto com motivo"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Automatizar verificacao de fechamento tecnico",
+      "status": "open",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Como operador, quero automatizar verificacoes de fechamento para reduzir erro humano no ciclo.",
+      "acceptanceCriteria": [
+        "Criar rotina unica para executar quality gates do ciclo",
+        "Salvar resultado consolidado em arquivo de evidencias da fase",
+        "Example: comando unico executa e registra todos os gates",
+        "Negative case: se qualquer gate retornar erro, o fechamento deve ser bloqueado automaticamente"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Consolidar aprendizado operacional da fase",
+      "status": "open",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Como operador, quero consolidar aprendizados do ciclo para melhorar iteracoes seguintes sem perder historico.",
+      "acceptanceCriteria": [
+        "Atualizar logs de progresso com padroes, riscos e ajustes recomendados",
+        "Refletir ajustes aprovados em documentos de operacao continua",
+        "Example: registro final traz problemas recorrentes e acao corretiva aplicada",
+        "Negative case: se nao houver aprendizado registrado, a story nao pode ser marcada como concluida"
+      ]
+    }
+  ]
+}

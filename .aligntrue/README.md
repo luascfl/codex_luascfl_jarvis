@@ -20,7 +20,7 @@ All your rules belong in `rules/` as markdown files:
 title: "My Rule"
 description: "Description"
 scope: "packages/app"
-cursor:
+target:
   when: "alwaysOn"
 ---
 
@@ -35,7 +35,7 @@ aligntrue sync
 
 ## Safe by default
 
-- AlignTrue never edits agent-specific folders like `.cursor/plans/`, `.cursor/memories/`, etc.
+- AlignTrue never edits agent-specific state folders.
 - Only configuration files defined in `.aligntrue/` and exported agent files are touched.
 - Backups are automatically created before overwriting any manually edited files.
 
@@ -47,6 +47,6 @@ aligntrue sync
 
 ## More information
 
-- View exported files in your root directory (e.g., `AGENTS.md`, `.cursor/rules/`)
+- View exported files in your root directory (e.g., `AGENTS.md`)
 - Check `config.yaml` for settings (exporters, sources, git integration)
 - Run `aligntrue --help` for CLI commands

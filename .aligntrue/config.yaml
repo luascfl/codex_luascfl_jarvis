@@ -4,13 +4,10 @@ sources:
     path: .aligntrue/rules
 exporters:
   - agents
-  - aider
-  - aider-config
-  - antigravity
-  - cline
-  - codex-config
-  - cursor
   - gemini-cli
-  - gemini-config
-export:
+  - gemini
+sync:
   content_mode: inline
+
+export:
+  output_dir: global_rule_sync
