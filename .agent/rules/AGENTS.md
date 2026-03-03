@@ -8,7 +8,7 @@ alwaysApply: true
   Edit rules in .aligntrue/rules/ instead.
 -->
 
-# AGCAO - Ambiente de Configuração de Agentes (Codex, Gemini, Cline, Aider, Opencode)
+# AGCAO - Ambiente de Configuração de Agentes (Codex, Gemini, Aider, Opencode)
 
 Este repositório centraliza as configurações, regras e instruções de estilo para múltiplos assistentes de programação de IA.
 Este arquivo (`AGENTS.md`) atua como a **Fonte da Verdade** e o **README** do projeto.
@@ -17,11 +17,11 @@ Este arquivo (`AGENTS.md`) atua como a **Fonte da Verdade** e o **README** do pr
 
 # 1. Visão geral e definições
 visão_geral:
-  objetivo: "Manter a consistência entre instruções personalizadas do sistema do Codex, Gemini, Cline, Aider e Opencode utilizando de symlinks."
+  objetivo: "Manter a consistência entre instruções personalizadas do sistema do Codex, Gemini, Aider e Opencode utilizando de symlinks."
   locais_agcao:
     - "AGENTS.md (~/.codex/AGENTS.md)"
     - "GEMINI.md (~/.gemini/GEMINI.md)"
-    - "Cline rules (~/Documentos/Cline/Rules/AGENTS.md)"
+    - "Agent rules (~/Documentos/Agent/Rules/AGENTS.md)"
     - "Aider conventions (.aider.conf.yml >> ~/Documentos/CONVENTIONS.md)"
 conteúdo fixo para ~/.aider.conf.yml:
 ```yaml
@@ -82,14 +82,12 @@ command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "/home/lucas"]
 ```
 
-cline e gemini:
+gemini:
 Para ferramentas locais específicas que não estão empacotadas como extensões, edite diretamente os arquivos de configuração (preferencialmente ~/.gemini/settings.json).
-O Cline permite gerenciar ferramentas MCP através de uma interface dedicada ou edição manual de arquivos JSON.
+Para gerenciar ferramentas MCP via arquivos JSON, edite as configurações do provedor (ex.: ~/.gemini/settings.json) ou um arquivo de settings do seu runner.
 
-- Instalação via interface: clique no ícone MCP na barra de ferramentas do Cline, selecione o servidor desejado (ex.: Slack) e clique para instalar. O Cline tentará configurar o ambiente automaticamente.
-- Configuração manual (cline_mcp_settings.json): caso a configuração automática falhe ou precise de ajustes, edite o arquivo cline_mcp_settings.json.
 
-exemplo_cline_gemini_mcp:
+exemplo_gemini_mcp:
   slack:
     comando: "npx"
     args: ["-y", "@modelcontextprotocol/server-slack"]
@@ -122,7 +120,7 @@ skills:
       automática: "$skill-creator"
       manual: "Crie pasta com SKILL.md contendo frontmatter YAML"
   gemini_cli:
-    nota: "O Gemini e o Cline não suportam o padrão de Agent Skills do Codex. Descreva capacidades específicas no arquivo .clinerules ou crie ferramentas MCP via linguagem natural."
+    nota: "O Gemini não suporta o padrão de Agent Skills do Codex. Descreva capacidades específicas no arquivo .clinerules ou crie ferramentas MCP via linguagem natural."
 
 # 7. Arquitetura de Sincronização
 arquitetura:
