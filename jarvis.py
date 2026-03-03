@@ -2938,8 +2938,6 @@ EXEMPLO CORRETO:
 """
 
         full_prompt = f"""
-{system_prompt}
-
 📅 INFORMAÇÃO TEMPORAL CRÍTICA:
 Hoje é: {datetime.now().strftime('%A, %d/%m/%Y')}
 
