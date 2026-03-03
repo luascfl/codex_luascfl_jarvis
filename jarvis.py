@@ -2953,7 +2953,16 @@ Hoje é: {datetime.now().strftime('%A, %d/%m/%Y')}
 """
 
         print("🤖 jarvis: planejando tarefas (llm)...", file=sys.stderr)
-        response = llm.invoke(full_prompt)
+
+        # manda o prompt mestre como system message (mais confiável do que misturar tudo num texto só)
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        response = llm.invoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=full_prompt),
+            ]
+        )
         content = getattr(response, 'content', '') or ''
 
         # 4. extração do json
