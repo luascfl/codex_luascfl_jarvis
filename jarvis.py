@@ -2226,6 +2226,11 @@ def gcal_add_event(
                 'start': {'date': day_d.isoformat()},
                 'end': {'date': end_day.isoformat()},
             }
+
+            # default for all-day: do not block time unless explicitly requested
+            # (Google Calendar uses transparency='opaque' to block and 'transparent' for "free")
+            if not free:
+                body['transparency'] = 'transparent'
         else:
             if not hm:
                 return "Erro: preciso de um horário HH:MM (ou use 'dia inteiro')."
