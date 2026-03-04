@@ -177,25 +177,57 @@ os.environ.setdefault("HOME", "/home/lucas")
 os.environ.setdefault("npm_config_cache", f"{os.environ.get('HOME', '/home/lucas')}/.npm")
 os.environ.setdefault("npm_config_prefix", f"{os.environ.get('HOME', '/home/lucas')}/.npm-global")
 os.environ.setdefault("PIP_CACHE_DIR", f"{os.environ.get('HOME', '/home/lucas')}/.pip-cache")
+def _pick_writable_home(candidates: list[str]) -> str:
+    """Escolhe o primeiro diretório gravável (ou cria) para servir de base.
+
+    Motivação: em ambientes diferentes (local vs Oracle), o usuário pode não ser 'lucas',
+    e hardcode em /home/lucas pode falhar com PermissionError.
+    """
+    for raw in candidates:
+        if not raw:
+            continue
+        try:
+            p = Path(raw).expanduser()
+            p.mkdir(parents=True, exist_ok=True)
+            test = p / ".jarvis_write_test"
+            test.write_text("ok")
+            test.unlink(missing_ok=True)
+            return str(p)
+        except Exception:
+            continue
+    # fallback final
+    return str(Path.cwd())
+
+
+# define um HOME_BASE consistente e gravável (prioriza HOME do ambiente)
+HOME_BASE = _pick_writable_home(
+    [
+        os.environ.get("HOME"),
+        "/home/ubuntu",
+        "/home/lucas",
+        str(Path.home()),
+    ]
+)
+
 # Adiciona o binário do npm global e do user base python ao PATH
-_npm_prefix = os.environ.get("npm_config_prefix") or f"{os.environ.get('HOME', '/home/lucas')}/.npm-global"
+_npm_prefix = os.environ.get("npm_config_prefix") or f"{HOME_BASE}/.npm-global"
 _npm_global_bin = f"{_npm_prefix}/bin"
-_user_local_bin = f"{os.environ.get('HOME', '/home/lucas')}/.local/bin"
+_user_local_bin = f"{HOME_BASE}/.local/bin"
 os.environ["PATH"] = f"{_npm_global_bin}:{_user_local_bin}:{os.environ.get('PATH', '')}"
 
-# Garante que os diretórios existam
+# Garante que os diretórios existam (sempre dentro do HOME_BASE por padrão)
 for d in [
-    os.environ.get("HOME", "/home/lucas"),
-    os.environ.get("npm_config_cache", "/home/lucas/.npm"),
-    os.environ.get("npm_config_prefix", "/home/lucas/.npm-global"),
-    os.environ.get("PIP_CACHE_DIR", "/home/lucas/.pip-cache"),
+    os.environ.get("HOME") or HOME_BASE,
+    os.environ.get("npm_config_cache") or f"{HOME_BASE}/.npm",
+    os.environ.get("npm_config_prefix") or f"{HOME_BASE}/.npm-global",
+    os.environ.get("PIP_CACHE_DIR") or f"{HOME_BASE}/.pip-cache",
 ]:
     os.makedirs(d, exist_ok=True)
 
-# O Gemini CLI precisa gravar dentro do projeto; definimos um diretório padrão
+# O Gemini CLI precisa gravar; definimos um diretório padrão gravável
 GEMINI_CLI_HOME_DIR = os.environ.get("GEMINI_CLI_HOME")
 if not GEMINI_CLI_HOME_DIR:
-    GEMINI_CLI_HOME_DIR = "/home/lucas"
+    GEMINI_CLI_HOME_DIR = HOME_BASE
 gemini_home_path = Path(GEMINI_CLI_HOME_DIR).expanduser()
 while gemini_home_path.name == ".gemini":
     gemini_home_path = gemini_home_path.parent
