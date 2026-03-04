@@ -2967,17 +2967,114 @@ Hoje é: {datetime.now().strftime('%A, %d/%m/%Y')}
         )
         content = getattr(response, 'content', '') or ''
 
-        # 4. extração do json
-        tasks_to_insert = []
-        try:
-            json_block = content.split("```json")[1].split("```")[0].strip()
-            tasks_to_insert = json.loads(json_block)
-        except Exception as parse_err:
-            # falha de parsing -> fallback automático
-            return _fallback_basic(reason="llm_json_parse_failed", detail=str(parse_err))
+        # 4. extração + validação do json (schema + 1 tentativa de reparo)
+        # objetivo: não depender só do prompt para garantir JSON válido.
+        tasks_to_insert: list[dict] = []
 
-        if not isinstance(tasks_to_insert, list) or not tasks_to_insert:
-            return _fallback_basic(reason="llm_returned_empty_tasks", detail="json extraído vazio ou não é array")
+        def _extract_json_block(text: str) -> str:
+            t = (text or "")
+            if "```json" in t:
+                try:
+                    return t.split("```json", 1)[1].split("```", 1)[0].strip()
+                except Exception:
+                    pass
+            # fallback: tenta localizar um array json no texto
+            m = re.search(r"(\[\s*\{.*\}\s*\])", t, flags=re.S)
+            if m:
+                return m.group(1).strip()
+            raise ValueError("não encontrei bloco ```json``` nem array JSON no texto")
+
+        def _validate_tasks_payload(obj) -> list[dict]:
+            from pydantic import BaseModel, Field, ValidationError
+            from typing import Optional, List
+
+            class _Task(BaseModel):
+                title: str = Field(min_length=1)
+                due: Optional[str] = None
+                notes: Optional[str] = None
+
+                # normalização leve
+                def cleaned(self) -> dict:
+                    out = {
+                        "title": (self.title or "").strip(),
+                        "notes": (self.notes or "Jarvis").strip() if (self.notes or "").strip() else "Jarvis",
+                    }
+                    if self.due is not None and str(self.due).strip() != "":
+                        due_s = str(self.due).strip()
+                        # valida ISO 8601 básico esperado
+                        # aceitamos "YYYY-MM-DD" e transformamos em Z
+                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", due_s):
+                            due_s = due_s + "T00:00:00Z"
+                        # exige YYYY-MM-DDT00:00:00Z (Z obrigatório)
+                        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", due_s):
+                            raise ValueError(f"due inválido: {due_s}")
+                        # parse para garantir que é data válida
+                        try:
+                            datetime.strptime(due_s, "%Y-%m-%dT%H:%M:%SZ")
+                        except Exception as e:
+                            raise ValueError(f"due inválido (parse): {due_s} ({e})")
+                        out["due"] = due_s
+                    return out
+
+            if not isinstance(obj, list):
+                raise ValueError("json não é array")
+            if not obj:
+                raise ValueError("json array vazio")
+
+            cleaned: list[dict] = []
+            errors: list[str] = []
+            for idx, item in enumerate(obj):
+                try:
+                    t = _Task.model_validate(item)
+                    cleaned.append(t.cleaned())
+                except Exception as e:
+                    errors.append(f"idx={idx}: {e}")
+
+            if errors:
+                raise ValueError("erros de validação: " + " | ".join(errors[:5]))
+
+            return cleaned
+
+        def _repair_json_with_llm(bad_text: str, err: str) -> str:
+            # 1 tentativa curta: pedir pro modelo retornar SOMENTE um bloco ```json ...``` válido.
+            repair_prompt = f"""
+Corrija o JSON para ficar válido e compatível com Google Tasks API.
+
+Erros encontrados: {err}
+
+Regras obrigatórias:
+- responda SOMENTE com um bloco ```json contendo um ARRAY JSON válido.
+- cada item deve ter: title (string), due (opcional, ISO 8601 'YYYY-MM-DDT00:00:00Z'), notes (opcional).
+- sem comentários, sem texto fora do bloco.
+
+Texto original:
+{bad_text}
+""".strip()
+
+            rep = llm.invoke(
+                [
+                    SystemMessage(content="você é um validador e corretor de JSON. siga as regras de saída literalmente."),
+                    HumanMessage(content=repair_prompt),
+                ]
+            )
+            return getattr(rep, 'content', '') or ''
+
+        # primeira tentativa: parse e validação
+        try:
+            json_block = _extract_json_block(content)
+            tasks_to_insert = _validate_tasks_payload(json.loads(json_block))
+        except Exception as parse_err:
+            # tentativa de reparo
+            try:
+                repaired = _repair_json_with_llm(content, str(parse_err))
+                json_block2 = _extract_json_block(repaired)
+                tasks_to_insert = _validate_tasks_payload(json.loads(json_block2))
+                content = content + "\n\n---\n[auto-repair-json] aplicado"  # só pra auditoria
+            except Exception as repair_err:
+                return _fallback_basic(reason="llm_json_parse_failed", detail=f"parse={parse_err} | repair={repair_err}")
+
+        if not tasks_to_insert:
+            return _fallback_basic(reason="llm_returned_empty_tasks", detail="json validado vazio")
 
         # 5. execução (limpeza e inserção)
         log_exec = []
