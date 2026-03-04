@@ -2255,18 +2255,46 @@ def gcal_add_event(
         return f"Erro ao adicionar evento: {e}\n{traceback.format_exc()}"
 @mcp.tool()
 def gcal_create_event(
-    summary: str,
-    start: str,
-    end: str,
+    summary: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
     calendar_id: str = "primary",
     description: str | None = None,
+    text: str | None = None,
+    default_duration_min: int = 30,
+    default_year: int | None = None,
 ) -> str:
-    """Cria um evento no Google Calendar.
+    """Cria um evento no Google Calendar (unificado).
 
-    - start/end: ISO 8601 com offset (ex: 2026-02-05T14:45:00-03:00)
+    Você pode usar de dois jeitos:
+
+    1) modo "api": passe summary + start + end (ISO 8601 com offset)
+       - exemplo start/end: 2026-02-05T14:45:00-03:00
+
+    2) modo "texto": passe text (pt-br) e ele extrai título/data/hora/duração/local/detalhes
+       - aceita "dia inteiro"
+       - aceita recorrência (diariamente/semanal/mensal) e "até ..."
+
+    Retorna id + link do evento.
     """
     try:
-        from datetime import datetime, timezone
+        # se veio text, delega pro parser já existente
+        if text is not None and str(text).strip():
+            return gcal_add_event(
+                text=str(text),
+                calendar_id=calendar_id,
+                default_duration_min=default_duration_min,
+                default_year=default_year,
+            )
+
+        # modo "api" (compatível com a assinatura antiga)
+        if not summary or not start or not end:
+            return (
+                "Erro: informe (summary, start, end) ou então use (text). "
+                "Ex: gcal_create_event(text='reunião 11/03 19:00 1h')"
+            )
+
+        from datetime import datetime
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
 
@@ -2287,6 +2315,7 @@ def gcal_create_event(
             start = start[:-1] + '+00:00'
         if end.endswith('Z'):
             end = end[:-1] + '+00:00'
+
         start_dt = datetime.fromisoformat(start)
         end_dt = datetime.fromisoformat(end)
 
