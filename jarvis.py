@@ -2265,6 +2265,7 @@ def gcal_create_event(
     end: str | None = None,
     calendar_id: str = "primary",
     description: str | None = None,
+    free: bool | None = None,
     text: str | None = None,
     default_duration_min: int = 30,
     default_year: int | None = None,
@@ -2275,6 +2276,7 @@ def gcal_create_event(
 
     1) modo "api": passe summary + start + end (ISO 8601 com offset)
        - exemplo start/end: 2026-02-05T14:45:00-03:00
+       - free: True/False para marcar como "free" (transparency=transparent) ou "busy" (opaque)
 
     2) modo "texto": passe text (pt-br) e ele extrai título/data/hora/duração/local/detalhes
        - aceita "dia inteiro"
@@ -2324,6 +2326,10 @@ def gcal_create_event(
         start_dt = datetime.fromisoformat(start)
         end_dt = datetime.fromisoformat(end)
 
+        # default: se for evento all-day (date), marcar como free a menos que o usuário force o contrário
+        if free is None and (len(start) == 10 and len(end) == 10):
+            free = True
+
         body = {
             'summary': summary,
             'start': {'dateTime': start_dt.isoformat()},
@@ -2331,6 +2337,8 @@ def gcal_create_event(
         }
         if description:
             body['description'] = description
+        if free is not None:
+            body['transparency'] = 'transparent' if bool(free) else 'opaque'
 
         ev = svc.events().insert(calendarId=calendar_id, body=body).execute()
         return f"✅ evento criado: {ev.get('id')}\n{ev.get('htmlLink', '')}".strip()
