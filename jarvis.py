@@ -3282,6 +3282,25 @@ def _auth_google_cli(
     requested_port = default_port if port is None else int(port)
     requested_open_browser = default_open_browser if open_browser is None else bool(open_browser)
 
+    # Em ambientes headless (ex.: rodando via ssh, systemd, mcp), o webbrowser
+    # do Python costuma falhar com "could not locate runnable browser".
+    # Quando o usuário quer autenticar via VNC, precisamos forçar um browser
+    # conhecido e um DISPLAY válido.
+    #
+    # Heurística:
+    # - se --open-browser foi pedido (True) e não há DISPLAY definido,
+    #   assumimos a sessão VNC padrão em :1.
+    # - se BROWSER não estiver definido, escolhemos um browser instalado.
+    if requested_open_browser:
+        if not (os.environ.get("DISPLAY") or "").strip():
+            os.environ["DISPLAY"] = ":1"
+
+        if not (os.environ.get("BROWSER") or "").strip():
+            for candidate in ("google-chrome", "chromium", "firefox", "xdg-open"):
+                if shutil.which(candidate):
+                    os.environ["BROWSER"] = candidate
+                    break
+
     token_file = _resolve_local_path(token_path, BASE_DIR / "token.json")
     secret_file = _pick_google_client_secret(client_secret)
     if not secret_file:
@@ -3319,6 +3338,8 @@ def _auth_google_cli(
                 host=host,
                 port=requested_port,
                 open_browser=requested_open_browser,
+                # garante que o webbrowser.get() tenha alvo explícito (útil no VNC).
+                browser=os.environ.get("BROWSER") or None,
             )
 
     token_file.write_text(creds.to_json(), encoding="utf-8")
