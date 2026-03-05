@@ -3193,9 +3193,16 @@ Texto original:
 # --- MERGED LOCAL SCRIPTS (auth/bridge/venv/oci) ---
 _GOOGLE_TASKS_SCOPES = [
     'https://www.googleapis.com/auth/tasks',
+    # mantém um mínimo de calendar pra fluxos que criam/consultam eventos,
+    # mas o escopo "calendar" dedicado fica abaixo.
     'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/calendar.readonly',
 ]
+
+_GOOGLE_CALENDAR_SCOPES = [
+    # calendar completo (eventos + leitura do calendário)
+    'https://www.googleapis.com/auth/calendar',
+]
+
 _GOOGLE_DRIVE_SCOPES = [
     'https://www.googleapis.com/auth/tasks',
     'https://www.googleapis.com/auth/drive.file',
@@ -3266,8 +3273,14 @@ def _auth_google_cli(
     if normalized_scope == "tasks":
         selected_scopes = _GOOGLE_TASKS_SCOPES
         already_valid_msg = "✅ Token Google Tasks já válido em {token_file}. Seguindo sem novo login."
-        saved_msg = "✅ Token com escopo Tasks/Calendar salvo em {token_file}"
+        saved_msg = "✅ Token com escopo Tasks (+ Calendar mínimo) salvo em {token_file}"
         default_port = 18797
+        default_open_browser = False
+    elif normalized_scope == "calendar":
+        selected_scopes = _GOOGLE_CALENDAR_SCOPES
+        already_valid_msg = "✅ Token Google Calendar já válido em {token_file}. Seguindo sem novo login."
+        saved_msg = "✅ Token com escopo Calendar salvo em {token_file}"
+        default_port = 18798
         default_open_browser = False
     elif normalized_scope == "drive":
         selected_scopes = _GOOGLE_DRIVE_SCOPES
@@ -3276,7 +3289,7 @@ def _auth_google_cli(
         default_port = 0
         default_open_browser = True
     else:
-        print("❌ Escopo inválido. Use --scope tasks ou --scope drive.", file=sys.stderr)
+        print("❌ Escopo inválido. Use --scope tasks, --scope calendar ou --scope drive.", file=sys.stderr)
         return 1
 
     requested_port = default_port if port is None else int(port)
@@ -10452,7 +10465,12 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     oci.add_argument("installer_args", nargs=argparse.REMAINDER, help="Argumentos repassados para o instalador OCI. Use '--' antes dos argumentos.")
 
     auth_google = sub.add_parser("auth-google", help="Autentica/reautoriza token Google para escopos de Tasks/Calendar ou Drive.")
-    auth_google.add_argument("--scope", choices=["tasks", "drive"], default="tasks")
+    auth_google.add_argument(
+        "--scope",
+        choices=["tasks", "calendar", "drive"],
+        default="tasks",
+        help="Escopo de autenticação: tasks (padrão), calendar, ou drive.",
+    )
     auth_google.add_argument("--client-secret", default="")
     auth_google.add_argument("--token-path", default=str(BASE_DIR / "token.json"))
     auth_google.add_argument("--host", default="127.0.0.1")
