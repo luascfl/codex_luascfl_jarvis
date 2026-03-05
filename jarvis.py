@@ -3269,28 +3269,49 @@ def _auth_google_cli(
         print(f"❌ Dependências Google OAuth não disponíveis: {e}", file=sys.stderr)
         return 1
 
-    normalized_scope = (scope or "").strip().lower()
-    if normalized_scope == "tasks":
-        selected_scopes = _GOOGLE_TASKS_SCOPES
-        already_valid_msg = "✅ Token Google Tasks já válido em {token_file}. Seguindo sem novo login."
-        saved_msg = "✅ Token com escopo Tasks (+ Calendar mínimo) salvo em {token_file}"
-        default_port = 18797
-        default_open_browser = False
-    elif normalized_scope == "calendar":
-        selected_scopes = _GOOGLE_CALENDAR_SCOPES
-        already_valid_msg = "✅ Token Google Calendar já válido em {token_file}. Seguindo sem novo login."
-        saved_msg = "✅ Token com escopo Calendar salvo em {token_file}"
-        default_port = 18798
-        default_open_browser = False
-    elif normalized_scope == "drive":
-        selected_scopes = _GOOGLE_DRIVE_SCOPES
-        already_valid_msg = "✅ Token com escopo Drive já válido em {token_file}. Seguindo sem novo login."
-        saved_msg = "✅ Token com escopo Drive salvo em {token_file}"
+    raw_scope = (scope or "").strip().lower()
+    requested_scopes = [s.strip() for s in raw_scope.split(",") if s.strip()]
+    # dedupe, preserving order
+    requested_scopes = list(dict.fromkeys(requested_scopes))
+    if not requested_scopes:
+        requested_scopes = ["tasks"]
+
+    allowed = {"tasks", "calendar", "drive"}
+    invalid = [s for s in requested_scopes if s not in allowed]
+    if invalid:
+        print(
+            "❌ Escopo inválido: {invalid}. Use --scope tasks,calendar,drive (separado por vírgula).".format(
+                invalid=", ".join(invalid)
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
+    # compõe lista final de scopes (união)
+    selected_scopes: list[str] = []
+    if "tasks" in requested_scopes:
+        selected_scopes.extend(_GOOGLE_TASKS_SCOPES)
+    if "calendar" in requested_scopes:
+        selected_scopes.extend(_GOOGLE_CALENDAR_SCOPES)
+    if "drive" in requested_scopes:
+        selected_scopes.extend(_GOOGLE_DRIVE_SCOPES)
+
+    # dedupe, preserving order
+    selected_scopes = list(dict.fromkeys(selected_scopes))
+
+    joined = ",".join(requested_scopes)
+    already_valid_msg = "✅ Token Google ({joined}) já válido em {{token_file}}. Seguindo sem novo login.".format(joined=joined)
+    saved_msg = "✅ Token com escopos Google ({joined}) salvo em {{token_file}}".format(joined=joined)
+
+    # Port/open_browser seguem regras simples:
+    # - Se drive estiver presente, port default=0 e open_browser default=True.
+    # - Caso contrário, port default=18798 se calendar presente, senão 18797. open_browser default=False.
+    if "drive" in requested_scopes:
         default_port = 0
         default_open_browser = True
     else:
-        print("❌ Escopo inválido. Use --scope tasks, --scope calendar ou --scope drive.", file=sys.stderr)
-        return 1
+        default_port = 18798 if "calendar" in requested_scopes else 18797
+        default_open_browser = False
 
     requested_port = default_port if port is None else int(port)
     requested_open_browser = default_open_browser if open_browser is None else bool(open_browser)
@@ -10467,9 +10488,8 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     auth_google = sub.add_parser("auth-google", help="Autentica/reautoriza token Google para escopos de Tasks/Calendar ou Drive.")
     auth_google.add_argument(
         "--scope",
-        choices=["tasks", "calendar", "drive"],
         default="tasks",
-        help="Escopo de autenticação: tasks (padrão), calendar, ou drive.",
+        help="Escopos de autenticação (separados por vírgula). Exemplos: 'tasks', 'calendar', 'tasks,calendar', 'drive'.",
     )
     auth_google.add_argument("--client-secret", default="")
     auth_google.add_argument("--token-path", default=str(BASE_DIR / "token.json"))
