@@ -10477,9 +10477,9 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="Mostra um diagnóstico rápido dos MCPs configurados e ferramentas registradas.",
     )
     mcp_status.add_argument(
-        "--write",
+        "--no-write",
         action="store_true",
-        help="Também grava o relatório em mcp_status.txt (no diretório atual).",
+        help="Não grava o relatório em mcp_status.txt (no diretório atual).",
     )
     mcp_status.add_argument(
         "--json",
@@ -10791,7 +10791,7 @@ def main(argv: list[str] | None = None) -> int:
         return _service_logs(Path(args.log_file), args.lines)
 
     if args.command == "mcp-status":
-        return _mcp_status_cli(write=bool(getattr(args, "write", False)), as_json=bool(getattr(args, "json", False)))
+        return _mcp_status_cli(write=not bool(getattr(args, "no_write", False)), as_json=bool(getattr(args, "json", False)))
 
     if args.command == "mcp-sync-clients":
         return _mcp_sync_clients_cli(
