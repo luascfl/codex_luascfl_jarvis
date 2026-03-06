@@ -835,14 +835,15 @@ def write_mcp_status_report():
     )
 
     # Ferramentas carregadas (snapshot em runtime)
+    # FastMCP recente não expõe mais `mcp.tools`; a forma correta é `await mcp.get_tools()`.
     try:
-        tools_obj = getattr(mcp, "tools", None)
-        if isinstance(tools_obj, dict):
-            tools = sorted([t for t in tools_obj.keys() if t])
-        elif isinstance(tools_obj, (list, tuple)):
-            tools = sorted([getattr(t, "name", str(t)) for t in tools_obj])
-        else:
-            tools = []
+        import asyncio
+
+        async def _get_names():
+            tools_map = await mcp.get_tools()
+            return sorted([name for name in tools_map.keys() if name])
+
+        tools = asyncio.run(_get_names())
 
         lines.append("")
         lines.append("Ferramentas registradas:")
