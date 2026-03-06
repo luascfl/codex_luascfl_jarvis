@@ -836,11 +836,21 @@ def write_mcp_status_report():
 
     # Ferramentas carregadas (snapshot em runtime)
     try:
-        tools = [t.name for t in mcp.tools]
+        tools_obj = getattr(mcp, "tools", None)
+        if isinstance(tools_obj, dict):
+            tools = sorted([t for t in tools_obj.keys() if t])
+        elif isinstance(tools_obj, (list, tuple)):
+            tools = sorted([getattr(t, "name", str(t)) for t in tools_obj])
+        else:
+            tools = []
+
         lines.append("")
         lines.append("Ferramentas registradas:")
-        for name in sorted(tools):
-            lines.append(f"- {name}")
+        if not tools:
+            lines.append("- (nenhuma ou indisponível neste modo)")
+        else:
+            for name in tools:
+                lines.append(f"- {name}")
     except Exception as e:  # pragma: no cover
         lines.append("")
         lines.append(f"(Falha ao listar ferramentas: {e})")
@@ -10462,6 +10472,21 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     logs.add_argument("lines", nargs="?", type=int, default=120)
     logs.add_argument("--log-file", default=str(_default_log_file()))
 
+    mcp_status = sub.add_parser(
+        "mcp-status",
+        help="Mostra um diagnóstico rápido dos MCPs configurados e ferramentas registradas.",
+    )
+    mcp_status.add_argument(
+        "--write",
+        action="store_true",
+        help="Também grava o relatório em mcp_status.txt (no diretório atual).",
+    )
+    mcp_status.add_argument(
+        "--json",
+        action="store_true",
+        help="Emite JSON (útil pra automação).",
+    )
+
     sync = sub.add_parser("mcp-sync-clients", help="Sincroniza jarvis entre codex, codex sudo, gemini e Oh My Pi.")
     sync.add_argument("--py-bin", default=os.environ.get("PY_BIN", str(BASE_DIR / ".venv-super" / "bin" / "python3")))
     sync.add_argument("--no-codex", action="store_true", help="Não sincroniza o Codex do usuário atual.")
@@ -10554,6 +10579,173 @@ def _normalize_legacy_service_args(argv: list[str]) -> list[str]:
     return normalized
 
 
+def _mcp_status_payload() -> dict:
+    """Gera payload de diagnóstico de MCPs.
+
+    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
+    e (quando aplicável) do que está montado/registrado no runtime.
+    """
+
+    def _has_key(val: str) -> bool:
+        return bool(val and str(val).strip())
+
+    items: list[dict] = []
+
+    items.append(
+        {
+            "name": "Playwright MCP",
+            "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
+            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
+            "reason": "npx/Node ausente ou desativado"
+            if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Brave MCP",
+            "enabled": bool(BRAVE_MCP_ENABLE),
+            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
+            "reason": "falta BRAVE_API_KEY ou npx"
+            if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Chart MCP",
+            "enabled": bool(CHART_MCP_ENABLE),
+            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
+            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Zotero MCP",
+            "enabled": bool(ZOTERO_MCP_ENABLE),
+            "ok": bool(
+                ZOTERO_MCP_ENABLE
+                and _has_key(ZOTERO_API_KEY)
+                and _has_key(ZOTERO_USER_ID)
+                and shutil.which(ZOTERO_MCP_BIN)
+            ),
+            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx"
+            if not (
+                ZOTERO_MCP_ENABLE
+                and _has_key(ZOTERO_API_KEY)
+                and _has_key(ZOTERO_USER_ID)
+                and shutil.which(ZOTERO_MCP_BIN)
+            )
+            else "",
+        }
+    )
+
+    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
+    items.append(
+        {
+            "name": "Firecrawl MCP",
+            "enabled": bool(FIRECRAWL_ENABLE),
+            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
+            "reason": "falta FIRECRAWL_API_KEY ou npx"
+            if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx"))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Fireflies MCP",
+            "enabled": bool(FIREFLIES_MCP_ENABLE),
+            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
+            "reason": "falta FIREFLIES_API_KEY ou npx"
+            if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Sequential MCP",
+            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
+            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
+            "reason": "npx ausente ou desativado"
+            if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "OpenRouter (tool)",
+            "enabled": True,
+            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
+            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY"
+            if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY))
+            else "",
+        }
+    )
+
+    tools: list[str] = []
+    try:
+        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
+    except Exception:
+        tools = []
+
+    payload = {
+        "ok": True,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "items": items,
+        "registeredTools": tools,
+    }
+
+    if any(i.get("enabled") and not i.get("ok") for i in items):
+        payload["ok"] = False
+
+    return payload
+
+
+def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
+    payload = _mcp_status_payload()
+
+    if write:
+        try:
+            write_mcp_status_report()
+        except Exception as exc:
+            payload["ok"] = False
+            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
+
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0 if payload.get("ok") else 1
+
+    lines: list[str] = []
+    lines.append("mcp status")
+    lines.append("")
+    for item in payload.get("items", []):
+        name = item.get("name", "")
+        ok = bool(item.get("ok"))
+        enabled = bool(item.get("enabled"))
+        reason = (item.get("reason") or "").strip()
+        status = "ok" if ok else "falha"
+        if not enabled:
+            status = "desativado"
+        if (not ok) and reason:
+            lines.append(f"- {name}: {status} ({reason})")
+        else:
+            lines.append(f"- {name}: {status}")
+
+    tools = payload.get("registeredTools") or []
+    lines.append("")
+    lines.append(f"ferramentas registradas: {len(tools)}")
+    for t in tools:
+        lines.append(f"- {t}")
+
+    if write:
+        lines.append("")
+        lines.append("relatório também gravado em mcp_status.txt")
+
+    print("\n".join(lines))
+    return 0 if payload.get("ok") else 1
+
+
+
 def main(argv: list[str] | None = None) -> int:
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     raw_argv = _normalize_legacy_service_args(raw_argv)
@@ -10597,6 +10789,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "logs":
         return _service_logs(Path(args.log_file), args.lines)
+
+    if args.command == "mcp-status":
+        return _mcp_status_cli(write=bool(getattr(args, "write", False)), as_json=bool(getattr(args, "json", False)))
 
     if args.command == "mcp-sync-clients":
         return _mcp_sync_clients_cli(
@@ -10677,3 +10872,316 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# --- comandos auxiliares de diagnóstico (definidos após o main para evitar poluir import) ---
+
+def _mcp_status_payload() -> dict:
+    """Gera payload de diagnóstico de MCPs.
+
+    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
+    e (quando aplicável) do que está montado/registrado no runtime.
+    """
+
+    def _has_key(val: str) -> bool:
+        return bool(val and str(val).strip())
+
+    items: list[dict] = []
+
+    items.append(
+        {
+            "name": "Playwright MCP",
+            "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
+            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
+            "reason": "npx/Node ausente ou desativado"
+            if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Brave MCP",
+            "enabled": bool(BRAVE_MCP_ENABLE),
+            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
+            "reason": "falta BRAVE_API_KEY ou npx"
+            if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Chart MCP",
+            "enabled": bool(CHART_MCP_ENABLE),
+            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
+            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Zotero MCP",
+            "enabled": bool(ZOTERO_MCP_ENABLE),
+            "ok": bool(
+                ZOTERO_MCP_ENABLE
+                and _has_key(ZOTERO_API_KEY)
+                and _has_key(ZOTERO_USER_ID)
+                and shutil.which(ZOTERO_MCP_BIN)
+            ),
+            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx"
+            if not (
+                ZOTERO_MCP_ENABLE
+                and _has_key(ZOTERO_API_KEY)
+                and _has_key(ZOTERO_USER_ID)
+                and shutil.which(ZOTERO_MCP_BIN)
+            )
+            else "",
+        }
+    )
+
+    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
+    items.append(
+        {
+            "name": "Firecrawl MCP",
+            "enabled": bool(FIRECRAWL_ENABLE),
+            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
+            "reason": "falta FIRECRAWL_API_KEY ou npx"
+            if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx"))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Fireflies MCP",
+            "enabled": bool(FIREFLIES_MCP_ENABLE),
+            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
+            "reason": "falta FIREFLIES_API_KEY ou npx"
+            if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Sequential MCP",
+            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
+            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
+            "reason": "npx ausente ou desativado"
+            if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN))
+            else "",
+        }
+    )
+    items.append(
+        {
+            "name": "OpenRouter (tool)",
+            "enabled": True,
+            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
+            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY"
+            if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY))
+            else "",
+        }
+    )
+
+    tools: list[str] = []
+    try:
+        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
+    except Exception:
+        tools = []
+
+    payload = {
+        "ok": True,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "items": items,
+        "registeredTools": tools,
+    }
+
+    if any(i.get("enabled") and not i.get("ok") for i in items):
+        payload["ok"] = False
+
+    return payload
+
+
+def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
+    payload = _mcp_status_payload()
+
+    if write:
+        try:
+            write_mcp_status_report()
+        except Exception as exc:
+            payload["ok"] = False
+            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
+
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0 if payload.get("ok") else 1
+
+    lines: list[str] = []
+    lines.append("mcp status")
+    lines.append("")
+    for item in payload.get("items", []):
+        name = item.get("name", "")
+        ok = bool(item.get("ok"))
+        enabled = bool(item.get("enabled"))
+        reason = (item.get("reason") or "").strip()
+        status = "ok" if ok else "falha"
+        if not enabled:
+            status = "desativado"
+        if (not ok) and reason:
+            lines.append(f"- {name}: {status} ({reason})")
+        else:
+            lines.append(f"- {name}: {status}")
+
+    tools = payload.get("registeredTools") or []
+    lines.append("")
+    lines.append(f"ferramentas registradas: {len(tools)}")
+    for t in tools:
+        lines.append(f"- {t}")
+
+    if write:
+        lines.append("")
+        lines.append("relatório também gravado em mcp_status.txt")
+
+    print("\n".join(lines))
+    return 0 if payload.get("ok") else 1
+
+
+def _mcp_status_payload() -> dict:
+    """Gera payload de diagnóstico de MCPs.
+
+    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
+    e (quando aplicável) do que está montado/registrado no runtime.
+    """
+    def _has_key(val: str) -> bool:
+        return bool(val and str(val).strip())
+
+    items: list[dict] = []
+
+    # Node-based MCPs
+    items.append(
+        {
+            "name": "Playwright MCP",
+            "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
+            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
+            "reason": "npx/Node ausente ou desativado" if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Brave MCP",
+            "enabled": bool(BRAVE_MCP_ENABLE),
+            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
+            "reason": "falta BRAVE_API_KEY ou npx" if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Chart MCP",
+            "enabled": bool(CHART_MCP_ENABLE),
+            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
+            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Zotero MCP",
+            "enabled": bool(ZOTERO_MCP_ENABLE),
+            "ok": bool(ZOTERO_MCP_ENABLE and _has_key(ZOTERO_API_KEY) and _has_key(ZOTERO_USER_ID) and shutil.which(ZOTERO_MCP_BIN)),
+            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx" if not (ZOTERO_MCP_ENABLE and _has_key(ZOTERO_API_KEY) and _has_key(ZOTERO_USER_ID) and shutil.which(ZOTERO_MCP_BIN)) else "",
+        }
+    )
+
+    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
+    items.append(
+        {
+            "name": "Firecrawl MCP",
+            "enabled": bool(FIRECRAWL_ENABLE),
+            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
+            "reason": "falta FIRECRAWL_API_KEY ou npx" if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Fireflies MCP",
+            "enabled": bool(FIREFLIES_MCP_ENABLE),
+            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
+            "reason": "falta FIREFLIES_API_KEY ou npx" if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "Sequential MCP",
+            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
+            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
+            "reason": "npx ausente ou desativado" if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)) else "",
+        }
+    )
+    items.append(
+        {
+            "name": "OpenRouter (tool)",
+            "enabled": True,
+            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
+            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY" if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)) else "",
+        }
+    )
+
+    # Snapshot de ferramentas registradas no runtime (quando existirem)
+    tools: list[str] = []
+    try:
+        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
+    except Exception:
+        tools = []
+
+    payload = {
+        "ok": True,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "items": items,
+        "registeredTools": tools,
+    }
+
+    # se algo crítico estiver explicitamente enabled mas não ok, marca ok=false
+    if any(i.get("enabled") and not i.get("ok") for i in items):
+        payload["ok"] = False
+
+    return payload
+
+
+def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
+    payload = _mcp_status_payload()
+
+    if write:
+        try:
+            write_mcp_status_report()
+        except Exception as exc:
+            payload["ok"] = False
+            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
+
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0 if payload.get("ok") else 1
+
+    # saída humana
+    lines: list[str] = []
+    lines.append("mcp status")
+    lines.append("")
+    for item in payload.get("items", []):
+        name = item.get("name", "")
+        ok = bool(item.get("ok"))
+        enabled = bool(item.get("enabled"))
+        reason = (item.get("reason") or "").strip()
+        status = "ok" if ok else "falha"
+        if not enabled:
+            status = "desativado"
+        if (not ok) and reason:
+            lines.append(f"- {name}: {status} ({reason})")
+        else:
+            lines.append(f"- {name}: {status}")
+
+    tools = payload.get("registeredTools") or []
+    lines.append("")
+    lines.append(f"ferramentas registradas: {len(tools)}")
+    for t in tools:
+        lines.append(f"- {t}")
+
+    if write:
+        lines.append("")
+        lines.append("relatório também gravado em mcp_status.txt")
+
+    print("\n".join(lines))
+    return 0 if payload.get("ok") else 1
