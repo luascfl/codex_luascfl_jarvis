@@ -1,5 +1,5 @@
 Playwright MCP: não configurado (npx/Node ausente ou desativado)
-Brave MCP: não configurado (falta BRAVE_API_KEY ou npx)
+Brave MCP: configurado
 Chart MCP: não configurado (npx ausente ou desativado)
 Zotero MCP: não configurado (faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx)
 Firecrawl MCP: não configurado (falta FIRECRAWL_API_KEY ou npx)

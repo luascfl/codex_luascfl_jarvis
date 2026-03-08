@@ -1,0 +1,106 @@
+{
+  "andre_email": "andre.orrico@lmmobilidade.com.br",
+  "attempted": 14,
+  "ok": 14,
+  "fail": 0,
+  "results": [
+    {
+      "job_id": 10730066,
+      "status": "approved",
+      "title": "COORDENADOR DE COMPRAS - SALVADOR/BA",
+      "result": "ok: job_id=10730066 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=approved updatedAt=2026-03-08T19:49:12.437Z",
+      "success": true
+    },
+    {
+      "job_id": 10816931,
+      "status": "approved",
+      "title": "Coordenador de Multas e Documentação",
+      "result": "ok: job_id=10816931 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=approved updatedAt=2026-03-08T19:49:13.435Z",
+      "success": true
+    },
+    {
+      "job_id": 10705918,
+      "status": "approved",
+      "title": "SUPERVISOR DE OPERAÇÕES - VAGA CONFIDENCIAL - PU BLICAR NÃO LISTADA",
+      "result": "ok: job_id=10705918 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=approved updatedAt=2026-03-08T19:49:14.447Z",
+      "success": true
+    },
+    {
+      "job_id": 10504670,
+      "status": "published",
+      "title": "COORDENADOR DE COMPRAS DIRETAS - SALVADOR/BA",
+      "result": "ok: job_id=10504670 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:15.439Z",
+      "success": true
+    },
+    {
+      "job_id": 10020920,
+      "status": "published",
+      "title": "COORDENADOR DE MANUTENÇÃO (LEVES) - SALVADOR/BA",
+      "result": "ok: job_id=10020920 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:16.444Z",
+      "success": true
+    },
+    {
+      "job_id": 9969893,
+      "status": "published",
+      "title": "COORDENADOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "result": "ok: job_id=9969893 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:17.426Z",
+      "success": true
+    },
+    {
+      "job_id": 10502985,
+      "status": "published",
+      "title": "COORDENADOR(A) COMERCIAL - JABAQUARA/SP",
+      "result": "ok: job_id=10502985 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:18.465Z",
+      "success": true
+    },
+    {
+      "job_id": 10297080,
+      "status": "published",
+      "title": "Coordenador de Manutenção - Pesados (Confidencial)",
+      "result": "ok: job_id=10297080 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:19.501Z",
+      "success": true
+    },
+    {
+      "job_id": 10503571,
+      "status": "published",
+      "title": "Coordenador de Risco Residual - Atuação Nacional",
+      "result": "ok: job_id=10503571 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:20.531Z",
+      "success": true
+    },
+    {
+      "job_id": 10207394,
+      "status": "published",
+      "title": "GERENTE DE VENDAS - LOCAÇÃO PARA MOTORISTA DE APLICATIVO - SÃO BERNARDO DO CAMPO/SP",
+      "result": "ok: job_id=10207394 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:21.630Z",
+      "success": true
+    },
+    {
+      "job_id": 10355111,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO ATACADO - SÃO BERNARDO DO CAMPO/SP",
+      "result": "ok: job_id=10355111 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:22.718Z",
+      "success": true
+    },
+    {
+      "job_id": 10233312,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO DE MANUTENÇÃO - SALVADOR/BA",
+      "result": "ok: job_id=10233312 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:23.748Z",
+      "success": true
+    },
+    {
+      "job_id": 10184401,
+      "status": "published",
+      "title": "SUPERVISOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "result": "ok: job_id=10184401 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=published updatedAt=2026-03-08T19:49:24.866Z",
+      "success": true
+    },
+    {
+      "job_id": 10355191,
+      "status": "waiting_approval",
+      "title": "Gerente de Varejo",
+      "result": "ok: job_id=10355191 recruiter=André Cunha Orrico <andre.orrico@lmmobilidade.com.br> id=635317 status=waiting_approval updatedAt=2026-03-08T19:49:25.900Z",
+      "success": true
+    }
+  ]
+}

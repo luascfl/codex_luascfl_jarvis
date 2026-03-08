@@ -1,0 +1,134 @@
+✅ Banner do FastMCP neutralizado (log_server_banner).
+{
+  "total_jobs": 114,
+  "andre_matched": 14,
+  "to_change": 14,
+  "rows": [
+    {
+      "id": 10730066,
+      "status": "approved",
+      "title": "COORDENADOR DE COMPRAS - SALVADOR/BA",
+      "createdAt": "2026-01-26T12:59:13.506Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10816931,
+      "status": "approved",
+      "title": "Coordenador de Multas e Documentação",
+      "createdAt": "2026-02-06T17:19:59.090Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10705918,
+      "status": "approved",
+      "title": "SUPERVISOR DE OPERAÇÕES - VAGA CONFIDENCIAL - PU BLICAR NÃO LISTADA",
+      "createdAt": "2026-01-21T10:57:09.876Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10504670,
+      "status": "published",
+      "title": "COORDENADOR DE COMPRAS DIRETAS - SALVADOR/BA",
+      "createdAt": "2025-12-11T14:29:00.126Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10020920,
+      "status": "published",
+      "title": "COORDENADOR DE MANUTENÇÃO (LEVES) - SALVADOR/BA",
+      "createdAt": "2025-10-02T13:26:01.677Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 9969893,
+      "status": "published",
+      "title": "COORDENADOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "createdAt": "2025-09-26T17:28:20.118Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10502985,
+      "status": "published",
+      "title": "COORDENADOR(A) COMERCIAL - JABAQUARA/SP",
+      "createdAt": "2025-12-11T11:27:02.989Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10297080,
+      "status": "published",
+      "title": "Coordenador de Manutenção - Pesados (Confidencial)",
+      "createdAt": "2025-11-10T14:22:35.258Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10503571,
+      "status": "published",
+      "title": "Coordenador de Risco Residual - Atuação Nacional",
+      "createdAt": "2025-12-11T12:47:05.560Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10207394,
+      "status": "published",
+      "title": "GERENTE DE VENDAS - LOCAÇÃO PARA MOTORISTA DE APLICATIVO - SÃO BERNARDO DO CAMPO/SP",
+      "createdAt": "2025-10-28T16:46:01.692Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10355111,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO ATACADO - SÃO BERNARDO DO CAMPO/SP",
+      "createdAt": "2025-11-18T17:59:18.708Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10233312,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO DE MANUTENÇÃO - SALVADOR/BA",
+      "createdAt": "2025-10-31T17:44:12.209Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10184401,
+      "status": "published",
+      "title": "SUPERVISOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "createdAt": "2025-10-24T17:56:18.093Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    },
+    {
+      "id": 10355191,
+      "status": "waiting_approval",
+      "title": "Gerente de Varejo",
+      "createdAt": "2025-11-18T18:06:02.840Z",
+      "recruiterEmail": null,
+      "recruiterName": null,
+      "action": "mudar"
+    }
+  ]
+}
