@@ -6422,6 +6422,7 @@ def gupy_v1_list_jobs(
     status: str = "published",
     page: int = 1,
     per_page: int = 100,
+    include_recruiter: bool = True,
 ) -> str:
     """Lista vagas via API pública v1 da Gupy."""
     try:
@@ -6436,8 +6437,16 @@ def gupy_v1_list_jobs(
             results = data.get("results", []) or []
             out = [f"jobs(v1) status={status} page={page} perPage={per_page} -> {len(results)}"]
             for j in results[:50]:
+                extra = ""
+                if include_recruiter:
+                    # a listagem pode não trazer recruiter*, mas em alguns tenants traz.
+                    r_email = j.get("recruiterEmail")
+                    r_name = j.get("recruiterName")
+                    r_id = j.get("recruiterId")
+                    if r_email or r_name or r_id:
+                        extra = f" | recruiter={r_name or ''} <{r_email or ''}> id={r_id or ''}".replace("\x1c", "")
                 out.append(
-                    f"- id={j.get('id')} | {j.get('status')} | {j.get('name')} | createdAt={j.get('createdAt')}"
+                    f"- id={j.get('id')} | {j.get('status')} | {j.get('name')} | createdAt={j.get('createdAt')}{extra}"
                 )
             if len(results) > 50:
                 out.append(f"(mostrando 50 de {len(results)})")
@@ -11186,3 +11195,34 @@ def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
 
     print("\n".join(lines))
     return 0 if payload.get("ok") else 1
+
+
+@mcp.tool()
+def gupy_v1_set_recruiter(job_id: int, recruiter_email: str) -> str:
+    """Define o recrutador de uma vaga via API v1 (PATCH recruiterEmail).
+
+    Observação: a API v1 aceita PATCH em /api/v1/jobs/{id} com recruiterEmail.
+    """
+    try:
+        recruiter_email = (recruiter_email or "").strip()
+        if not recruiter_email:
+            return "Erro: recruiter_email vazio."
+
+        with _gupy_client() as c:
+            r = c.patch(
+                f"https://api.gupy.io/api/v1/jobs/{int(job_id)}",
+                json={"recruiterEmail": recruiter_email},
+            )
+            # a API retorna o payload completo da vaga; aqui resumimos.
+            if r.status_code != 200:
+                return f"PATCH /api/v1/jobs/{job_id} recruiterEmail={recruiter_email} -> HTTP {r.status_code}: {r.text[:800]}".strip()
+            j = r.json() if r.text else {}
+            return (
+                "ok: "
+                f"job_id={job_id} recruiter={j.get('recruiterName')} <{j.get('recruiterEmail')}> id={j.get('recruiterId')} "
+                f"status={j.get('status')} updatedAt={j.get('updatedAt')}"
+            ).strip()
+    except Exception as e:
+        import traceback
+
+        return f"Erro ao setar recrutador: {e}\n{traceback.format_exc()}"

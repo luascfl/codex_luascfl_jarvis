@@ -49,3 +49,4 @@ chroma_db/
 # local secrets
 GITHUB_TOKEN.txt
 token.json
+.env.secrets
