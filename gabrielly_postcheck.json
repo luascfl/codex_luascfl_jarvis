@@ -1,0 +1,148 @@
+{
+  "target_recruiter_email": "gabrielly.silva@lmmobilidade.com.br",
+  "total_matched": 14,
+  "ok": 14,
+  "not_ok": 0,
+  "rows": [
+    {
+      "id": 9969893,
+      "status": "published",
+      "title": "COORDENADOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:29.874Z",
+      "ok": true
+    },
+    {
+      "id": 10020920,
+      "status": "published",
+      "title": "COORDENADOR DE MANUTENÇÃO (LEVES) - SALVADOR/BA",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:30.334Z",
+      "ok": true
+    },
+    {
+      "id": 10184401,
+      "status": "published",
+      "title": "SUPERVISOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:30.776Z",
+      "ok": true
+    },
+    {
+      "id": 10207394,
+      "status": "published",
+      "title": "GERENTE DE VENDAS - LOCAÇÃO PARA MOTORISTA DE APLICATIVO - SÃO BERNARDO DO CAMPO/SP",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:31.192Z",
+      "ok": true
+    },
+    {
+      "id": 10233312,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO DE MANUTENÇÃO - SALVADOR/BA",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:31.587Z",
+      "ok": true
+    },
+    {
+      "id": 10297080,
+      "status": "published",
+      "title": "Coordenador de Manutenção - Pesados (Confidencial)",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:31.923Z",
+      "ok": true
+    },
+    {
+      "id": 10355111,
+      "status": "published",
+      "title": "GERENTE EXECUTIVO ATACADO - SÃO BERNARDO DO CAMPO/SP",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:32.288Z",
+      "ok": true
+    },
+    {
+      "id": 10502985,
+      "status": "published",
+      "title": "COORDENADOR(A) COMERCIAL - JABAQUARA/SP",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:32.702Z",
+      "ok": true
+    },
+    {
+      "id": 10503571,
+      "status": "published",
+      "title": "Coordenador de Risco Residual - Atuação Nacional",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:33.039Z",
+      "ok": true
+    },
+    {
+      "id": 10504670,
+      "status": "published",
+      "title": "COORDENADOR DE COMPRAS DIRETAS - SALVADOR/BA",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:33.472Z",
+      "ok": true
+    },
+    {
+      "id": 10705918,
+      "status": "approved",
+      "title": "SUPERVISOR DE OPERAÇÕES - VAGA CONFIDENCIAL - PU BLICAR NÃO LISTADA",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:33.884Z",
+      "ok": true
+    },
+    {
+      "id": 10730066,
+      "status": "approved",
+      "title": "COORDENADOR DE COMPRAS - SALVADOR/BA",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:34.157Z",
+      "ok": true
+    },
+    {
+      "id": 10816931,
+      "status": "approved",
+      "title": "Coordenador de Multas e Documentação",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:34.466Z",
+      "ok": true
+    },
+    {
+      "id": 10355191,
+      "status": "waiting_approval",
+      "title": "Gerente de Varejo",
+      "recruiterEmail": "gabrielly.silva@lmmobilidade.com.br",
+      "recruiterName": "Gabrielly Santana Da Silva",
+      "recruiterId": 1190048,
+      "updatedAt": "2026-03-08T20:54:34.789Z",
+      "ok": true
+    }
+  ]
+}
