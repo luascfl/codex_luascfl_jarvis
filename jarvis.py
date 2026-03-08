@@ -11226,3 +11226,190 @@ def gupy_v1_set_recruiter(job_id: int, recruiter_email: str) -> str:
         import traceback
 
         return f"Erro ao setar recrutador: {e}\n{traceback.format_exc()}"
+
+
+def _normalize_pt(s: str) -> str:
+    """Normaliza string pt-br para matching simples.
+
+    - lower
+    - remove acentos
+    - colapsa espaços
+    """
+    s = (s or "").strip().lower()
+    if not s:
+        return ""
+    try:
+        import unicodedata
+
+        s = "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
+    except Exception:
+        # se der ruim, segue sem remover acento
+        pass
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def _gupy_pick_recruiter_by_title(
+    title: str,
+    recruiter_andre: str,
+    recruiter_gabrielly: str,
+    recruiter_larissa: str,
+) -> str:
+    """Aplica regra de recrutador por palavra-chave no título.
+
+    Regra combinada com o lucas:
+    1) coordenador/supervisor/gerente -> andre
+    2) estagiario/estagiário/jovem aprendiz/aprendiz -> gabrielly
+    3) resto -> larissa
+    """
+    t = _normalize_pt(title)
+
+    # bucket 1: liderança
+    if any(k in t for k in ["coordenador", "supervisor", "gerente"]):
+        return (recruiter_andre or "").strip()
+
+    # bucket 2: inicio de carreira
+    # obs: usamos matching por substring para cobrir "aprendiz", "jovem aprendiz", etc.
+    if ("estagiario" in t) or ("jovem aprendiz" in t) or ("aprendiz" in t):
+        return (recruiter_gabrielly or "").strip()
+
+    # bucket 3: default
+    return (recruiter_larissa or "").strip()
+
+
+@mcp.tool()
+def gupy_v1_apply_recruiter_rules(
+    status_list: str = "published,approved,waiting_approval",
+    recruiter_andre: str = "andre.orrico@lmmobilidade.com.br",
+    recruiter_gabrielly: str = "gabrielly.silva@lmmobilidade.com.br",
+    recruiter_larissa: str = "larissa.teixeira@lmmobilidade.com.br",
+    dry_run: bool = True,
+    per_page: int = 100,
+    max_pages: int = 50,
+    only_if_diff: bool = True,
+) -> str:
+    """Aplica regra de recrutador por palavra-chave no título das vagas.
+
+    - Busca vagas por status (padrão: published, approved, waiting_approval)
+    - Para cada vaga, calcula o recruiter target pelo título
+    - Se dry_run=false, faz PATCH recruiterEmail
+
+    Observação importante: a API v1 nem sempre retorna recruiterEmail na listagem.
+    Por isso, a checagem de diferença pode falhar (unknown). Nesse caso:
+    - se only_if_diff=true e recruiterEmail vier vazio, não altera
+    - se only_if_diff=false, altera mesmo assim
+    """
+    try:
+        statuses = [st.strip() for st in (status_list or "").split(",") if st.strip()]
+        if not statuses:
+            return "Erro: status_list vazio."
+
+        recruiter_andre = (recruiter_andre or "").strip()
+        recruiter_gabrielly = (recruiter_gabrielly or "").strip()
+        recruiter_larissa = (recruiter_larissa or "").strip()
+        if not recruiter_andre or not recruiter_gabrielly or not recruiter_larissa:
+            return "Erro: recruiter emails devem estar preenchidos (andre, gabrielly, larissa)."
+
+        per_page = int(per_page)
+        max_pages = int(max_pages)
+        if per_page < 1 or per_page > 100:
+            return "Erro: per_page deve estar entre 1 e 100 (limite comum da API)."
+        if max_pages < 1:
+            return "Erro: max_pages deve ser >= 1."
+
+        actions: list[str] = []
+        scanned = 0
+        will_patch = 0
+        patched_ok = 0
+        patched_err = 0
+        skipped_same = 0
+        skipped_unknown = 0
+
+        with _gupy_client() as c:
+            for status in statuses:
+                for page in range(1, max_pages + 1):
+                    params = {"page": int(page), "perPage": int(per_page), "status": status}
+                    r = c.get("https://api.gupy.io/api/v1/jobs", params=params)
+                    if r.status_code != 200:
+                        actions.append(f"status={status} page={page}: erro HTTP {r.status_code}: {r.text[:300]}")
+                        break
+
+                    data = r.json() if r.text else {}
+                    results = data.get("results", []) or []
+                    if not results:
+                        break
+
+                    for j in results:
+                        job_id = j.get("id")
+                        title = j.get("name") or ""
+                        current_email = (j.get("recruiterEmail") or "").strip()
+                        target_email = _gupy_pick_recruiter_by_title(
+                            title,
+                            recruiter_andre=recruiter_andre,
+                            recruiter_gabrielly=recruiter_gabrielly,
+                            recruiter_larissa=recruiter_larissa,
+                        )
+                        scanned += 1
+
+                        if only_if_diff and current_email and (current_email.lower() == target_email.lower()):
+                            skipped_same += 1
+                            continue
+
+                        if only_if_diff and (not current_email):
+                            skipped_unknown += 1
+                            continue
+
+                        will_patch += 1
+                        if dry_run:
+                            actions.append(
+                                f"dry_run: job_id={job_id} status={status} title={title!r} current={current_email or 'unknown'} -> target={target_email}"
+                            )
+                            continue
+
+                        pr = c.patch(
+                            f"https://api.gupy.io/api/v1/jobs/{int(job_id)}",
+                            json={"recruiterEmail": target_email},
+                        )
+                        if pr.status_code != 200:
+                            patched_err += 1
+                            actions.append(
+                                f"patch_err: job_id={job_id} status={status} title={title!r} target={target_email} -> HTTP {pr.status_code}: {pr.text[:300]}"
+                            )
+                        else:
+                            patched_ok += 1
+                            js = pr.json() if pr.text else {}
+                            actions.append(
+                                "patch_ok: "
+                                f"job_id={job_id} status={status} title={title!r} -> recruiter={js.get('recruiterName')} <{js.get('recruiterEmail')}> id={js.get('recruiterId')} updatedAt={js.get('updatedAt')}"
+                            )
+
+                    # stop se veio menos que a página cheia
+                    if len(results) < per_page:
+                        break
+
+        header = []
+        header.append("gupy_v1_apply_recruiter_rules")
+        header.append(
+            f"status_list={','.join(statuses)} dry_run={bool(dry_run)} only_if_diff={bool(only_if_diff)} per_page={per_page} max_pages={max_pages}"
+        )
+        header.append(
+            "recruiters: "
+            f"andre={recruiter_andre} | gabrielly={recruiter_gabrielly} | larissa={recruiter_larissa}"
+        )
+        header.append(
+            f"scanned={scanned} will_patch={will_patch} patched_ok={patched_ok} patched_err={patched_err} skipped_same={skipped_same} skipped_unknown={skipped_unknown}"
+        )
+        header.append("")
+
+        # evita estourar saída em tenants grandes
+        max_lines = 200
+        body = actions[:max_lines]
+        if len(actions) > max_lines:
+            body.append(f"... ({len(actions) - max_lines} linhas omitidas)")
+
+        return "\n".join(header + body).strip()
+    except Exception as e:
+        import traceback
+
+        return f"Erro: {e}\n{traceback.format_exc()}"
+
