@@ -11401,6 +11401,49 @@ def gupy_v1_apply_recruiter_rules(
         )
         header.append("")
 
+        # log em disco (sempre grava o completo; a saída no tool pode ser truncada)
+        try:
+            import json
+            import os
+            from datetime import datetime, timezone
+
+            logs_dir = os.path.join(os.path.dirname(__file__), "logs")
+            os.makedirs(logs_dir, exist_ok=True)
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
+            fname = f"gupy_recruiter_rules_{ts}.json"
+            fpath = os.path.join(logs_dir, fname)
+
+            payload = {
+                "tool": "gupy_v1_apply_recruiter_rules",
+                "tsUtc": ts,
+                "params": {
+                    "status_list": ",".join(statuses),
+                    "dry_run": bool(dry_run),
+                    "only_if_diff": bool(only_if_diff),
+                    "per_page": per_page,
+                    "max_pages": max_pages,
+                    "recruiters": {
+                        "andre": recruiter_andre,
+                        "gabrielly": recruiter_gabrielly,
+                        "larissa": recruiter_larissa,
+                    },
+                },
+                "summary": {
+                    "scanned": scanned,
+                    "will_patch": will_patch,
+                    "patched_ok": patched_ok,
+                    "patched_err": patched_err,
+                    "skipped_same": skipped_same,
+                    "skipped_unknown": skipped_unknown,
+                },
+                "actions": actions,
+            }
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+        except Exception:
+            # não quebra a tool por falha de log
+            pass
+
         # evita estourar saída em tenants grandes
         max_lines = 200
         body = actions[:max_lines]
