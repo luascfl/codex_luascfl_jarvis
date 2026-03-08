@@ -1,120 +1,148 @@
 {
-  "andre_email": "andre.orrico@lmmobilidade.com.br",
+  "target_recruiter_email": "andre.orrico@lmmobilidade.com.br",
   "total_matched": 14,
-  "ok": 0,
-  "not_ok": 14,
+  "ok": 14,
+  "not_ok": 0,
   "rows": [
     {
       "id": 9969893,
       "status": "published",
       "title": "COORDENADOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:08.667Z",
+      "ok": true
     },
     {
       "id": 10020920,
       "status": "published",
       "title": "COORDENADOR DE MANUTENÇÃO (LEVES) - SALVADOR/BA",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:09.072Z",
+      "ok": true
     },
     {
       "id": 10184401,
       "status": "published",
       "title": "SUPERVISOR DE OPERAÇÕES - SÃO BERNARDO DO CAMPO/SP",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:09.390Z",
+      "ok": true
     },
     {
       "id": 10207394,
       "status": "published",
       "title": "GERENTE DE VENDAS - LOCAÇÃO PARA MOTORISTA DE APLICATIVO - SÃO BERNARDO DO CAMPO/SP",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:09.730Z",
+      "ok": true
     },
     {
       "id": 10233312,
       "status": "published",
       "title": "GERENTE EXECUTIVO DE MANUTENÇÃO - SALVADOR/BA",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:10.044Z",
+      "ok": true
     },
     {
       "id": 10297080,
       "status": "published",
       "title": "Coordenador de Manutenção - Pesados (Confidencial)",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:10.355Z",
+      "ok": true
     },
     {
       "id": 10355111,
       "status": "published",
       "title": "GERENTE EXECUTIVO ATACADO - SÃO BERNARDO DO CAMPO/SP",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:10.636Z",
+      "ok": true
     },
     {
       "id": 10502985,
       "status": "published",
       "title": "COORDENADOR(A) COMERCIAL - JABAQUARA/SP",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:10.937Z",
+      "ok": true
     },
     {
       "id": 10503571,
       "status": "published",
       "title": "Coordenador de Risco Residual - Atuação Nacional",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:11.229Z",
+      "ok": true
     },
     {
       "id": 10504670,
       "status": "published",
       "title": "COORDENADOR DE COMPRAS DIRETAS - SALVADOR/BA",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:11.506Z",
+      "ok": true
     },
     {
       "id": 10705918,
       "status": "approved",
       "title": "SUPERVISOR DE OPERAÇÕES - VAGA CONFIDENCIAL - PU BLICAR NÃO LISTADA",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:11.818Z",
+      "ok": true
     },
     {
       "id": 10730066,
       "status": "approved",
       "title": "COORDENADOR DE COMPRAS - SALVADOR/BA",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:12.119Z",
+      "ok": true
     },
     {
       "id": 10816931,
       "status": "approved",
       "title": "Coordenador de Multas e Documentação",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:12.441Z",
+      "ok": true
     },
     {
       "id": 10355191,
       "status": "waiting_approval",
       "title": "Gerente de Varejo",
-      "recruiterEmail": null,
-      "recruiterName": null,
-      "ok": false
+      "recruiterEmail": "andre.orrico@lmmobilidade.com.br",
+      "recruiterName": "André Cunha Orrico",
+      "recruiterId": 635317,
+      "updatedAt": "2026-03-08T21:08:12.735Z",
+      "ok": true
     }
   ]
 }
