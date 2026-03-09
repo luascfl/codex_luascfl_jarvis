@@ -1612,6 +1612,8 @@ def gtasks_delete_task(task_id: str, task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw
         return f"🗑️ Tarefa {task_id} deletada com sucesso."
     except Exception as e: return f"Erro ao deletar: {e}"
 
+
+@mcp.tool()
 def gtasks_create_task_natural(
     text: str,
     task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw",
@@ -1623,9 +1625,8 @@ def gtasks_create_task_natural(
 ) -> str:
     """Cria 1 tarefa no Google Tasks (modo legado, sem LLM).
 
-    ⚠️ este modo existe apenas como fallback interno.
-    se você quer estrutura reclaim completa (1-3-5, upnext, not before, etc.),
-    use gtasks_create_task_reclaim_llm (ou gtasks_smart_sync_add_reclaim).
+    este tool é determinístico (sem llm) e sempre aplica a estrutura do prompt do reclaim
+    (título com parâmetros). ele também é usado como fallback do smart_sync.
 
     - interpreta datas relativas em pt-br: "hoje", "amanhã", "depois de amanhã"
     - também aceita data explícita: YYYY-MM-DD ou DD/MM/YYYY
@@ -1714,188 +1715,6 @@ def gtasks_create_task_natural(
         return f"Erro ao criar tarefa (no-llm): {e}\n{traceback.format_exc()}"
 
 
-
-@mcp.tool()
-def gtasks_create_task_reclaim_llm(
-    text: str,
-    task_list_id: str | None = None,
-    preferred_context: str = "",
-    max_repair_attempts: int = 1,
-) -> str:
-    """Cria 1 tarefa no Google Tasks usando o prompt mestre PROMPT_GTASKS_RECLAIM.
-
-    objetivo: garantir que até criação unitária siga a estrutura reclaim (título + params)
-    e gere 'due' em ISO 8601 corretamente.
-
-    retorno: JSON com ok/mode e logs.
-    """
-    if not task_list_id:
-        task_list_id = os.environ.get("RECLAIM_TASK_LIST_ID", "TUZuVGxQZkRxSjRrWkNtbw")
-
-    try:
-        from datetime import datetime
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-        from langchain_openai import ChatOpenAI
-        from langchain_core.messages import SystemMessage, HumanMessage
-
-        token_path = BASE_DIR / "token.json"
-        if not token_path.exists():
-            return json.dumps(
-                {
-                    "ok": False,
-                    "mode": "llm_single",
-                    "reason": "token_missing",
-                    "detail": "token.json não encontrado. rode auth-google --scope tasks.",
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
-
-        llm = ChatOpenAI(
-            model=os.environ.get("OPENAI_MODEL_NAME", "google/gemini-2.0-flash-lite-preview-02-05:free"),
-            temperature=0.2,
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            base_url=os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
-        )
-
-        context_hint = (preferred_context or "").strip()
-        if context_hint and not context_hint.startswith("["):
-            context_hint = f"[{context_hint}]"
-
-        user_prompt = f"""
-hoje é: {datetime.now().strftime('%A, %d/%m/%Y')}
-
-tarefa do usuário (crie apenas 1 tarefa):
-{text}
-
-contexto preferido (se fizer sentido): {context_hint or '(nenhum)'}
-
-saída obrigatória:
-- responda somente com um bloco ```json contendo um array json válido com 1 objeto.
-- campos: title (string), due (opcional, iso 8601 yyyy-mm-ddt00:00:00z), notes (opcional)
-- title deve conter o formato reclaim com parâmetros (duration, due:MM/DD/YYYY, priority, type:work).
-- sem texto fora do bloco.
-""".strip()
-
-        raw = llm.invoke([
-            SystemMessage(content=PROMPT_GTASKS_RECLAIM),
-            HumanMessage(content=user_prompt),
-        ])
-        content = getattr(raw, 'content', '') or ''
-
-        def _extract_json_block(t: str) -> str:
-            if "```json" in (t or ""):
-                return t.split("```json", 1)[1].split("```", 1)[0].strip()
-            m = re.search(r"(\[\s*\{.*\}\s*\])", t or "", flags=re.S)
-            if m:
-                return m.group(1).strip()
-            raise ValueError("não encontrei bloco ```json``` nem array JSON")
-
-        def _validate_one(obj) -> dict:
-            from pydantic import BaseModel, Field
-            from typing import Optional
-
-            class _Task(BaseModel):
-                title: str = Field(min_length=1)
-                due: Optional[str] = None
-                notes: Optional[str] = None
-
-            if not isinstance(obj, list) or len(obj) != 1:
-                raise ValueError("json deve ser array com 1 item")
-            t = _Task.model_validate(obj[0])
-
-            title = (t.title or "").strip()
-            if not title:
-                raise ValueError("title vazio")
-
-            notes = (t.notes or "Jarvis").strip() if (t.notes or "").strip() else "Jarvis"
-
-            due = None
-            if t.due is not None and str(t.due).strip() != "":
-                due_s = str(t.due).strip()
-                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", due_s):
-                    due_s = due_s + "T00:00:00Z"
-                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", due_s):
-                    raise ValueError(f"due inválido: {due_s}")
-                datetime.strptime(due_s, "%Y-%m-%dT%H:%M:%SZ")
-                due = due_s
-
-            out = {"title": title, "notes": notes}
-            if due:
-                out["due"] = due
-            return out
-
-        def _repair(bad_text: str, err: str) -> str:
-            repair_prompt = f"""
-corrija para retornar somente um bloco ```json com um array json válido com 1 objeto.
-
-erros: {err}
-
-regras:
-- array com 1 objeto
-- campos: title, due (opcional, iso 8601 com z), notes (opcional)
-- sem texto fora do bloco
-
-texto:
-{bad_text}
-""".strip()
-            rep = llm.invoke([
-                SystemMessage(content="você é um validador e corretor de json. obedeça literalmente."),
-                HumanMessage(content=repair_prompt),
-            ])
-            return getattr(rep, 'content', '') or ''
-
-        last_err = ""
-        for attempt in range(int(max_repair_attempts) + 1):
-            try:
-                jb = _extract_json_block(content)
-                t = _validate_one(json.loads(jb))
-                res = service.tasks().insert(tasklist=task_list_id, body=t).execute()
-                return json.dumps(
-                    {
-                        "ok": True,
-                        "mode": "llm_single",
-                        "inserted": 1,
-                        "task_id": res.get('id'),
-                        "title": t.get('title'),
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            except Exception as e:
-                last_err = str(e)
-                if attempt >= int(max_repair_attempts):
-                    break
-                content = _repair(content, last_err)
-
-        return json.dumps(
-            {
-                "ok": False,
-                "mode": "llm_single",
-                "reason": "llm_json_parse_failed",
-                "detail": last_err,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-
-    except Exception as e:
-        import traceback
-        return json.dumps(
-            {
-                "ok": False,
-                "mode": "llm_single",
-                "reason": "exception",
-                "detail": str(e),
-                "trace": traceback.format_exc().splitlines()[-8:],
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
 
 @mcp.tool()
 def gcal_list_events(
@@ -3092,7 +2911,7 @@ def gtasks_smart_sync_add_reclaim(
     - se falhar (timeout, credenciais, parsing etc): fallback básico sem llm
 
     fallback básico:
-    - cria 1 tarefa por linha do new_tasks_input usando gtasks_create_task_natural
+    - cria 1 tarefa por linha do new_tasks_input usando gtasks_create_task_natural (sem llm, mas com estrutura reclaim)
     """
 
     def _basic_lines(raw: str) -> list[str]:
@@ -3124,10 +2943,14 @@ def gtasks_smart_sync_add_reclaim(
         created: list[str] = []
         errors: list[str] = []
         for ln in lines:
-            res = gtasks_create_task_reclaim_llm(
+            res = gtasks_create_task_natural(
                 text=ln,
-                task_list_id=task_list_id,
-                preferred_context=fallback_context,
+                task_list_id=task_list_id or os.environ.get("RECLAIM_TASK_LIST_ID", "TUZuVGxQZkRxSjRrWkNtbw"),
+                context=fallback_context,
+                duration_min=fallback_duration_min,
+                priority=fallback_priority,
+                task_type=fallback_task_type,
+                default_to_today=fallback_default_to_today,
             )
             try:
                 payload = json.loads(res) if isinstance(res, str) else {}
