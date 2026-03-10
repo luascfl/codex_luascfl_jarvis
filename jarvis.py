@@ -7713,6 +7713,212 @@ def _resolve_ai_coders_context_global_cli() -> dict:
     }
 
 
+def _patch_text_file_with_replacements(
+    path: Path,
+    replacements: list[tuple[str, str]],
+    *,
+    backup_suffix: str = ".jarvis-orig",
+) -> dict:
+    if not path.exists():
+        return {"ok": False, "error": "file_not_found", "path": str(path)}
+
+    try:
+        original = path.read_text(encoding="utf-8")
+    except Exception as exc:
+        return {"ok": False, "error": "read_failed", "path": str(path), "detail": str(exc)}
+
+    updated = original
+    applied: list[dict[str, object]] = []
+    for old, new in replacements:
+        if new in updated and old not in updated:
+            applied.append({"status": "already_hardened", "needle": old[:80]})
+            continue
+        if old not in updated:
+            return {
+                "ok": False,
+                "error": "pattern_not_found",
+                "path": str(path),
+                "needle": old[:160],
+            }
+        occurrences = updated.count(old)
+        updated = updated.replace(old, new)
+        applied.append({"status": "patched", "count": occurrences, "needle": old[:80]})
+
+    changed = updated != original
+    if changed:
+        backup_path = Path(f"{path}{backup_suffix}")
+        try:
+            if not backup_path.exists():
+                backup_path.write_text(original, encoding="utf-8")
+            path.write_text(updated, encoding="utf-8")
+        except Exception as exc:
+            return {"ok": False, "error": "write_failed", "path": str(path), "detail": str(exc)}
+
+    return {
+        "ok": True,
+        "path": str(path),
+        "changed": changed,
+        "applied": applied,
+    }
+
+
+def _harden_ai_coders_context_global_install(apply_if_needed: bool = True) -> dict:
+    if not _env_is_true("JARVIS_AI_CONTEXT_HARDEN", True):
+        return {
+            "ok": True,
+            "skipped": True,
+            "reason": "disabled_by_env",
+        }
+
+    pkg_root = _resolve_ai_coders_context_package_root()
+    if not pkg_root:
+        return {
+            "ok": False,
+            "error": "ai_coders_context_package_root_not_found",
+            "hint": "Instale com: npm install -g @ai-coders/context",
+        }
+
+    patch_specs: list[tuple[str, list[tuple[str, str]]]] = [
+        (
+            "dist/commands/init.js",
+            [
+                (".argument('[type]', t('commands.init.arguments.type'), 'both')", ".argument('[type]', t('commands.init.arguments.type'), 'docs')"),
+                ("await initService.run(repoPath, type, options);", "await initService.run(repoPath, 'docs', options);"),
+                ("const type = options?.docsOnly ? 'docs' : options?.agentsOnly ? 'agents' : (options?.type || 'both');", "const type = 'docs';"),
+            ],
+        ),
+        (
+            "dist/commands/sync.js",
+            [
+                (
+                    "await syncService.run(options);",
+                    "ui.displayError('Agent export is disabled by Jarvis docs-only policy');\n            process.exit(1);\n            await syncService.run(options);",
+                ),
+                (
+                    "await importAgentsService.run({",
+                    "ui.displayError('Agent import is disabled by Jarvis docs-only policy');\n            process.exit(1);\n            await importAgentsService.run({",
+                ),
+                ("skipAgents: options.skipAgents,", "skipAgents: true,"),
+                ("skipSkills: options.skipSkills,", "skipSkills: true,"),
+            ],
+        ),
+        (
+            "dist/commands/skill.js",
+            [
+                (
+                    "const { createSkillGenerator } = await Promise.resolve().then(() => __importStar(require('../generators/skills')));",
+                    "ui.displayError('Skill scaffolding is disabled by Jarvis docs-only policy');\n            process.exit(1);\n            const { createSkillGenerator } = await Promise.resolve().then(() => __importStar(require('../generators/skills')));",
+                ),
+                (
+                    "const { SkillFillService } = await Promise.resolve().then(() => __importStar(require('../services/fill/skillFillService')));",
+                    "ui.displayError('Skill fill is disabled by Jarvis docs-only policy');\n            process.exit(1);\n            const { SkillFillService } = await Promise.resolve().then(() => __importStar(require('../services/fill/skillFillService')));",
+                ),
+                (
+                    "const { SkillExportService } = await Promise.resolve().then(() => __importStar(require('../services/export/skillExportService')));",
+                    "ui.displayError('Skill export is disabled by Jarvis docs-only policy');\n            process.exit(1);\n            const { SkillExportService } = await Promise.resolve().then(() => __importStar(require('../services/export/skillExportService')));",
+                ),
+            ],
+        ),
+        (
+            "dist/index.js",
+            [
+                (".argument('[type]', t('commands.init.arguments.type'), 'both')", ".argument('[type]', t('commands.init.arguments.type'), 'docs')"),
+                ("await initService.run(repoPath, type, options);", "await initService.run(repoPath, 'docs', options);"),
+                ("await initService.run(repoPath, type, rawOptions);", "await initService.run(repoPath, 'docs', rawOptions);"),
+                ("const type = options?.docsOnly ? 'docs' : options?.agentsOnly ? 'agents' : (options?.type || 'both');", "const type = 'docs';"),
+                (
+                    "await syncService.run(options);",
+                    "ui.displayError('Agent export is disabled by Jarvis docs-only policy');\n        process.exit(1);\n        await syncService.run(options);",
+                ),
+                (
+                    "await importAgentsService.run({",
+                    "ui.displayError('Agent import is disabled by Jarvis docs-only policy');\n        process.exit(1);\n        await importAgentsService.run({",
+                ),
+                ("skipAgents: options.skipAgents,", "skipAgents: true,"),
+                ("skipSkills: options.skipSkills,", "skipSkills: true,"),
+                (
+                    "const { createSkillGenerator } = await Promise.resolve().then(() => __importStar(require('./generators/skills')));",
+                    "ui.displayError('Skill scaffolding is disabled by Jarvis docs-only policy');\n        process.exit(1);\n        const { createSkillGenerator } = await Promise.resolve().then(() => __importStar(require('./generators/skills')));",
+                ),
+                (
+                    "const { SkillFillService } = await Promise.resolve().then(() => __importStar(require('./services/fill/skillFillService')));",
+                    "ui.displayError('Skill fill is disabled by Jarvis docs-only policy');\n        process.exit(1);\n        const { SkillFillService } = await Promise.resolve().then(() => __importStar(require('./services/fill/skillFillService')));",
+                ),
+                (
+                    "const { SkillExportService } = await Promise.resolve().then(() => __importStar(require('./services/export/skillExportService')));",
+                    "ui.displayError('Skill export is disabled by Jarvis docs-only policy');\n        process.exit(1);\n        const { SkillExportService } = await Promise.resolve().then(() => __importStar(require('./services/export/skillExportService')));",
+                ),
+            ],
+        ),
+        (
+            "dist/services/mcp/gateway/context.js",
+            [
+                ("type: params.type,", "type: 'docs',"),
+                ("target: params.target,", "target: 'docs',"),
+            ],
+        ),
+        (
+            "dist/services/mcp/gateway/skill.js",
+            [
+                (
+                    "    const { createSkillRegistry, BUILT_IN_SKILLS } = require('../../../workflow/skills');\n    try {\n",
+                    "    const { createSkillRegistry, BUILT_IN_SKILLS } = require('../../../workflow/skills');\n    const jarvisSkillWriteActions = new Set(['scaffold', 'export', 'fill']);\n    if (jarvisSkillWriteActions.has(String(params.action || ''))) {\n        return (0, response_1.createErrorResponse)('Skill scaffolding/export is disabled by Jarvis docs-only policy');\n    }\n    try {\n",
+                ),
+            ],
+        ),
+        (
+            "dist/services/mcp/gateway/sync.js",
+            [
+                ("            case 'exportAgents': {\n", "            case 'exportAgents': {\n                return (0, response_1.createErrorResponse)('Agent export is disabled by Jarvis docs-only policy');\n"),
+                ("            case 'exportSkills': {\n", "            case 'exportSkills': {\n                return (0, response_1.createErrorResponse)('Skill export is disabled by Jarvis docs-only policy');\n"),
+                ("            case 'importAgents': {\n", "            case 'importAgents': {\n                return (0, response_1.createErrorResponse)('Agent import is disabled by Jarvis docs-only policy');\n"),
+                ("            case 'importSkills': {\n", "            case 'importSkills': {\n                return (0, response_1.createErrorResponse)('Skill import is disabled by Jarvis docs-only policy');\n"),
+                ("skipAgents: params.skipAgents,", "skipAgents: true,"),
+                ("skipSkills: params.skipSkills,", "skipSkills: true,"),
+                ("skipAgents: params.skipAgents || false,", "skipAgents: true,"),
+                ("skipSkills: params.skipSkills || false,", "skipSkills: true,"),
+            ],
+        ),
+        (
+            "dist/services/mcp/mcpServer.js",
+            [
+                ("type: zod_1.z.enum(['docs', 'agents', 'both']).optional()", "type: zod_1.z.literal('docs').optional()"),
+                ("target: zod_1.z.enum(['docs', 'agents', 'plans', 'all']).optional()", "target: zod_1.z.literal('docs').optional()"),
+                ("action: zod_1.z.enum(['exportRules', 'exportDocs', 'exportAgents', 'exportContext', 'exportSkills', 'reverseSync', 'importDocs', 'importAgents', 'importSkills'])", "action: zod_1.z.enum(['exportRules', 'exportDocs', 'exportContext', 'reverseSync', 'importDocs'])"),
+                ("action: zod_1.z.enum(['list', 'getContent', 'getForPhase', 'scaffold', 'export', 'fill'])", "action: zod_1.z.enum(['list', 'getContent', 'getForPhase'])"),
+            ],
+        ),
+    ]
+
+    results: list[dict] = []
+    changed_files: list[str] = []
+    for rel_path, replacements in patch_specs:
+        target = pkg_root / rel_path
+        if not apply_if_needed:
+            results.append({"ok": True, "path": str(target), "changed": False, "skipped": True})
+            continue
+        patched = _patch_text_file_with_replacements(target, replacements)
+        results.append(patched)
+        if not patched.get("ok"):
+            return {
+                "ok": False,
+                "error": "ai_coders_context_hardening_failed",
+                "package_root": str(pkg_root),
+                "failed_patch": patched,
+                "results": results,
+            }
+        if patched.get("changed"):
+            changed_files.append(str(target))
+
+    return {
+        "ok": True,
+        "package_root": str(pkg_root),
+        "changed": bool(changed_files),
+        "changed_files": changed_files,
+        "results": results,
+    }
+
+
 def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) -> dict:
     pkg = "@ai-coders/context"
     current_version = _npm_global_version(pkg)
@@ -7727,6 +7933,16 @@ def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) 
                 "error": "ai_coders_context_cli_not_found",
                 "cli": cli,
             }
+        hardening = _harden_ai_coders_context_global_install(apply_if_needed=True)
+        if not hardening.get("ok"):
+            return {
+                "ok": False,
+                "installed": True,
+                "version_stdout": current_version,
+                "error": "ai_coders_context_hardening_failed",
+                "cli": cli,
+                "hardening": hardening,
+            }
         result = {
             "ok": True,
             "installed": True,
@@ -7738,6 +7954,7 @@ def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) 
                 "command": cli.get("command", ""),
                 "args_prefix": cli.get("args_prefix", []),
                 "command_source": cli.get("source", ""),
+                "hardening": hardening,
             }
         )
         return result
@@ -7770,6 +7987,18 @@ def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) 
             "cli": cli,
         }
 
+    hardening = _harden_ai_coders_context_global_install(apply_if_needed=True)
+    if not hardening.get("ok"):
+        return {
+            "ok": False,
+            "installed": True,
+            "installed_now": True,
+            "version_stdout": after_version,
+            "error": "ai_coders_context_hardening_failed",
+            "cli": cli,
+            "hardening": hardening,
+        }
+
     result = {
         "ok": True,
         "installed": True,
@@ -7781,6 +8010,7 @@ def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) 
             "command": cli.get("command", ""),
             "args_prefix": cli.get("args_prefix", []),
             "command_source": cli.get("source", ""),
+            "hardening": hardening,
         }
     )
     return result
