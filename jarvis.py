@@ -7786,6 +7786,13 @@ def _ensure_ai_coders_context_global_installed(install_if_missing: bool = True) 
     return result
 
 
+def _resolve_ai_coders_context_exec(install_if_missing: bool = True) -> list[str]:
+    resolved = _ensure_ai_coders_context_global_installed(install_if_missing=install_if_missing)
+    if resolved.get("ok"):
+        return [str(resolved.get("command") or "ai-context"), *list(resolved.get("args_prefix") or [])]
+    return [_resolve_npx_bin(), "-y", "@ai-coders/context"]
+
+
 def _resolve_gsd_package_root(gsd_bin: str = "") -> Path | None:
     candidates = [
         (gsd_bin or "").strip(),
@@ -8468,33 +8475,43 @@ def _run_internal_context_update_step() -> dict:
     init_out = Path(tempfile.mkdtemp(prefix=f"ai-context-init-{run_id}-"))
     steps: list[dict] = []
     try:
-        init_cmd = ["npx", "-y", "@ai-coders/context", "init", ".", "both", "-o", str(init_out)]
+        ai_context_exec = _resolve_ai_coders_context_exec(install_if_missing=True)
+        init_cmd = [*ai_context_exec, "init", ".", "docs", "-o", str(init_out)]
         steps.append({"name": "init", **_run_capture_command(init_cmd, cwd=BASE_DIR, timeout_sec=900)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
 
         docs_src = init_out / "docs"
-        agents_src = init_out / "agents"
         docs_dst = BASE_DIR / ".context" / "docs"
-        agents_dst = BASE_DIR / ".context" / "agents"
         docs_dst.mkdir(parents=True, exist_ok=True)
-        agents_dst.mkdir(parents=True, exist_ok=True)
         if docs_src.exists():
             shutil.rmtree(docs_dst, ignore_errors=True)
             shutil.copytree(docs_src, docs_dst)
-        if agents_src.exists():
-            shutil.rmtree(agents_dst, ignore_errors=True)
-            shutil.copytree(agents_src, agents_dst)
-        steps.append({"name": "sync_context_dirs", "ok": True, "returncode": 0})
+        removed_dirs: list[str] = []
+        for unsupported_dir in [BASE_DIR / ".context" / "agents", BASE_DIR / ".context" / "skills"]:
+            if unsupported_dir.exists():
+                shutil.rmtree(unsupported_dir, ignore_errors=True)
+                removed_dirs.append(str(unsupported_dir.relative_to(BASE_DIR)))
+        steps.append(
+            {
+                "name": "sync_context_dirs",
+                "ok": True,
+                "returncode": 0,
+                "detail": {
+                    "docs_only": True,
+                    "removed_unsupported_dirs": removed_dirs,
+                },
+            }
+        )
 
-        fill_cmd = ["npx", "-y", "@ai-coders/context", "fill", ".", "-o", "./.context", "-p", "openai", "-m", "openai/gpt-4o-mini"]
+        fill_cmd = [*ai_context_exec, "fill", ".", "-o", "./.context", "-p", "openai", "-m", "openai/gpt-4o-mini"]
         if os.environ.get("OPENAI_BASE_URL", "").strip():
             fill_cmd += ["--base-url", os.environ["OPENAI_BASE_URL"]]
         steps.append({"name": "fill", **_run_capture_command(fill_cmd, cwd=BASE_DIR, timeout_sec=1200)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
 
-        report_cmd = ["npx", "-y", "@ai-coders/context", "report", ".", "-f", "markdown", "-o", str(report_path)]
+        report_cmd = [*ai_context_exec, "report", ".", "-f", "markdown", "-o", str(report_path)]
         steps.append({"name": "report", **_run_capture_command(report_cmd, cwd=BASE_DIR, timeout_sec=600)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
@@ -11562,4 +11579,3 @@ def gupy_v1_apply_recruiter_rules(
         import traceback
 
         return f"Erro: {e}\n{traceback.format_exc()}"
-
