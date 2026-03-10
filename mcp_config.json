@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "default": {
+      "command": "python",
+      "args": [
+        "jarvis.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "MCP_MODE": "stdio",
+        "OPENAI_API_KEY": "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",
+        "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+        "RESEARCH_PROVIDER": "openai",
+        "PERPLEXITY_API_KEY": "dummy-bypass"
+      }
+    }
+  }
+}

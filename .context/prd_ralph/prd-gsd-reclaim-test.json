@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "project": "GSD Reclaim UI validation",
+  "overview": "Testar o fluxo experimental de UI do Reclaim via Jarvis local para confirmar start/stop/restart com assistance.",
+  "goals": [
+    "Restaurar sessão Reclaim com bootstrap manual",
+    "Iniciar, parar e reiniciar tarefa sincronizada",
+    "Registrar fallback assistido e confirmar auditoria"
+  ],
+  "nonGoals": [
+    "Automatizar criação de tokens ou credenciais externas"
+  ],
+  "successMetrics": [
+    "reclaim_session_status retorna valid",
+    "reclaim_task_* relata ui_action ou assist com assist_id",
+    "Auditoria em .agents/ralph/runtime/reclaim_ui_audit.jsonl contém assist_id"
+  ],
+  "qualityGates": [
+    "python3 -m pytest tests/test_reclaim_ui_parser.py -q",
+    "python3 -m pytest tests/test_reclaim_ui_executor.py -q"
+  ],
+  "stories": [
+    {
+      "id": "US-GSD-001",
+      "title": "Preparar ambiente Jarvis local com RECLAIM_UI_AUTOMATION_ENABLE true",
+      "status": "open",
+      "description": "Como operador, quero levantar o super_server_v6.py com env.sh para ativar as tools Reclaim.",
+      "acceptanceCriteria": [
+        "env.sh exporta RECLAIM_UI_AUTOMATION_ENABLE e PYTHONPATH",
+        "super_server_v6.py inicia sem erro e loga Uvicorn"
+      ]
+    },
+    {
+      "id": "US-GSD-002",
+      "title": "Validar start/stop/restart do Reclaim",
+      "status": "open",
+      "description": "Como operador, quero executar reclam_task_start/stop/restart e registrar assist se necessário.",
+      "acceptanceCriteria": [
+        "Chamar reclaim_session_bootstrap e reclaim_session_status retorna valid",
+        "reclaim_task_start/stop/restart retornam ui_action ou assist",
+        "assist_id aparece no audit"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+description = "Revisar outra resposta com niveis de confianca e sugerir checagens adicionais"
+prompt = """
+---
+
+Use esta skill para revisar o texto fornecido em $TEXTO ou no argumento posicional correspondente. O objetivo e:
+
+1. Extrair as afirmacoes principais ou passos relevantes.
+2. Para cada afirmacao, indicar o nivel de confianca (0-100%).
+"""

@@ -1,0 +1,19 @@
+project:
+  name: "gsd-ralph-ai-context"
+  scale: LARGE
+  started: "2026-02-18T00:18:22.697Z"
+  current_phase: P
+
+phases:
+  P:
+    status: in_progress
+    started_at: "2026-02-18T00:18:22.697Z"
+  R:
+    status: pending
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: pending
+

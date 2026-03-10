@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "project": "GSD Reclaim UI validation",
+  "overview": "Testar o fluxo experimental de UI do Reclaim via Jarvis local para confirmar start/stop/restart com assistance.",
+  "goals": [
+    "Restaurar sess\u00e3o Reclaim com bootstrap manual",
+    "Iniciar, parar e reiniciar tarefa sincronizada",
+    "Registrar fallback assistido e confirmar auditoria"
+  ],
+  "nonGoals": [
+    "Automatizar cria\u00e7\u00e3o de tokens ou credenciais externas"
+  ],
+  "successMetrics": [
+    "reclaim_session_status retorna valid",
+    "reclaim_task_* relata ui_action ou assist com assist_id",
+    "Auditoria em .agents/ralph/runtime/reclaim_ui_audit.jsonl cont\u00e9m assist_id"
+  ],
+  "qualityGates": [
+    "python3 -m pytest tests/test_reclaim_ui_parser.py -q",
+    "python3 -m pytest tests/test_reclaim_ui_executor.py -q"
+  ],
+  "stories": [
+    {
+      "id": "US-GSD-001",
+      "title": "Preparar ambiente Jarvis local com RECLAIM_UI_AUTOMATION_ENABLE true",
+      "status": "in_progress",
+      "description": "Como operador, quero levantar o super_server_v6.py com env.sh para ativar as tools Reclaim.",
+      "acceptanceCriteria": [
+        "env.sh exporta RECLAIM_UI_AUTOMATION_ENABLE e PYTHONPATH",
+        "super_server_v6.py inicia sem erro e loga Uvicorn"
+      ],
+      "startedAt": "2026-02-18T17:01:34.325805+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-02-18T17:01:34.325882+00:00"
+    },
+    {
+      "id": "US-GSD-002",
+      "title": "Validar start/stop/restart do Reclaim",
+      "status": "in_progress",
+      "description": "Como operador, quero executar reclam_task_start/stop/restart e registrar assist se necess\u00e1rio.",
+      "acceptanceCriteria": [
+        "Chamar reclaim_session_bootstrap e reclaim_session_status retorna valid",
+        "reclaim_task_start/stop/restart retornam ui_action ou assist",
+        "assist_id aparece no audit"
+      ],
+      "startedAt": "2026-02-18T17:05:13.988298+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-02-18T17:05:13.988338+00:00"
+    }
+  ]
+}

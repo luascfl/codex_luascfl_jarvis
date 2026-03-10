@@ -1,0 +1,715 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-02-18T05:59:47.461Z",
+  "stack": {
+    "primaryLanguage": "javascript",
+    "languages": [
+      "javascript",
+      "python",
+      "go",
+      "c"
+    ],
+    "frameworks": [
+      "cli"
+    ],
+    "buildTools": [
+      "docker"
+    ],
+    "testFrameworks": [],
+    "packageManager": "npm",
+    "isMonorepo": false,
+    "hasDocker": true,
+    "hasCI": false,
+    "runtimeEnvironment": "node"
+  },
+  "structure": {
+    "totalFiles": 14643,
+    "rootPath": ".",
+    "topDirectories": [
+      {
+        "name": "__pycache__",
+        "fileCount": 4,
+        "description": "Module directory"
+      },
+      {
+        "name": "bin",
+        "fileCount": 1,
+        "description": "CLI binaries and executables"
+      },
+      {
+        "name": "chroma_db",
+        "fileCount": 23,
+        "description": "Module directory"
+      },
+      {
+        "name": "chroma_db_debug",
+        "fileCount": 5,
+        "description": "Module directory"
+      },
+      {
+        "name": "docs",
+        "fileCount": 3,
+        "description": "Documentation files"
+      },
+      {
+        "name": "go",
+        "fileCount": 14486,
+        "description": "Module directory"
+      },
+      {
+        "name": "logs",
+        "fileCount": 1,
+        "description": "Log definitions"
+      },
+      {
+        "name": "mermaid",
+        "fileCount": 9,
+        "description": "AI/LLM integration"
+      },
+      {
+        "name": "meus_arquivos_mcp",
+        "fileCount": 1,
+        "description": "MCP server implementation"
+      },
+      {
+        "name": "migration_gsd_ralph",
+        "fileCount": 43,
+        "description": "Module directory"
+      },
+      {
+        "name": "prompts",
+        "fileCount": 2,
+        "description": "Prompt templates"
+      },
+      {
+        "name": "screenshots",
+        "fileCount": 10,
+        "description": "Screenshot definitions"
+      },
+      {
+        "name": "scripts",
+        "fileCount": 4,
+        "description": "Build and utility scripts"
+      },
+      {
+        "name": "userscripts",
+        "fileCount": 1,
+        "description": "Build and utility scripts"
+      }
+    ],
+    "languageDistribution": [
+      {
+        "extension": ".go",
+        "count": 10631
+      },
+      {
+        "extension": ".txt",
+        "count": 1351
+      },
+      {
+        "extension": ".s",
+        "count": 635
+      },
+      {
+        "extension": ".crt",
+        "count": 407
+      },
+      {
+        "extension": ".c",
+        "count": 134
+      },
+      {
+        "extension": ".golden",
+        "count": 132
+      },
+      {
+        "extension": ".out",
+        "count": 102
+      },
+      {
+        "extension": ".md",
+        "count": 84
+      },
+      {
+        "extension": ".png",
+        "count": 77
+      },
+      {
+        "extension": ".input",
+        "count": 50
+      }
+    ]
+  },
+  "architecture": {
+    "layers": [],
+    "patterns": [],
+    "entryPoints": [],
+    "mainEntryPoints": [],
+    "moduleExports": []
+  },
+  "symbols": {
+    "classes": [
+      {
+        "name": "ChanTypePrinter",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 307,
+        "exported": true
+      },
+      {
+        "name": "DTypeFunc",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 532,
+        "exported": true
+      },
+      {
+        "name": "GoCapFunc",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 517,
+        "exported": true
+      },
+      {
+        "name": "GoIfaceCmd",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 688,
+        "exported": true
+      },
+      {
+        "name": "GoLenFunc",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 496,
+        "exported": true
+      },
+      {
+        "name": "GoroutineCmd",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 631,
+        "exported": true
+      },
+      {
+        "name": "GoroutinesCmd",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 558,
+        "exported": true
+      },
+      {
+        "name": "IfacePrinter",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 455,
+        "exported": true
+      },
+      {
+        "name": "MapTypePrinter",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 144,
+        "exported": true
+      },
+      {
+        "name": "SliceTypePrinter",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 119,
+        "exported": true
+      },
+      {
+        "name": "SliceValue",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 77,
+        "exported": true
+      },
+      {
+        "name": "StringTypePrinter",
+        "kind": "class",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 103,
+        "exported": true
+      },
+      {
+        "name": "_DeterministicEmbeddingFunction",
+        "kind": "class",
+        "file": "jarvis.py",
+        "line": 3261,
+        "exported": false
+      },
+      {
+        "name": "StatelessHttpTransport",
+        "kind": "class",
+        "file": "stdio_proxy.js",
+        "line": 96,
+        "exported": false
+      }
+    ],
+    "interfaces": [],
+    "functions": [
+      {
+        "name": "audit_seo",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1659,
+        "exported": true
+      },
+      {
+        "name": "authenticate",
+        "kind": "function",
+        "file": "auth_with_drive.py",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "authenticate",
+        "kind": "function",
+        "file": "auth_google_tasks.py",
+        "line": 27,
+        "exported": true
+      },
+      {
+        "name": "auto_diagnostico_e_correcao",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 3232,
+        "exported": true
+      },
+      {
+        "name": "clean_reqs",
+        "kind": "function",
+        "file": "install_super_venv.py",
+        "line": 23,
+        "exported": true
+      },
+      {
+        "name": "click_send_button",
+        "kind": "function",
+        "file": "mistral_tool_smoketest.py",
+        "line": 119,
+        "exported": true
+      },
+      {
+        "name": "click_send_button",
+        "kind": "function",
+        "file": "chatgpt_tool_smoketest.py",
+        "line": 249,
+        "exported": true
+      },
+      {
+        "name": "collect_fields",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 260,
+        "exported": true
+      },
+      {
+        "name": "delete_existing_connector",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 155,
+        "exported": true
+      },
+      {
+        "name": "describe_codehost_token",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 795,
+        "exported": true
+      },
+      {
+        "name": "dismiss_overlay",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 277,
+        "exported": true
+      },
+      {
+        "name": "editorial_context",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1676,
+        "exported": true
+      },
+      {
+        "name": "editorial_expand",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1654,
+        "exported": true
+      },
+      {
+        "name": "editorial_haiku",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1681,
+        "exported": true
+      },
+      {
+        "name": "editorial_interview",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1644,
+        "exported": true
+      },
+      {
+        "name": "editorial_localize",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1686,
+        "exported": true
+      },
+      {
+        "name": "editorial_outline",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1649,
+        "exported": true
+      },
+      {
+        "name": "editorial_publish",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1691,
+        "exported": true
+      },
+      {
+        "name": "editorial_readability",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1696,
+        "exported": true
+      },
+      {
+        "name": "editorial_reflect",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1702,
+        "exported": true
+      },
+      {
+        "name": "editorial_review",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1707,
+        "exported": true
+      },
+      {
+        "name": "editorial_voice",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 1712,
+        "exported": true
+      },
+      {
+        "name": "ensure_connections_page",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 69,
+        "exported": true
+      },
+      {
+        "name": "ensure_port_free",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 425,
+        "exported": true
+      },
+      {
+        "name": "ensure_sheets_mcp",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 812,
+        "exported": true
+      },
+      {
+        "name": "fetch",
+        "kind": "function",
+        "file": "jarvis.py",
+        "line": 3474,
+        "exported": true
+      },
+      {
+        "name": "find_action_button",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 120,
+        "exported": true
+      },
+      {
+        "name": "find_goroutine",
+        "kind": "function",
+        "file": "go/src/runtime/runtime-gdb.py",
+        "line": 581,
+        "exported": true
+      },
+      {
+        "name": "find_more_options_button",
+        "kind": "function",
+        "file": "preencher_mistral.py",
+        "line": 130,
+        "exported": true
+      },
+      {
+        "name": "find_permission_button",
+        "kind": "function",
+        "file": "chatgpt_tool_smoketest.py",
+        "line": 363,
+        "exported": true
+      }
+    ],
+    "types": [],
+    "enums": []
+  },
+  "publicAPI": [
+    {
+      "name": "audit_seo",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1659,
+      "exported": true
+    },
+    {
+      "name": "authenticate",
+      "kind": "function",
+      "file": "auth_with_drive.py",
+      "line": 13,
+      "exported": true
+    },
+    {
+      "name": "authenticate",
+      "kind": "function",
+      "file": "auth_google_tasks.py",
+      "line": 27,
+      "exported": true
+    },
+    {
+      "name": "auto_diagnostico_e_correcao",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 3232,
+      "exported": true
+    },
+    {
+      "name": "ChanTypePrinter",
+      "kind": "class",
+      "file": "go/src/runtime/runtime-gdb.py",
+      "line": 307,
+      "exported": true
+    },
+    {
+      "name": "clean_reqs",
+      "kind": "function",
+      "file": "install_super_venv.py",
+      "line": 23,
+      "exported": true
+    },
+    {
+      "name": "click_send_button",
+      "kind": "function",
+      "file": "mistral_tool_smoketest.py",
+      "line": 119,
+      "exported": true
+    },
+    {
+      "name": "click_send_button",
+      "kind": "function",
+      "file": "chatgpt_tool_smoketest.py",
+      "line": 249,
+      "exported": true
+    },
+    {
+      "name": "collect_fields",
+      "kind": "function",
+      "file": "preencher_mistral.py",
+      "line": 260,
+      "exported": true
+    },
+    {
+      "name": "delete_existing_connector",
+      "kind": "function",
+      "file": "preencher_mistral.py",
+      "line": 155,
+      "exported": true
+    },
+    {
+      "name": "describe_codehost_token",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 795,
+      "exported": true
+    },
+    {
+      "name": "dismiss_overlay",
+      "kind": "function",
+      "file": "preencher_mistral.py",
+      "line": 277,
+      "exported": true
+    },
+    {
+      "name": "DTypeFunc",
+      "kind": "class",
+      "file": "go/src/runtime/runtime-gdb.py",
+      "line": 532,
+      "exported": true
+    },
+    {
+      "name": "editorial_context",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1676,
+      "exported": true
+    },
+    {
+      "name": "editorial_expand",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1654,
+      "exported": true
+    },
+    {
+      "name": "editorial_haiku",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1681,
+      "exported": true
+    },
+    {
+      "name": "editorial_interview",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1644,
+      "exported": true
+    },
+    {
+      "name": "editorial_localize",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1686,
+      "exported": true
+    },
+    {
+      "name": "editorial_outline",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1649,
+      "exported": true
+    },
+    {
+      "name": "editorial_publish",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1691,
+      "exported": true
+    },
+    {
+      "name": "editorial_readability",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1696,
+      "exported": true
+    },
+    {
+      "name": "editorial_reflect",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1702,
+      "exported": true
+    },
+    {
+      "name": "editorial_review",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1707,
+      "exported": true
+    },
+    {
+      "name": "editorial_voice",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 1712,
+      "exported": true
+    },
+    {
+      "name": "ensure_connections_page",
+      "kind": "function",
+      "file": "preencher_mistral.py",
+      "line": 69,
+      "exported": true
+    },
+    {
+      "name": "ensure_port_free",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 425,
+      "exported": true
+    },
+    {
+      "name": "ensure_sheets_mcp",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 812,
+      "exported": true
+    },
+    {
+      "name": "fetch",
+      "kind": "function",
+      "file": "jarvis.py",
+      "line": 3474,
+      "exported": true
+    },
+    {
+      "name": "find_action_button",
+      "kind": "function",
+      "file": "preencher_mistral.py",
+      "line": 120,
+      "exported": true
+    },
+    {
+      "name": "find_goroutine",
+      "kind": "function",
+      "file": "go/src/runtime/runtime-gdb.py",
+      "line": 581,
+      "exported": true
+    }
+  ],
+  "dependencies": {
+    "mostImported": []
+  },
+  "stats": {
+    "totalSymbols": 193,
+    "exportedSymbols": 140,
+    "analysisTimeMs": 3316
+  },
+  "keyFiles": [
+    {
+      "path": "jarvis.py",
+      "description": "CLI executable",
+      "category": "entrypoint"
+    },
+    {
+      "path": "go/src/cmd/vendor/golang.org/x/telemetry/tsconfig.json",
+      "description": "TypeScript configuration",
+      "category": "config"
+    },
+    {
+      "path": "package.json",
+      "description": "Package manifest",
+      "category": "config"
+    }
+  ],
+  "navigation": {
+    "tests": "src/**/*.test.ts",
+    "config": [
+      "package.json",
+      "tsconfig.json"
+    ],
+    "types": [],
+    "mainLogic": [
+      "src"
+    ]
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "project": "M1 Estabilidade MCP",
+  "overview": "Estabilizar o fluxo restrito com inicializacao previsivel do servidor principal, bridge local funcional entre Codex e Gemini e lista de MCPs coerente entre clientes.",
+  "goals": [
+    "Garantir bootstrap local sem erro do servidor MCP principal",
+    "Garantir funcionamento da bridge local Codex e Gemini",
+    "Garantir configuracao restrita e consistente de MCPs em codex, codex sudo e gemini"
+  ],
+  "nonGoals": [
+    "Adicionar novas integracoes fora do fluxo restrito",
+    "Expandir arquitetura alem de estabilidade e verificacao operacional"
+  ],
+  "successMetrics": [
+    "Comando de inicializacao executa sem erro critico",
+    "Comandos de listagem MCP exibem somente o conjunto restrito esperado",
+    "Smoke test principal passa em ambiente local"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "Python FastMCP + Node mcp-proxy",
+    "hosting": "Local Linux e OCI para endpoint remoto",
+    "database": "Nao aplicavel",
+    "auth": "Tokens locais existentes quando necessario, sem alterar estrategia atual"
+  },
+  "routes": [
+    {
+      "path": "/mcp",
+      "name": "Endpoint MCP",
+      "purpose": "Endpoint principal para trafego MCP"
+    },
+    {
+      "path": "bridge-local",
+      "name": "Bridge Codex Gemini",
+      "purpose": "Encaminhamento local entre agentes"
+    }
+  ],
+  "uiNotes": [
+    "Projeto sem UI dedicada, validacao via CLI e logs"
+  ],
+  "dataModel": [
+    {
+      "entity": "MCPClientConfig",
+      "fields": [
+        "client",
+        "server",
+        "enabled",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "entity": "SmokeEvidence",
+      "fields": [
+        "timestamp",
+        "command",
+        "result",
+        "artifactPath"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Nao aplicavel para esta fase",
+    "example": {}
+  },
+  "rules": [
+    "Manter somente MCPs do fluxo restrito",
+    "Qualquer ajuste de configuracao precisa evidenciar impacto em codex, codex sudo e gemini",
+    "Toda story concluida deve registrar evidencia objetiva em arquivo"
+  ],
+  "qualityGates": [
+    "python3 -m py_compile super_server_v6.py",
+    "bash -n start_oci.sh",
+    "./migration_gsd_ralph/scripts/06_smoke_test.sh",
+    "codex mcp list",
+    "gemini mcp list"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Validar inicializacao minima do servidor MCP",
+      "status": "open",
+      "dependsOn": [],
+      "description": "Como operador, quero validar a inicializacao minima do servidor para reduzir falhas na abertura do fluxo restrito.",
+      "acceptanceCriteria": [
+        "Executar validacao sintatica e de bootstrap com comandos definidos no PRD",
+        "Registrar saida dos comandos em artefato de execucao dentro de migration_gsd_ralph/exports",
+        "Example: start_oci.sh em modo de validacao retorna status sem erro",
+        "Negative case: se houver erro de sintaxe ou dependencia faltante, a story deve falhar com log claro e sem seguir para proxima story"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Validar bridge local entre Codex e Gemini",
+      "status": "open",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Como operador, quero confirmar que a bridge local entre Codex e Gemini esta funcional para manter o fluxo de planejamento e execucao.",
+      "acceptanceCriteria": [
+        "Executar verificacoes de conectividade local da bridge e registrar evidencias",
+        "Comprovar que codex e gemini conseguem listar MCPs apos ajuste de configuracao",
+        "Example: ambos clientes listam servidores esperados e sem timeout de handshake",
+        "Negative case: se um cliente listar servidor indevido ou nao listar servidor obrigatorio, a story nao pode ser concluida"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Consolidar perfil restrito nos tres clientes",
+      "status": "open",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Como operador, quero consolidar o perfil restrito em codex, codex sudo e gemini para evitar drift de configuracao.",
+      "acceptanceCriteria": [
+        "Revisar e alinhar arquivos de configuracao dos tres clientes com a politica restrita",
+        "Garantir que exclusoes obrigatorias do gemini permanecem aplicadas",
+        "Example: gemini sem servidores excluidos e codex com servidores permitidos",
+        "Negative case: qualquer divergencia entre os tres perfis bloqueia fechamento da story"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Fechar fase com smoke e evidencia consolidada",
+      "status": "open",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Como operador, quero fechar a fase com smoke test e evidencia consolidada para liberar a fase seguinte.",
+      "acceptanceCriteria": [
+        "Executar todos os quality gates no final da fase e registrar resultado",
+        "Atualizar documento de status da migracao com referencia aos artefatos",
+        "Example: todos os quality gates passam e arquivo de status aponta para os logs",
+        "Negative case: se qualquer gate falhar ou evidencias estiverem incompletas, a fase permanece aberta"
+      ]
+    }
+  ]
+}
