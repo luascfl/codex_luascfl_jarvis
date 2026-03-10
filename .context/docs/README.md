@@ -19,6 +19,7 @@ Super MCP Servers is a comprehensive backend solution designed to facilitate var
 - [Development Workflow](./development-workflow.md)
 - [Testing Strategy](./testing-strategy.md)
 - [Tooling & Productivity Guide](./tooling.md)
+- [Oracle Sync Workflow](./oracle-sync.md)
 
 ## Public API
 
