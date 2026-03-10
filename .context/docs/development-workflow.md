@@ -40,6 +40,13 @@ npm install
 npm run lint && npm run test && npm run build
 ```
 
+
+## Oracle Sync
+
+- Use `oracle_picoclaw` como branch de sincronização para os workspaces do Oracle.
+- O procedimento detalhado fica em [oracle-sync.md](./oracle-sync.md).
+- Os caminhos remotos válidos ficam no servidor Oracle, sob `/home/ubuntu/.openclaw/workspace/` e `/home/ubuntu/.picoclaw/workspace/`.
+
 ## Code Review Expectations
 
 **PR Requirements**:
