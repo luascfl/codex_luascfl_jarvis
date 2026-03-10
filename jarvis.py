@@ -2892,6 +2892,136 @@ def plan_day_apply(
         return f"Erro ao aplicar plano: {e}\n{traceback.format_exc()}"
 
 
+def _truncate_text_for_json_retry(text: str, limit: int = 4000) -> str:
+    s = (text or "").strip()
+    if len(s) <= limit:
+        return s
+    return s[:limit] + "\n...[truncated]"
+
+
+def _find_balanced_json_substring(text: str) -> str:
+    s = text or ""
+    pairs = {'}': '{', ']': '['}
+    start = None
+    stack: list[str] = []
+    in_string = False
+    escape = False
+
+    for idx, ch in enumerate(s):
+        if start is None:
+            if ch in '{[':
+                start = idx
+                stack = [ch]
+            continue
+
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == '\\':
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch in '{[':
+            stack.append(ch)
+            continue
+
+        if ch in '}]':
+            if not stack or stack[-1] != pairs[ch]:
+                raise ValueError('json substring malformado')
+            stack.pop()
+            if not stack:
+                return s[start:idx + 1].strip()
+
+    raise ValueError('não encontrei objeto/array JSON balanceado')
+
+
+def _extract_json_candidate(text: str) -> str:
+    s = (text or '').strip()
+    if not s:
+        raise ValueError('resposta vazia')
+
+    for marker in ('```json', '```JSON', '```Json'):
+        if marker in s:
+            tail = s.split(marker, 1)[1]
+            if '```' in tail:
+                candidate = tail.split('```', 1)[0].strip()
+                if candidate:
+                    return candidate
+
+    if (s.startswith('[') and s.endswith(']')) or (s.startswith('{') and s.endswith('}')):
+        return s
+
+    return _find_balanced_json_substring(s)
+
+
+def _build_json_retry_prompt(base_prompt: str, output_contract: str, previous_output: str, error: str, attempt: int, max_retries: int) -> str:
+    return f"""{base_prompt}
+
+--- CORREÇÃO ESTRUTURAL OBRIGATÓRIA ---
+Tentativa {attempt} de {max_retries}.
+A resposta anterior falhou na validação estrutural.
+
+Erro encontrado:
+{error}
+
+Contrato obrigatório da saída:
+{output_contract}
+
+Resposta anterior inválida:
+{_truncate_text_for_json_retry(previous_output)}
+
+Responda SOMENTE com um bloco ```json contendo JSON válido e compatível com o contrato.
+""".strip()
+
+
+def _invoke_llm_json_with_retry(llm, system_prompt: str, user_prompt: str, validator, output_contract: str, max_retries: int = 3):
+    from langchain_core.messages import SystemMessage, HumanMessage
+
+    attempts = max(1, int(max_retries or 1))
+    errors: list[dict] = []
+    last_output = ''
+    last_error = ''
+
+    for attempt in range(1, attempts + 1):
+        prompt_to_send = user_prompt if attempt == 1 else _build_json_retry_prompt(
+            base_prompt=user_prompt,
+            output_contract=output_contract,
+            previous_output=last_output,
+            error=last_error,
+            attempt=attempt,
+            max_retries=attempts,
+        )
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=prompt_to_send),
+        ])
+        content = getattr(response, 'content', '') or ''
+        last_output = content
+
+        try:
+            candidate = _extract_json_candidate(content)
+            parsed = json.loads(candidate)
+            normalized = validator(parsed)
+            meta = {
+                'attempts_used': attempt,
+                'max_retries': attempts,
+                'errors': errors,
+            }
+            return normalized, content, meta
+        except Exception as exc:
+            last_error = str(exc)
+            errors.append({'attempt': attempt, 'error': last_error})
+            print(f"⚠️ json retry {attempt}/{attempts}: {last_error}", file=sys.stderr)
+
+    raise ValueError(f"json retry esgotado após {attempts} tentativas: {last_error}")
+
+
 @mcp.tool()
 def gtasks_smart_sync_add_reclaim(
     new_tasks_input: str,
@@ -3064,111 +3194,75 @@ Hoje é: {datetime.now().strftime('%A, %d/%m/%Y')}
         )
         content = getattr(response, 'content', '') or ''
 
-        # 4. extração + validação do json (schema + 1 tentativa de reparo)
-        # objetivo: não depender só do prompt para garantir JSON válido.
+        # 4. extração + validação do json com retry estrutural
         tasks_to_insert: list[dict] = []
 
-        def _extract_json_block(text: str) -> str:
-            t = (text or "")
-            if "```json" in t:
-                try:
-                    return t.split("```json", 1)[1].split("```", 1)[0].strip()
-                except Exception:
-                    pass
-            # fallback: tenta localizar um array json no texto
-            m = re.search(r"(\[\s*\{.*\}\s*\])", t, flags=re.S)
-            if m:
-                return m.group(1).strip()
-            raise ValueError("não encontrei bloco ```json``` nem array JSON no texto")
-
         def _validate_tasks_payload(obj) -> list[dict]:
-            from pydantic import BaseModel, Field, ValidationError
-            from typing import Optional, List
-
-            class _Task(BaseModel):
-                title: str = Field(min_length=1)
-                due: Optional[str] = None
-                notes: Optional[str] = None
-
-                # normalização leve
-                def cleaned(self) -> dict:
-                    out = {
-                        "title": (self.title or "").strip(),
-                        "notes": (self.notes or "Jarvis").strip() if (self.notes or "").strip() else "Jarvis",
-                    }
-                    if self.due is not None and str(self.due).strip() != "":
-                        due_s = str(self.due).strip()
-                        # valida ISO 8601 básico esperado
-                        # aceitamos "YYYY-MM-DD" e transformamos em Z
-                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", due_s):
-                            due_s = due_s + "T00:00:00Z"
-                        # exige YYYY-MM-DDT00:00:00Z (Z obrigatório)
-                        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", due_s):
-                            raise ValueError(f"due inválido: {due_s}")
-                        # parse para garantir que é data válida
-                        try:
-                            datetime.strptime(due_s, "%Y-%m-%dT%H:%M:%SZ")
-                        except Exception as e:
-                            raise ValueError(f"due inválido (parse): {due_s} ({e})")
-                        out["due"] = due_s
-                    return out
-
             if not isinstance(obj, list):
-                raise ValueError("json não é array")
+                raise ValueError('json não é array')
             if not obj:
-                raise ValueError("json array vazio")
+                raise ValueError('json array vazio')
 
             cleaned: list[dict] = []
             errors: list[str] = []
             for idx, item in enumerate(obj):
-                try:
-                    t = _Task.model_validate(item)
-                    cleaned.append(t.cleaned())
-                except Exception as e:
-                    errors.append(f"idx={idx}: {e}")
+                if not isinstance(item, dict):
+                    errors.append(f'idx={idx}: item não é objeto')
+                    continue
+
+                title = str(item.get('title', '') or '').strip()
+                if not title:
+                    errors.append(f'idx={idx}: title vazio')
+                    continue
+
+                out = {
+                    'title': title,
+                    'notes': str(item.get('notes', '') or '').strip() or 'Jarvis',
+                }
+
+                due_raw = item.get('due')
+                if due_raw is not None and str(due_raw).strip() != '':
+                    due_s = str(due_raw).strip()
+                    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', due_s):
+                        due_s = due_s + 'T00:00:00Z'
+                    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', due_s):
+                        errors.append(f'idx={idx}: due inválido: {due_s}')
+                        continue
+                    try:
+                        datetime.strptime(due_s, '%Y-%m-%dT%H:%M:%SZ')
+                    except Exception as e:
+                        errors.append(f'idx={idx}: due inválido (parse): {due_s} ({e})')
+                        continue
+                    out['due'] = due_s
+
+                cleaned.append(out)
 
             if errors:
-                raise ValueError("erros de validação: " + " | ".join(errors[:5]))
+                raise ValueError('erros de validação: ' + ' | '.join(errors[:5]))
 
             return cleaned
 
-        def _repair_json_with_llm(bad_text: str, err: str) -> str:
-            # 1 tentativa curta: pedir pro modelo retornar SOMENTE um bloco ```json ...``` válido.
-            repair_prompt = f"""
-Corrija o JSON para ficar válido e compatível com Google Tasks API.
-
-Erros encontrados: {err}
-
-Regras obrigatórias:
-- responda SOMENTE com um bloco ```json contendo um ARRAY JSON válido.
-- cada item deve ter: title (string), due (opcional, ISO 8601 'YYYY-MM-DDT00:00:00Z'), notes (opcional).
-- sem comentários, sem texto fora do bloco.
-
-Texto original:
-{bad_text}
+        output_contract = """
+Responda SOMENTE com um bloco ```json contendo um ARRAY JSON válido.
+Cada item do array deve ser um objeto com:
+- title: string não vazia
+- due: opcional, formato ISO 8601 YYYY-MM-DDT00:00:00Z
+- notes: opcional, string
+Sem comentários.
+Sem texto fora do bloco.
 """.strip()
 
-            rep = llm.invoke(
-                [
-                    SystemMessage(content="você é um validador e corretor de JSON. siga as regras de saída literalmente."),
-                    HumanMessage(content=repair_prompt),
-                ]
-            )
-            return getattr(rep, 'content', '') or ''
-
-        # primeira tentativa: parse e validação
         try:
-            json_block = _extract_json_block(content)
-            tasks_to_insert = _validate_tasks_payload(json.loads(json_block))
+            tasks_to_insert, content, retry_meta = _invoke_llm_json_with_retry(
+                llm=llm,
+                system_prompt=system_prompt,
+                user_prompt=full_prompt,
+                validator=_validate_tasks_payload,
+                output_contract=output_contract,
+                max_retries=int(os.environ.get('JARVIS_MASTER_JSON_RETRIES', '3')),
+            )
         except Exception as parse_err:
-            # tentativa de reparo
-            try:
-                repaired = _repair_json_with_llm(content, str(parse_err))
-                json_block2 = _extract_json_block(repaired)
-                tasks_to_insert = _validate_tasks_payload(json.loads(json_block2))
-                content = content + "\n\n---\n[auto-repair-json] aplicado"  # só pra auditoria
-            except Exception as repair_err:
-                return _fallback_basic(reason="llm_json_parse_failed", detail=f"parse={parse_err} | repair={repair_err}")
+            return _fallback_basic(reason='llm_json_parse_failed', detail=str(parse_err))
 
         if not tasks_to_insert:
             return _fallback_basic(reason="llm_returned_empty_tasks", detail="json validado vazio")
@@ -3205,6 +3299,7 @@ Texto original:
             "inserted": inserted,
             "execution_log": log_exec,
             "llm_text": content,
+            "json_retry_meta": retry_meta,
         }
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
