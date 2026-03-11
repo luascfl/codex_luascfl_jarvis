@@ -15,13 +15,24 @@ Este documento é específico deste projeto. Aqui ficam nomes de branch, host, c
 
 ## Repositório remoto canônico
 
-Use sempre este remote:
+O repositório canônico é:
+
+- `luascfl/codex_luascfl_jarvis`
+
+No ambiente local deste projeto, use este remote:
 
 ```bash
-git remote set-url origin https://github.com/luascfl/codex_luascfl_jarvis.git
+git remote set-url origin git@github-luascfl:luascfl/codex_luascfl_jarvis.git
 ```
 
 Não use o repositório antigo `codex_luascfl.git`.
+
+## Transporte GitHub no ambiente local
+
+- No ambiente local deste projeto, a conexão SSH para GitHub funcionou via `ssh.github.com:443`.
+- A porta `22` para `github.com` estava dando timeout.
+- Por isso, o alias SSH local `github-luascfl` deve apontar para `ssh.github.com` na porta `443`.
+- Esse detalhe é operacional do ambiente local. O importante é manter o mesmo repositório GitHub canônico.
 
 ## Política obrigatória de sincronização
 
@@ -105,7 +116,7 @@ for repo in \
   /home/ubuntu/.picoclaw/workspace/codex_luascfl_jarvis
 do
   cd "$repo"
-  git remote set-url origin https://github.com/luascfl/codex_luascfl_jarvis.git
+  git remote set-url origin git@github.com:luascfl/codex_luascfl_jarvis.git
   git fetch origin
   git switch oracle_picoclaw || git switch -c oracle_picoclaw --track origin/oracle_picoclaw
   git pull --rebase origin oracle_picoclaw
