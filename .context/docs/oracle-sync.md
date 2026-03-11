@@ -2,6 +2,8 @@
 
 Este arquivo documenta o fluxo operacional deste projeto para sincronizar o ambiente local com os workspaces do Oracle usados por OpenClaw e PicoClaw.
 
+Este documento é específico deste projeto. Aqui ficam nomes de branch, host, caminhos remotos e a política concreta de equivalência entre local, GitHub e Oracle.
+
 ## Escopos
 
 - **Contexto de projeto**: fica em `.context/docs/`.
@@ -20,6 +22,14 @@ git remote set-url origin https://github.com/luascfl/codex_luascfl_jarvis.git
 ```
 
 Não use o repositório antigo `codex_luascfl.git`.
+
+## Política obrigatória de sincronização
+
+- Se houver mudança relevante neste projeto, ela deve terminar em commit.
+- O branch local `main` deve convergir com `origin/main`.
+- O branch local `oracle_picoclaw` deve convergir com `origin/oracle_picoclaw`.
+- Os workspaces do Oracle não devem ficar como fonte isolada de drift. Se houve mudança lá, ela precisa virar commit em `oracle_picoclaw`, subir para o GitHub e voltar para o ambiente local.
+- Se a mudança nasceu no local e precisa chegar ao Oracle, não basta copiar arquivo. O caminho correto é commit local, push, atualização de `oracle_picoclaw`, commit, push e pull nos workspaces do Oracle.
 
 ## Fluxo recomendado
 
@@ -54,6 +64,8 @@ cd /tmp/codex_luascfl_jarvis_oracle
 git merge main
 ```
 
+Depois faça commit em `oracle_picoclaw` se o merge ou ajuste gerar mudança nova.
+
 ### 3. Fazer push da branch `oracle_picoclaw`
 
 ```bash
@@ -62,6 +74,20 @@ git push origin oracle_picoclaw
 ```
 
 Se o GitHub pedir autenticação em HTTPS, use PAT no lugar de senha.
+
+### 3.1 Garantir equivalência entre local e remoto
+
+Depois do push:
+
+```bash
+cd /home/lucas/Downloads/codex_luascfl_jarvis
+git fetch origin
+git status -sb
+git rev-parse main origin/main
+git rev-parse oracle_picoclaw origin/oracle_picoclaw
+```
+
+O objetivo é não deixar `main` e `origin/main` divergentes sem decisão explícita, nem `oracle_picoclaw` e `origin/oracle_picoclaw` divergentes sem sincronização.
 
 ### 4. Atualizar o Oracle remoto
 
@@ -85,6 +111,18 @@ do
   git pull --rebase origin oracle_picoclaw
 done
 ```
+
+Se você fez alteração diretamente no Oracle antes de sincronizar:
+
+```bash
+cd /home/ubuntu/.openclaw/workspace/codex_luascfl_jarvis
+git status
+git add -A
+git commit -m "sync: remote oracle change"
+git push origin oracle_picoclaw
+```
+
+Depois puxe `oracle_picoclaw` no ambiente local para manter equivalência.
 
 ### 5. Reiniciar serviços, se necessário
 

@@ -46,6 +46,27 @@ npm run lint && npm run test && npm run build
 - O procedimento detalhado fica em [oracle-sync.md](./oracle-sync.md).
 - Os caminhos remotos válidos ficam no servidor Oracle, sob `/home/ubuntu/.openclaw/workspace/` e `/home/ubuntu/.picoclaw/workspace/`.
 
+## Git commit discipline
+
+- Se o projeto tiver remoto GitHub, mudanças relevantes devem terminar em commit.
+- Neste projeto, o esperado é manter `main` alinhado com `origin/main`.
+- Quando houver impacto no Oracle, o fluxo deve incluir `oracle_picoclaw`, com alinhamento entre `oracle_picoclaw` local, `origin/oracle_picoclaw` e os workspaces do Oracle.
+- Não tratar workspace Oracle como destino solto de alterações. Mudança válida no Oracle também precisa virar commit e voltar para o fluxo Git do projeto.
+
+## Workflow closeout
+
+- Fechamento de ciclo neste projeto não termina só em edição local.
+- Se houve mudança relevante e o projeto tem GitHub, o workflow deve terminar em commit.
+- Se a mudança também impacta Oracle, o workflow deve terminar com commit e push em `oracle_picoclaw`, seguido de atualização dos workspaces remotos.
+- A expectativa é manter equivalência prática entre local e remoto correspondente, em vez de aceitar drift prolongado.
+
+## Project context refresh
+
+- Atualize contexto de projeto pelo workflow, preferencialmente com `jarvis.workflow_stack(action="context_refresh")`.
+- Essa rotina garante `.context/docs`, `.context/docs/planning_gsd`, `.context/prd_ralph`, `.context/workflow`, `AGENTS.md` e `GEMINI.md`.
+- `mcp-sync-clients` não deve ser usado como rotina primária de contexto de projeto.
+- `README.md` permanece opcional. Em repositórios com remoto GitHub, a recomendação é manter README manual, sem geração automática.
+
 ## Code Review Expectations
 
 **PR Requirements**:

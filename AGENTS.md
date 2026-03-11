@@ -232,9 +232,56 @@ Always applied. For files: `**/*`.
 
 Quando o usuário pedir para regenerar ou atualizar o contexto no nível do projeto:
 
+- use `jarvis.workflow_stack` com `action="context_refresh"` como entrada preferencial quando a tool estiver disponível
+- essa rotina do workflow deve garantir no projeto:
+  - existência de `.context/docs`
+  - existência de `.context/docs/planning_gsd`
+  - existência de `.context/prd_ralph`
+  - existência de `.context/workflow`
+  - sincronização de `AGENTS.md`
+  - sincronização de `GEMINI.md`
+- `mcp-sync-clients` fica restrito à configuração global dos clientes, prompts de sistema e fallback rule names
+- se precisar operar direto no AI Coders Context, use esta sequência base:
+  - `context.check`
+  - `context.init` apenas se a estrutura estiver faltando, e sempre em modo docs only
+  - `context.listToFill`
+  - `context.fill` para atualizar em massa `.context/docs`
+  - `context.fillSingle` para corrigir arquivos específicos em `.context/docs`
+  - `context.getMap` e `context.buildSemantic` para enriquecer ou reconstruir contexto estrutural quando houver mudança relevante
 - use o `ai-coders-context` para regenerar e preencher apenas `.context/docs`
 - não gere nem use `.context/agents` e `.context/skills`
-- depois da regeneração dos docs, revise e atualize manualmente os arquivos relevantes de contexto do projeto
+- não use `skill.*`, `sync.importAgents`, `sync.importSkills` nem fluxos equivalentes para contexto de projeto
+- `README.md` é opcional no projeto e não deve ser recriado automaticamente pelo workflow
+- se o repositório tiver remoto no GitHub e `README.md` estiver ausente, trate isso como recomendação manual, não como geração automática
+- depois da regeneração dos docs, revise e atualize manualmente os arquivos de fachada e instrução do projeto quando fizer sentido
 - priorize revisão manual de `README.md`, `AGENTS.md` e `GEMINI.md`
 - trate `README.md`, `AGENTS.md` e `GEMINI.md` como curadoria manual, não como output bruto de scaffold
 - se algum desses arquivos não existir no projeto, atualize apenas os existentes e relevantes
+
+
+
+<!-- aligntrue:rule git_commit_sync_policy.md -->
+
+## Política de commit e sincronização Git
+
+Política global para projetos com GitHub e workspaces em nuvem.
+
+Always applied. For files: `**/*`.
+
+Quando o projeto tiver remoto GitHub:
+
+- toda mudança relevante de código, configuração, contexto ou documentação deve terminar em commit
+- não encerrar ciclo relevante com working tree sujo sem justificativa explícita do usuário
+- a referência esperada é manter o branch local alinhado com o branch remoto correspondente
+
+Quando o projeto também tiver workspace em nuvem ligado ao mesmo repositório:
+
+- use um branch dedicado para a nuvem quando esse fluxo existir
+- não deixe o workspace remoto como fonte isolada de drift não commitado
+- se uma mudança nasceu na nuvem, ela deve virar commit no branch de sincronização e voltar ao fluxo Git principal
+
+Regra de fechamento:
+
+- em projeto com GitHub, fechamento de ciclo pede commit
+- em projeto com GitHub e nuvem, fechamento de ciclo pede commit também no branch de sincronização quando houver impacto no ambiente remoto
+- detalhes como nome do branch de sincronização, host remoto e política de equivalência entre local e nuvem pertencem ao contexto e workflow do projeto atual

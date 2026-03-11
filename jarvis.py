@@ -60,15 +60,6 @@ from datetime import datetime, timezone
 # Base
 BASE_DIR = Path(__file__).resolve().parent
 RALPH_PRD_DEFAULT_REL = ".context/prd_ralph/prd.json"
-PROJECT_CONTEXT_PATHS = [
-    "AGENTS.md",
-    "GEMINI.md",
-    "README.md",
-    ".context/docs",
-    ".context/docs/planning_gsd",
-    ".context/prd_ralph",
-    ".context/workflow",
-]
 VENV_SUPER_PY = BASE_DIR / ".venv-super" / "bin" / "python3"
 if VENV_SUPER_PY.exists():
     current = Path(sys.executable)
@@ -8705,6 +8696,11 @@ def _run_internal_context_update_step() -> dict:
     init_out = Path(tempfile.mkdtemp(prefix=f"ai-context-init-{run_id}-"))
     steps: list[dict] = []
     try:
+        project_entrypoints = _sync_project_context_entrypoints()
+        steps.append({"name": "project_context_entrypoints", **project_entrypoints})
+        if not project_entrypoints.get("ok"):
+            return {"ok": False, "returncode": project_entrypoints.get("returncode", 1), "steps": steps}
+
         ai_context_exec = _resolve_ai_coders_context_exec(install_if_missing=True)
         init_cmd = [*ai_context_exec, "init", ".", "docs", "-o", str(init_out)]
         steps.append({"name": "init", **_run_capture_command(init_cmd, cwd=BASE_DIR, timeout_sec=900)})
@@ -8794,6 +8790,10 @@ def _workflow_unified_status_payload(prd_path: str = RALPH_PRD_DEFAULT_REL) -> d
     quality_script = scripts_dir / "07_quality_gates.sh"
     context_readme_path = BASE_DIR / ".context" / "docs" / "README.md"
     prd_file = (BASE_DIR / prd_path).resolve() if not Path(prd_path).is_absolute() else Path(prd_path)
+    remote_url = _project_origin_remote_url(BASE_DIR)
+    github_remote = "github.com" in remote_url.lower()
+    current_branch = _current_git_branch(BASE_DIR)
+    oracle_sync_configured = (BASE_DIR / ".context" / "docs" / "oracle-sync.md").exists()
 
     story_summary: dict = {"found": False, "total": 0, "next_story": None}
     if prd_file.exists():
@@ -8848,6 +8848,14 @@ def _workflow_unified_status_payload(prd_path: str = RALPH_PRD_DEFAULT_REL) -> d
             },
             "ralph_ready": _is_ralph_ready(),
             "gemini_ready": bool(_resolve_gemini_bin()),
+        },
+        "git": {
+            "remote_origin": remote_url,
+            "github_remote_detected": github_remote,
+            "current_branch": current_branch,
+            "closeout_requires_commit": github_remote,
+            "cloud_sync_branch": "oracle_picoclaw" if oracle_sync_configured else "",
+            "closeout_requires_cloud_sync_commit": github_remote and oracle_sync_configured,
         },
         "context_docs_readme_exists": context_readme_path.exists(),
         "prd": story_summary,
@@ -10223,6 +10231,113 @@ def _test_reclaim_ui_cli(verbose: bool = False) -> int:
     _, failed = _run_reclaim_ui_selftests(verbose=verbose)
     return 0 if failed == 0 else 1
 
+
+def _project_origin_remote_url(repo_dir: Path | None = None) -> str:
+    repo = repo_dir or BASE_DIR
+    try:
+        proc = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except Exception:
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return (proc.stdout or "").strip()
+
+
+def _current_git_branch(repo_dir: Path | None = None) -> str:
+    repo = repo_dir or BASE_DIR
+    try:
+        proc = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except Exception:
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return (proc.stdout or "").strip()
+
+
+def _sync_project_context_entrypoints() -> dict:
+    source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
+    source_gemini_rules = BASE_DIR / "global_rule_sync" / "GEMINI.md"
+    context_dirs = [
+        BASE_DIR / ".context" / "docs",
+        BASE_DIR / ".context" / "docs" / "planning_gsd",
+        BASE_DIR / ".context" / "prd_ralph",
+        BASE_DIR / ".context" / "workflow",
+    ]
+
+    missing_sources = [str(p.relative_to(BASE_DIR)) for p in [source_rules, source_gemini_rules] if not p.exists()]
+    if missing_sources:
+        return {
+            "ok": False,
+            "returncode": 1,
+            "error": "project_context_rule_sources_missing",
+            "missing_sources": missing_sources,
+        }
+
+    ensured_dirs: list[str] = []
+    for d in context_dirs:
+        d.mkdir(parents=True, exist_ok=True)
+        try:
+            ensured_dirs.append(str(d.relative_to(BASE_DIR)))
+        except Exception:
+            ensured_dirs.append(str(d))
+
+    synced_files: list[str] = []
+    try:
+        (BASE_DIR / "AGENTS.md").write_text(source_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+        synced_files.append("AGENTS.md")
+        (BASE_DIR / "GEMINI.md").write_text(source_gemini_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+        synced_files.append("GEMINI.md")
+    except Exception as exc:
+        return {
+            "ok": False,
+            "returncode": 1,
+            "error": "project_context_entrypoint_sync_failed",
+            "detail": str(exc),
+            "ensured_dirs": ensured_dirs,
+            "synced_files": synced_files,
+        }
+
+    remote_url = _project_origin_remote_url(BASE_DIR)
+    github_remote = "github.com" in remote_url.lower()
+    readme_path = BASE_DIR / "README.md"
+    readme_exists = readme_path.exists() or readme_path.is_symlink()
+    readme_recommended = github_remote and not readme_exists
+
+    readme_status = {
+        "exists": readme_exists,
+        "github_remote_detected": github_remote,
+        "remote_url": remote_url,
+        "recommended": readme_recommended,
+        "action": "recommended_only" if readme_recommended else ("present" if readme_exists else "optional_missing"),
+        "note": (
+            "README.md permanece opcional no projeto. Como há remoto GitHub, é recomendado manter um README manual."
+            if readme_recommended
+            else "README.md não foi recriado automaticamente pelo workflow."
+        ),
+    }
+
+    return {
+        "ok": True,
+        "returncode": 0,
+        "ensured_dirs": ensured_dirs,
+        "synced_files": synced_files,
+        "docs_only": True,
+        "readme": readme_status,
+    }
+
+
 def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool = False) -> int:
     if quiet:
         import contextlib
@@ -10230,6 +10345,9 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
 
         with contextlib.redirect_stdout(io.StringIO()):
             return _sync_mcp_core(target_home=target_home, include_sudo=include_sudo, quiet=False)
+
+    # Importante: contexto de projeto fica no workflow (`workflow_stack(action="context_refresh")`).
+    # Aqui sincronizamos apenas clientes, prompts e configuração global dos agentes CLI.
 
     source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
     if not source_rules.exists():
@@ -10660,58 +10778,6 @@ startup_timeout_sec = 300.0
         for link in links:
             _ensure_symlink(link, source_rules, label="AGENTS")
 
-    def _sync_project_context_entrypoints() -> None:
-        source_gemini_rules = BASE_DIR / "global_rule_sync" / "GEMINI.md"
-
-        context_dirs = [
-            BASE_DIR / ".context" / "docs",
-            BASE_DIR / ".context" / "docs" / "planning_gsd",
-            BASE_DIR / ".context" / "prd_ralph",
-            BASE_DIR / ".context" / "workflow",
-        ]
-        for d in context_dirs:
-            d.mkdir(parents=True, exist_ok=True)
-
-        if source_rules.exists():
-            _write_or_update(BASE_DIR / "AGENTS.md", source_rules.read_text(encoding="utf-8", errors="ignore"))
-            print(f"✅ Projeto AGENTS.md sincronizado em {BASE_DIR / 'AGENTS.md'}")
-
-        if source_gemini_rules.exists():
-            _write_or_update(BASE_DIR / "GEMINI.md", source_gemini_rules.read_text(encoding="utf-8", errors="ignore"))
-            print(f"✅ Projeto GEMINI.md sincronizado em {BASE_DIR / 'GEMINI.md'}")
-
-        readme_path = BASE_DIR / "README.md"
-        readme_marker = "<!-- generated-by-jarvis-project-context -->"
-        readme_body = (
-            f"{readme_marker}\n"
-            "# Contexto do projeto\n\n"
-            "Entradas de contexto no nível do projeto (sempre relativas ao cwd):\n\n"
-            + "\n".join([f"- `{path}`" for path in PROJECT_CONTEXT_PATHS])
-            + "\n\n"
-            "Observação: `global_rule_sync/` é fonte de sincronização de regras globais para os clientes, não contexto de projeto.\n"
-        )
-
-        must_write_readme = False
-        if readme_path.is_symlink():
-            try:
-                readme_path.unlink(missing_ok=True)
-            except Exception:
-                pass
-            must_write_readme = True
-        elif not readme_path.exists():
-            must_write_readme = True
-        else:
-            try:
-                existing = readme_path.read_text(encoding="utf-8", errors="ignore")
-                if readme_marker in existing:
-                    must_write_readme = True
-            except Exception:
-                must_write_readme = True
-
-        if must_write_readme:
-            _write_or_update(readme_path, readme_body)
-            print(f"✅ Projeto README.md sincronizado em {readme_path}")
-
     def _sync_omp_context(home: Path) -> None:
         omp_agent_dir = home / ".omp" / "agent"
         omp_rules_dir = omp_agent_dir / "rules"
@@ -10776,7 +10842,6 @@ startup_timeout_sec = 300.0
         _write_or_update(gemini_system_prompt, header + body)
         print(f"✅ System prompt Gemini gerado em {gemini_system_prompt}")
 
-    _sync_project_context_entrypoints()
 
     for h in homes:
         _update_gemini_settings(h)
