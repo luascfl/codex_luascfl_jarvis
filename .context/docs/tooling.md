@@ -45,6 +45,21 @@ npm run dev           # Starts the development server with hot reload
 npm run test:watch    # Runs tests in watch mode for ongoing feedback
 ```
 
+## Jarvis hardening for AI Coders Context
+
+The project hardens the user level global install of `@ai-coders/context` through `jarvis.py`.
+
+- Jarvis forces docs only behavior for project context regeneration.
+- Jarvis blocks regeneration, import, export, or fill flows that recreate `.context/agents` and `.context/skills`.
+- The hardening is applied to the global npm package used by MCP and CLI flows, not only to project local wrappers.
+- Default policy is enabled through `JARVIS_AI_CONTEXT_HARDEN=true`.
+
+Practical effect:
+
+- `context.init` is coerced to docs only.
+- MCP `skill` write actions are blocked.
+- MCP and CLI sync flows that would recreate agents or skills are blocked or forced to skip them.
+
 ## IDE / Editor Setup
 
 **VS Code Recommended Extensions**:

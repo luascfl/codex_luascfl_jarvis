@@ -186,3 +186,55 @@ Para este projeto:
 ```bash
 ln -s /home/lucas/Downloads/codex_luascfl/AGENTS.md /home/lucas/Downloads/codex_luascfl/super_mcp_servers/AGENTS.md
 ```
+
+
+<!-- aligntrue:rule openclaw_troubleshooting.md -->
+
+## OpenClaw Troubleshooting
+
+Runbook objetivo para diagnosticar travamentos do OpenClaw com evidências antes de reiniciar.
+
+Always applied. For files: `**/*`.
+
+## Fluxo obrigatório de diagnóstico
+
+1. Rodar status remoto:
+   - `./.venv-super/bin/python3 jarvis.py openclaw-remote status`
+2. Coletar logs do serviço:
+   - `systemctl --user status openclaw-gateway --no-pager -l`
+   - `journalctl --user -u openclaw-gateway -n 300 --no-pager`
+   - `journalctl --user -u openclaw-gateway --since "30 min ago" --no-pager | egrep -i "error|failed|timeout|lock|transcr|429|quota|oom"`
+3. Verificar processos e recursos:
+   - `pgrep -af "openclaw|transcribe"`
+   - `free -h`
+   - `df -h`
+4. Só depois considerar restart.
+
+## Cenário específico: transcrição em loop
+
+Se houver indício de lock ou loop de transcrição, executar:
+
+`./.venv-super/bin/python3 jarvis.py openclaw-remote fix-transcricao`
+
+## Regra de evidência
+
+Nunca declarar causa raiz sem log, status e timestamp.
+Sempre registrar o comando usado e o trecho do log que sustenta o diagnóstico.
+
+
+<!-- aligntrue:rule project_context_refresh.md -->
+
+## Regeneração de contexto de projeto
+
+Regra global para pedidos de regeneração ou atualização do contexto no nível do projeto.
+
+Always applied. For files: `**/*`.
+
+Quando o usuário pedir para regenerar ou atualizar o contexto no nível do projeto:
+
+- use o `ai-coders-context` para regenerar e preencher apenas `.context/docs`
+- não gere nem use `.context/agents` e `.context/skills`
+- depois da regeneração dos docs, revise e atualize manualmente os arquivos relevantes de contexto do projeto
+- priorize revisão manual de `README.md`, `AGENTS.md` e `GEMINI.md`
+- trate `README.md`, `AGENTS.md` e `GEMINI.md` como curadoria manual, não como output bruto de scaffold
+- se algum desses arquivos não existir no projeto, atualize apenas os existentes e relevantes

@@ -50,3 +50,14 @@ chroma_db/
 GITHUB_TOKEN.txt
 token.json
 .env.secrets
+
+# runtime artifacts
+.jarvis-ready
+.ralph/
+.super_server.pid
+mcp_status.txt
+server.log
+start_output.log
+screenshots/
+mermaid/*.png
+google_auth_httplib2-*.dist-info/
