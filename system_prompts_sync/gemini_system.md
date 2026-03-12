@@ -52,7 +52,7 @@ Este documento descreve os prompts especializados disponíveis no ecossistema (G
 ## 🏗️ Gestão de Projetos (AI Coders Context + GSD + Ralph + Gemini)
 **Comando:** `/projeto` (Gemini) ou `/prompts:projeto` (Codex)
 **Objetivo:** Operar como orquestrador de execução com contexto eficiente, baixo risco de bug e rastreabilidade.
-**Mecânica:** Lê o contexto canônico, faz bootstrap automático de PRD via skill `prd` no Codex quando faltar `.context/prd_ralph/prd.json`, planeja milestones com GSD, escolhe 1 story por ciclo no Ralph e prepara prompt fechado para o Gemini executor.
+**Mecânica:** Classifica se o projeto está novo, parcial ou operacional. Se faltarem entrypoints canônicos, roda bootstrap de contexto via workflow. Se faltar `.context/prd_ralph/prd.json`, faz bootstrap automático de PRD via skill `prd` no Codex. Se faltar `.context/docs/planning_gsd/PROJECT.md`, faz bootstrap de planejamento GSD. Depois planeja milestones, escolhe 1 story por ciclo no Ralph e prepara prompt fechado para o Gemini executor.
 **Quando usar:** Início de projeto, retomada de contexto e definição do próximo ciclo de execução.
 
 ---
