@@ -7603,6 +7603,62 @@ def _resolve_ai_coders_context_package_root() -> Path | None:
     return None
 
 
+def _resolve_aligntrue_package_root() -> Path | None:
+    npm_bin = shutil.which("npm")
+    if not npm_bin:
+        return None
+    probe = _run_capture_command([npm_bin, "root", "-g"], cwd=BASE_DIR, timeout_sec=20)
+    if not probe.get("ok"):
+        return None
+    root_out = (probe.get("stdout_tail") or "").strip()
+    if not root_out:
+        return None
+    root = Path(root_out)
+    candidate = root / "aligntrue"
+    if candidate.exists() and (candidate / "package.json").exists():
+        return candidate
+    return None
+
+
+def _resolve_aligntrue_global_cli() -> dict:
+    pkg_root = _resolve_aligntrue_package_root()
+    if not pkg_root:
+        return {
+            "ok": False,
+            "error": "aligntrue_package_root_not_found",
+            "hint": "Instale com: npm install -g aligntrue",
+        }
+
+    candidates: list[Path] = []
+    resolved_global_bin = _resolve_npm_global_bin_dir()
+    if resolved_global_bin:
+        candidates.append(resolved_global_bin / "aligntrue")
+        candidates.append(resolved_global_bin / "aln")
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return {
+                "ok": True,
+                "command": str(candidate),
+                "package_root": str(pkg_root),
+            }
+
+    which_aligntrue = shutil.which("aligntrue")
+    if which_aligntrue:
+        return {
+            "ok": True,
+            "command": which_aligntrue,
+            "package_root": str(pkg_root),
+        }
+
+    return {
+        "ok": False,
+        "error": "aligntrue_cli_not_found",
+        "package_root": str(pkg_root),
+        "hint": "Instale com: npm install -g aligntrue",
+    }
+
+
 def _resolve_ai_coders_context_global_cli() -> dict:
     pkg_root = _resolve_ai_coders_context_package_root()
     if not pkg_root:
@@ -7750,6 +7806,166 @@ def _patch_text_file_with_replacements(
         "path": str(path),
         "changed": changed,
         "applied": applied,
+    }
+
+
+def _harden_aligntrue_global_install(apply_if_needed: bool = True) -> dict:
+    if not _env_is_true("JARVIS_ALIGNTRUE_HARDEN", True):
+        return {
+            "ok": True,
+            "skipped": True,
+            "reason": "disabled_by_env",
+        }
+
+    pkg_root = _resolve_aligntrue_package_root()
+    if not pkg_root:
+        return {
+            "ok": False,
+            "error": "aligntrue_package_root_not_found",
+            "hint": "Instale com: npm install -g aligntrue",
+        }
+
+    patch_specs: list[tuple[str, list[tuple[str, str]]]] = [
+        (
+            "node_modules/@aligntrue/core/src/sync/exporter-executor.ts",
+            [
+                (
+                    "        outputDir: process.cwd(),",
+                    "        outputDir: config.export?.output_dir || config.export?.outputDir || process.cwd(),",
+                ),
+            ],
+        ),
+        (
+            "node_modules/@aligntrue/core/dist/sync/exporter-executor.js",
+            [
+                (
+                    "                outputDir: process.cwd(),",
+                    "                outputDir: (((config || {}).export || {}).output_dir || ((config || {}).export || {}).outputDir || process.cwd()),",
+                ),
+            ],
+        ),
+        (
+            "node_modules/@aligntrue/core/src/config/types.ts",
+            [
+                (
+                    "export interface ExportConfig {\n  mode_hints?: {\n",
+                    "export interface ExportConfig {\n  output_dir?: string;\n  outputDir?: string;\n  mode_hints?: {\n",
+                ),
+            ],
+        ),
+    ]
+
+    results: list[dict] = []
+    changed_files: list[str] = []
+    for rel_path, replacements in patch_specs:
+        target = pkg_root / rel_path
+        if not apply_if_needed:
+            results.append({"ok": True, "path": str(target), "changed": False, "skipped": True})
+            continue
+        patched = _patch_text_file_with_replacements(target, replacements)
+        results.append(patched)
+        if not patched.get("ok"):
+            return {
+                "ok": False,
+                "error": "aligntrue_hardening_failed",
+                "package_root": str(pkg_root),
+                "failed_patch": patched,
+                "results": results,
+            }
+        if patched.get("changed"):
+            changed_files.append(str(target))
+
+    return {
+        "ok": True,
+        "package_root": str(pkg_root),
+        "changed": bool(changed_files),
+        "changed_files": changed_files,
+        "results": results,
+    }
+
+
+def _ensure_aligntrue_global_installed(install_if_missing: bool = True) -> dict:
+    pkg = "aligntrue"
+    desired_version = (os.environ.get("JARVIS_ALIGNTRUE_VERSION", "0.9.3") or "").strip()
+    pkg_spec = f"{pkg}@{desired_version}" if desired_version else pkg
+    current_version = _npm_global_version(pkg)
+
+    if current_version:
+        cli = _resolve_aligntrue_global_cli()
+        if not cli.get("ok"):
+            return {
+                "ok": False,
+                "installed": True,
+                "version_stdout": current_version,
+                "error": "aligntrue_cli_not_found",
+                "cli": cli,
+            }
+        hardening = _harden_aligntrue_global_install(apply_if_needed=True)
+        if not hardening.get("ok"):
+            return {
+                "ok": False,
+                "installed": True,
+                "version_stdout": current_version,
+                "error": "aligntrue_hardening_failed",
+                "cli": cli,
+                "hardening": hardening,
+            }
+        return {
+            "ok": True,
+            "installed": True,
+            "version_stdout": current_version,
+            "source": "npm_global",
+            "command": cli.get("command", ""),
+            "hardening": hardening,
+        }
+
+    if not install_if_missing:
+        return {
+            "ok": False,
+            "installed": False,
+            "error": "aligntrue_not_found",
+            "hint": "Instale com: npm install -g aligntrue",
+        }
+
+    installed_ok = _npm_ensure_global(pkg_spec)
+    after_version = _npm_global_version(pkg) or ""
+    if not installed_ok:
+        return {
+            "ok": False,
+            "installed": False,
+            "error": "aligntrue_install_failed",
+        }
+
+    cli = _resolve_aligntrue_global_cli()
+    if not cli.get("ok"):
+        return {
+            "ok": False,
+            "installed": True,
+            "installed_now": True,
+            "version_stdout": after_version,
+            "error": "aligntrue_cli_not_found",
+            "cli": cli,
+        }
+
+    hardening = _harden_aligntrue_global_install(apply_if_needed=True)
+    if not hardening.get("ok"):
+        return {
+            "ok": False,
+            "installed": True,
+            "installed_now": True,
+            "version_stdout": after_version,
+            "error": "aligntrue_hardening_failed",
+            "cli": cli,
+            "hardening": hardening,
+        }
+
+    return {
+        "ok": True,
+        "installed": True,
+        "installed_now": True,
+        "version_stdout": after_version,
+        "command": cli.get("command", ""),
+        "hardening": hardening,
     }
 
 
@@ -9246,6 +9462,30 @@ def _mcp_sync_clients_cli(
     should_bootstrap_tooling = not (target_home or "").strip()
 
     if should_bootstrap_tooling:
+        aligntrue_check = _ensure_aligntrue_global_installed(install_if_missing=True)
+        aligntrue_ok = bool(aligntrue_check.get("ok"))
+        steps.append(
+            {
+                "name": "aligntrue-global",
+                "ok": aligntrue_ok,
+                "rc": 0 if aligntrue_ok else 1,
+                "detail": aligntrue_check,
+                "critical": True,
+            }
+        )
+        if not aligntrue_ok:
+            print("❌ AlignTrue global ausente ou patch de output_dir falhou.", file=sys.stderr)
+            failures += 1
+        else:
+            version = str(aligntrue_check.get("version_stdout", "")).strip()
+            command = str(aligntrue_check.get("command", "")).strip()
+            if version:
+                print(f"✅ AlignTrue global pronto (versão: {version}).")
+            else:
+                print("✅ AlignTrue global pronto.")
+            if command:
+                print(f"   ↳ comando global: {command}")
+
         ai_context_check = _ensure_ai_coders_context_global_installed(install_if_missing=True)
         ai_context_ok = bool(ai_context_check.get("ok"))
         steps.append(

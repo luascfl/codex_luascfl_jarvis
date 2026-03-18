@@ -76,6 +76,45 @@ O sistema AGCAO sincroniza prompts automaticamente.
 3.  **Sincronize:** Rode `python3 jarvis.py mcp-sync-clients`.
 
 
+<!-- aligntrue:rule project_context_refresh.md -->
+
+## Project Context Refresh
+
+Regra global para regeneracao de contexto de projeto
+
+Always applied. For files: `**/*`.
+
+# Regeneracao de contexto de projeto
+
+Quando o usuario pedir para regenerar ou atualizar o contexto no nivel do projeto:
+
+- use `jarvis.workflow_stack` com `action="context_refresh"` como entrada preferencial quando a tool estiver disponivel
+- essa rotina do workflow deve garantir no projeto:
+  - existencia de `.context/docs`
+  - existencia de `.context/docs/planning_gsd`
+  - existencia de `.context/prd_ralph`
+  - existencia de `.context/workflow`
+  - sincronizacao de `AGENTS.md`
+  - sincronizacao de `GEMINI.md`
+- `mcp-sync-clients` fica restrito a configuracao global dos clientes, prompts de sistema e fallback rule names
+- se precisar operar direto no AI Coders Context, use esta sequencia base:
+  - `context.check`
+  - `context.init` apenas se a estrutura estiver faltando, e sempre em modo docs only
+  - `context.listToFill`
+  - `context.fill` para atualizar em massa `.context/docs`
+  - `context.fillSingle` para corrigir arquivos especificos em `.context/docs`
+  - `context.getMap` e `context.buildSemantic` para enriquecer ou reconstruir contexto estrutural quando houver mudanca relevante
+- use o `ai-coders-context` para regenerar e preencher apenas `.context/docs`
+- nao gere nem use `.context/agents` e `.context/skills`
+- nao use `skill.*`, `sync.importAgents`, `sync.importSkills` nem fluxos equivalentes para contexto de projeto
+- `README.md` e opcional no projeto e nao deve ser recriado automaticamente pelo workflow
+- se o repositorio tiver remoto no GitHub e `README.md` estiver ausente, trate isso como recomendacao manual, nao como geracao automatica
+- depois da regeneracao dos docs, revise e atualize manualmente os arquivos de fachada e instrucao do projeto quando fizer sentido
+- priorize revisao manual de `README.md`, `AGENTS.md` e `GEMINI.md`
+- trate `README.md`, `AGENTS.md` e `GEMINI.md` como curadoria manual, nao como output bruto de scaffold
+- se algum desses arquivos nao existir no projeto, atualize apenas os existentes e relevantes
+
+
 <!-- aligntrue:rule mcp_strategy.md -->
 
 ## MCP Strategy
@@ -126,6 +165,85 @@ Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas 
 3. Fechamento de ciclo obrigatório: evidências técnicas e atualização de contexto.
 
 
+<!-- aligntrue:rule global.md -->
+
+## Global
+
+Regras globais para todos os projetos
+
+Always applied. For files: `**/*`.
+
+# Regras Globais
+
+Estas regras se aplicam a todos os arquivos em todos os projetos, garantindo consistência independente do repositório.
+
+
+<!-- aligntrue:rule git_commit_sync_policy.md -->
+
+## Git Commit Sync Policy
+
+Politica de commit e sincronizacao Git para projetos com GitHub e nuvem
+
+Always applied. For files: `**/*`.
+
+# Politica de commit e sincronizacao Git
+
+Quando o projeto tiver remoto GitHub:
+
+- toda mudanca relevante de codigo, configuracao, contexto ou documentacao deve terminar em commit
+- nao encerrar ciclo relevante com working tree sujo sem justificativa explicita do usuario
+- a referencia esperada e manter o branch local alinhado com o branch remoto correspondente
+
+Quando o projeto tambem tiver workspace em nuvem ligado ao mesmo repositorio:
+
+- use um branch dedicado para a nuvem quando esse fluxo existir
+- nao deixe o workspace remoto como fonte isolada de drift nao commitado
+- se uma mudanca nasceu na nuvem, ela deve virar commit no branch de sincronizacao e voltar ao fluxo Git principal
+
+Regra de fechamento:
+
+- em projeto com GitHub, fechamento de ciclo pede commit
+- em projeto com GitHub e nuvem, fechamento de ciclo pede commit tambem no branch de sincronizacao quando houver impacto no ambiente remoto
+- detalhes como nome do branch de sincronizacao, host remoto e politica de equivalencia entre local e nuvem pertencem ao contexto e workflow do projeto atual
+
+
+<!-- aligntrue:rule context_scope_semantics.md -->
+
+## Context Scope Semantics
+
+Semantica de escopo entre global, system prompt e contexto de projeto
+
+Always applied. For files: `**/*`.
+
+# Semantica de escopo de contexto
+
+Quando o usuario disser "adicione isso ao global" ou "ao system prompt":
+
+- trate como camada global
+- use `.aligntrue/rules/` como fonte canonica
+- reflita a regra em `system_prompts_sync/` e nos artefatos globais derivados
+- nao registre isso em `.context/docs/` do projeto, exceto se o usuario pedir explicitamente documentacao local
+
+Quando o usuario disser "adicione isso ao contexto do nivel do projeto":
+
+- trate como contexto do cwd atual
+- use `.context/docs/`, `AGENTS.md`, `GEMINI.md`, workflow e arquivos do projeto conforme necessario
+- nao promova para a camada global sem pedido explicito
+
+Quando um pedido misturar politica geral e detalhe especifico do projeto:
+
+- separe em camadas
+- coloque a politica geral no global
+- coloque o detalhe operacional no contexto do projeto
+- coloque comportamento executavel no workflow ou no codigo do projeto quando necessario
+
+Quando houver alteracao na camada global:
+
+- rode `aligntrue sync` antes de `python3 jarvis.py mcp-sync-clients`
+- use `aligntrue sync` para compilar a nova regra global
+- use `mcp-sync-clients` apenas para distribuir os artefatos globais ja compilados aos clientes
+
+
 <!-- aligntrue:rule context_governance.md -->
 
 ## Context Governance
@@ -158,9 +276,10 @@ Se você encontrar um `AGENTS.md` local, leia-o com prioridade máxima. Ele cont
 
 ## 4. Fluxo de Atualização (Sync)
 Para aplicar novas regras ou propagar mudanças:
-1. Edite os arquivos em `.aligntrue/rules/`.
-2. Rode `python3 jarvis.py mcp-sync-clients` na raiz.
-3. O script cuida da compilação e distribuição. Não rode `aligntrue` manualmente.
+1. Edite os arquivos em `.aligntrue/rules/` quando a mudança for no nível global.
+2. Se houve alteração no nível global, rode `aligntrue sync` antes de qualquer outra sincronização, para compilar a nova regra global e atualizar os artefatos gerados.
+3. Depois rode `python3 jarvis.py mcp-sync-clients` na raiz, para distribuir os artefatos já compilados aos clientes.
+4. `mcp-sync-clients` não substitui `aligntrue sync` quando a fonte canônica global foi alterada.
 
 
 <!-- aligntrue:rule codex_header_symlink.md -->
@@ -188,100 +307,147 @@ ln -s /home/lucas/Downloads/codex_luascfl/AGENTS.md /home/lucas/Downloads/codex_
 ```
 
 
-<!-- aligntrue:rule openclaw_troubleshooting.md -->
+<!-- aligntrue:rule AGENTS.md -->
 
-## OpenClaw Troubleshooting
+## Agents
 
-Runbook objetivo para diagnosticar travamentos do OpenClaw com evidências antes de reiniciar.
+Always applied.
 
-Always applied. For files: `**/*`.
+# AGCAO - Ambiente de Configuração de Agentes (Codex, Gemini, Aider, Opencode)
 
-## Fluxo obrigatório de diagnóstico
+Este repositório centraliza as configurações, regras e instruções de estilo para múltiplos assistentes de programação de IA.
+Este arquivo (`AGENTS.md`) atua como a **Fonte da Verdade** e o **README** do projeto.
 
-1. Rodar status remoto:
-   - `./.venv-super/bin/python3 jarvis.py openclaw-remote status`
-2. Coletar logs do serviço:
-   - `systemctl --user status openclaw-gateway --no-pager -l`
-   - `journalctl --user -u openclaw-gateway -n 300 --no-pager`
-   - `journalctl --user -u openclaw-gateway --since "30 min ago" --no-pager | egrep -i "error|failed|timeout|lock|transcr|429|quota|oom"`
-3. Verificar processos e recursos:
-   - `pgrep -af "openclaw|transcribe"`
-   - `free -h`
-   - `df -h`
-4. Só depois considerar restart.
+---
 
-## Cenário específico: transcrição em loop
+# 1. Visão geral e definições
+visão_geral:
+  objetivo: "Manter a consistência entre instruções personalizadas do sistema do Codex, Gemini, Aider e Opencode utilizando de symlinks."
+  locais_agcao:
+    - "AGENTS.md (~/.codex/AGENTS.md)"
+    - "GEMINI.md (~/.gemini/GEMINI.md)"
+    - "Agent rules (~/Documentos/Agent/Rules/AGENTS.md)"
+    - "Aider conventions (.aider.conf.yml >> ~/Documentos/CONVENTIONS.md)"
+conteúdo fixo para ~/.aider.conf.yml:
+```yaml
+read: ~/Documents/CONVENTIONS.md
+```
+    - "Opencode AGENTS.md (~/.config/opencode/AGENTS.md)"
 
-Se houver indício de lock ou loop de transcrição, executar:
+Todos devem apontar para o local atual do script e fazer symlink para AGENTS.md na pasta do local atual do script.
+ex: ~/Downloads/codex_luascfl/copy_agcao_files.sh
+arquivos symlink dos locais AGCAO devem apontar para: ~/Downloads/codex_luascfl/AGENTS.md
 
-`./.venv-super/bin/python3 jarvis.py openclaw-remote fix-transcricao`
+# 2. Instruções personalizadas de estilo
+estilo_escrita:
+  - "Escreva de forma fluida e articulada, conectando ideias logicamente, mas utilize um registro de linguagem natural e acessível, evitando estritamente o academicismo excessivo, jargões complexos ou orações labirínticas que prejudiquem a leitura."
+  - "Busque um equilíbrio rítmico: combine frases articuladas com pausas claras e vocabulário cotidiano, garantindo que a sofisticação esteja na clareza do raciocínio e não na dificuldade das palavras, tornando o texto envolvente sem ser denso ou cansativo."
+  - "Evite estruturas de frase que criem uma expectativa para depois negá-la ou expandi-la. Em vez disso, use afirmações diretas e positivas."
+  - "Sinta-se à vontade para ser criativo na construção das frases e nos estilos de expressão."
 
-## Regra de evidência
+formatação:
+  - "Não use maiúscula para fins estilísticos, use sentence case sempre que possível."
+  - "Não use emojis."
+  - "Não use em dashes, travessões ou hífens no lugar de vírgula."
 
-Nunca declarar causa raiz sem log, status e timestamp.
-Sempre registrar o comando usado e o trecho do log que sustenta o diagnóstico.
+# 3. Perfil do usuário
+perfil_usuário:
+  nome: "Lucas Camilo Carvalho"
+  localização: "Salvador, Bahia"
+  idiomas:
+    - "Português (Primário)"
+    - "Inglês (Secundário)"
 
-
-<!-- aligntrue:rule project_context_refresh.md -->
-
-## Regeneração de contexto de projeto
-
-Regra global para pedidos de regeneração ou atualização do contexto no nível do projeto.
-
-Always applied. For files: `**/*`.
-
-Quando o usuário pedir para regenerar ou atualizar o contexto no nível do projeto:
-
-- use `jarvis.workflow_stack` com `action="context_refresh"` como entrada preferencial quando a tool estiver disponível
-- essa rotina do workflow deve garantir no projeto:
-  - existência de `.context/docs`
-  - existência de `.context/docs/planning_gsd`
-  - existência de `.context/prd_ralph`
-  - existência de `.context/workflow`
-  - sincronização de `AGENTS.md`
-  - sincronização de `GEMINI.md`
-- `mcp-sync-clients` fica restrito à configuração global dos clientes, prompts de sistema e fallback rule names
-- se precisar operar direto no AI Coders Context, use esta sequência base:
-  - `context.check`
-  - `context.init` apenas se a estrutura estiver faltando, e sempre em modo docs only
-  - `context.listToFill`
-  - `context.fill` para atualizar em massa `.context/docs`
-  - `context.fillSingle` para corrigir arquivos específicos em `.context/docs`
-  - `context.getMap` e `context.buildSemantic` para enriquecer ou reconstruir contexto estrutural quando houver mudança relevante
-- use o `ai-coders-context` para regenerar e preencher apenas `.context/docs`
-- não gere nem use `.context/agents` e `.context/skills`
-- não use `skill.*`, `sync.importAgents`, `sync.importSkills` nem fluxos equivalentes para contexto de projeto
-- `README.md` é opcional no projeto e não deve ser recriado automaticamente pelo workflow
-- se o repositório tiver remoto no GitHub e `README.md` estiver ausente, trate isso como recomendação manual, não como geração automática
-- depois da regeneração dos docs, revise e atualize manualmente os arquivos de fachada e instrução do projeto quando fizer sentido
-- priorize revisão manual de `README.md`, `AGENTS.md` e `GEMINI.md`
-- trate `README.md`, `AGENTS.md` e `GEMINI.md` como curadoria manual, não como output bruto de scaffold
-- se algum desses arquivos não existir no projeto, atualize apenas os existentes e relevantes
+# 4. Protocolos de leitura, execução e configurações do ambiente
+ambiente:
+  sistema_operacional: "Lubuntu"
+  caminho_base_gdrive: "/run/user/1000/gvfs/dav:host=app.koofr.net,ssl=true,user=lucascamr107%40gmail.com,prefix=%2Fdav/Google Drive/"
+  diretório_gemini_gems: "/run/user/1000/gvfs/dav:host=app.koofr.net,ssl=true,user=lucascamr107%40gmail.com,prefix=%2Fdav/Google Drive/Gemini Gems/"
+ 
+protocolos:
+  leitura_gems:
+    comando: 'cat "Nome do Arquivo.gem"'
+    observação: "Use sempre aspas duplas para caminhos com espaços. Arquivos podem iniciar com emojis (ex.: ❗)."
+  criação_gems:
+    padrão_nome: "❗ Estrutura {Nome do prompt}"
+    extensões: [".txt", ".json", ".md"]
+    observação: "Crie arquivos com extensões explícitas para conteúdo legível."
 
 
+# 5. Instruções para adicionar MCP e extensões
 
-<!-- aligntrue:rule git_commit_sync_policy.md -->
+codex:
 
-## Política de commit e sincronização Git
+Edite `~/.codex/config.toml` e adicione a tabela `[mcp_servers]` seguindo a sintaxe TOML.
 
-Política global para projetos com GitHub e workspaces em nuvem.
+exemplo_codex_mcp:
+```toml
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/home/lucas"]
+```
 
-Always applied. For files: `**/*`.
+gemini:
+Para ferramentas locais específicas que não estão empacotadas como extensões, edite diretamente os arquivos de configuração (preferencialmente ~/.gemini/settings.json).
+Para gerenciar ferramentas MCP via arquivos JSON, edite as configurações do provedor (ex.: ~/.gemini/settings.json) ou um arquivo de settings do seu runner.
 
-Quando o projeto tiver remoto GitHub:
 
-- toda mudança relevante de código, configuração, contexto ou documentação deve terminar em commit
-- não encerrar ciclo relevante com working tree sujo sem justificativa explícita do usuário
-- a referência esperada é manter o branch local alinhado com o branch remoto correspondente
+exemplo_gemini_mcp:
+  slack:
+    comando: "npx"
+    args: ["-y", "@modelcontextprotocol/server-slack"]
+    env:
+      SLACK_BOT_TOKEN: "xoxb-seu-token"
+      SLACK_TEAM_ID: "T01234567"
+  filesystem:
+    comando: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/lucas"]
 
-Quando o projeto também tiver workspace em nuvem ligado ao mesmo repositório:
 
-- use um branch dedicado para a nuvem quando esse fluxo existir
-- não deixe o workspace remoto como fonte isolada de drift não commitado
-- se uma mudança nasceu na nuvem, ela deve virar commit no branch de sincronização e voltar ao fluxo Git principal
+# 6. Instruções para Skills do Codex
+skills:
+  codex:
+    local_padrão: "~/.codex/skills"
+    estrutura:
+      pasta: true
+      arquivo_obrigatório: "SKILL.md"
+      frontmatter:
+        - name
+        - description
+        - metadata.short-description
+    invocação:
+      explícita: "/skills ou $"
+      implícita: "Codex decide com base na descrição"
+    instalação:
+      comando: "$skill-installer <nome-da-skill>"
+      exemplo: "$skill-installer linear"
+    criação:
+      automática: "$skill-creator"
+      manual: "Crie pasta com SKILL.md contendo frontmatter YAML"
+  gemini_cli:
+    nota: "O Gemini não suporta o padrão de Agent Skills do Codex. Descreva capacidades específicas no arquivo .clinerules ou crie ferramentas MCP via linguagem natural."
 
-Regra de fechamento:
+# 7. Arquitetura de Sincronização
+arquitetura:
+  - "O **AlignTrue** atua como o 'compilador' de conteúdo: ele processa as regras em `.aligntrue/rules/` e gera o arquivo mestre `AGENTS.md` validado na raiz do repositório."
+  - "O script **copy_agcao_files.sh** atua como o 'distribuidor' global: ele vincula o arquivo `AGENTS.md` gerado às pastas do sistema (~/.gemini, ~/.codex, etc.) via links simbólicos, garantindo que a mudança ocorra em nível global."
 
-- em projeto com GitHub, fechamento de ciclo pede commit
-- em projeto com GitHub e nuvem, fechamento de ciclo pede commit também no branch de sincronização quando houver impacto no ambiente remoto
-- detalhes como nome do branch de sincronização, host remoto e política de equivalência entre local e nuvem pertencem ao contexto e workflow do projeto atual
+
+
+# 8. Instruções para Prompts do Codex
+prompts:
+  codex:
+    local: "~/.codex/prompts/"
+    formato: "Markdown com frontmatter YAML"
+    invocação: "/prompts:nome-do-arquivo"
+  gemini:
+    nota: "Prompts reutilizáveis servem para tarefas rápidas e repetitivas. Crie arquivos Markdown em ~/.codex/prompts/ com frontmatter YAML."
+
+# 9. Comandos úteis
+comandos:
+  verificação_codex: 'codex --ask-for-approval never "Show which instruction files are active."'
+  instalação_extensões_gemini: "gemini extensions install <url-do-repositorio>"
+  instalação_skills_codex: "$skill-installer <nome-da-skill>"
+  criação_skills_codex: "$skill-creator"
+  verificação_mcp: "/mcp"
+

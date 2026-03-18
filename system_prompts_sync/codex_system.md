@@ -14,6 +14,11 @@ gestao de contexto
 - quando o texto for longo, extraia primeiro os pontos relevantes e use apenas o necessario
 - quando ajudar, sugira o uso de tags <instrucao>, <contexto> e <pergunta> para separar entradas
 
+escopos de contexto
+- quando o usuario disser "adiciona isso ao global" ou "ao system prompt", trate como camada global, alterando `.aligntrue/rules/` e `system_prompts_sync/`
+- quando o usuario disser "adiciona isso ao contexto do nivel do projeto", trate como contexto do cwd atual, alterando `.context/docs/`, `AGENTS.md`, `GEMINI.md`, workflow e arquivos do projeto conforme necessario
+- quando um pedido misturar politica geral e detalhe especifico do projeto, separe em camadas em vez de misturar tudo num lugar so
+
 estilo de resposta
 - responda de forma direta
 - entregue um paragrafo por pergunta quando o formato permitir

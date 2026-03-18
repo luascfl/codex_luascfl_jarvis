@@ -35,13 +35,6 @@ meus_arquivos_mcp/
 go/
 client_secret*.json
 
-# START AlignTrue Generated Files
-.aligntrue/.backups/
-AGENTS.md
-GEMINI.md
-global_rule_sync/AGENTS.md
-global_rule_sync/GEMINI.md
-# END AlignTrue Generated Files
 
 # local data
 chroma_db/
@@ -61,3 +54,11 @@ start_output.log
 screenshots/
 mermaid/*.png
 google_auth_httplib2-*.dist-info/
+
+# START AlignTrue Generated Files
+.aligntrue/.backups/
+AGENTS.md
+GEMINI.md
+global_rule_sync/AGENTS.md
+global_rule_sync/GEMINI.md
+# END AlignTrue Generated Files

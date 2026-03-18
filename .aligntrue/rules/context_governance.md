@@ -29,6 +29,7 @@ Se você encontrar um `AGENTS.md` local, leia-o com prioridade máxima. Ele cont
 
 ## 4. Fluxo de Atualização (Sync)
 Para aplicar novas regras ou propagar mudanças:
-1. Edite os arquivos em `.aligntrue/rules/`.
-2. Rode `python3 jarvis.py mcp-sync-clients` na raiz.
-3. O script cuida da compilação e distribuição. Não rode `aligntrue` manualmente.
+1. Edite os arquivos em `.aligntrue/rules/` quando a mudança for no nível global.
+2. Se houve alteração no nível global, rode `aligntrue sync` antes de qualquer outra sincronização, para compilar a nova regra global e atualizar os artefatos gerados.
+3. Depois rode `python3 jarvis.py mcp-sync-clients` na raiz, para distribuir os artefatos já compilados aos clientes.
+4. `mcp-sync-clients` não substitui `aligntrue sync` quando a fonte canônica global foi alterada.

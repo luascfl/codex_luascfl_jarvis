@@ -264,6 +264,7 @@ Quando o usuário pedir para regenerar ou atualizar o contexto no nível do proj
 - se algum desses arquivos não existir no projeto, atualize apenas os existentes e relevantes
 
 
+
 <!-- aligntrue:rule git_commit_sync_policy.md -->
 
 ## Política de commit e sincronização Git
