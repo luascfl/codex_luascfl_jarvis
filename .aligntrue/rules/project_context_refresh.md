@@ -12,8 +12,8 @@ Quando o usuario pedir para regenerar ou atualizar o contexto no nivel do projet
 - use `jarvis.workflow_stack` com `action="context_refresh"` como entrada preferencial quando a tool estiver disponivel
 - essa rotina do workflow deve garantir no projeto:
   - existencia de `.context/docs`
-  - existencia de `.context/docs/planning_gsd`
-  - existencia de `.context/prd_ralph`
+  - existencia de `.context/plans`
+  - existencia de `.context/workflow`
   - existencia de `.context/workflow`
   - sincronizacao de `AGENTS.md`
   - sincronizacao de `GEMINI.md`

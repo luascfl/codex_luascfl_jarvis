@@ -41,7 +41,9 @@ import socket
 import inspect
 import platform
 import json
+import hashlib
 import shlex
+import fnmatch
 import webbrowser
 from collections import deque
 import pwd
@@ -59,7 +61,9 @@ from datetime import datetime, timezone
 
 # Base
 BASE_DIR = Path(__file__).resolve().parent
-RALPH_PRD_DEFAULT_REL = ".context/prd_ralph/prd.json"
+RALPH_PRD_DEFAULT_REL = ".context/workflow/prd.json"
+GRAPHIFY_DEFAULT_REL = ".context/graphify-out"
+RALPH_RUNTIME_REL = ".context/workflow/ralph"
 VENV_SUPER_PY = BASE_DIR / ".venv-super" / "bin" / "python3"
 if VENV_SUPER_PY.exists():
     current = Path(sys.executable)
@@ -226,7 +230,57 @@ GEMINI_CLI_HOME_DIR = str(gemini_home_path)
 os.environ["GEMINI_CLI_HOME"] = GEMINI_CLI_HOME_DIR
 Path(GEMINI_CLI_HOME_DIR).mkdir(parents=True, exist_ok=True)
 
-# --- 1. CONFIGURAÇÕES ---
+def _env_sh_path() -> Path:
+    return BASE_DIR / "env.sh"
+
+
+def _parse_export_line(line: str) -> tuple[str, str] | None:
+    text = line.strip()
+    if not text.startswith("export ") or "=" not in text:
+        return None
+    key, raw_value = text[len("export "):].split("=", 1)
+    key = key.strip()
+    if not key or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
+        return None
+    try:
+        value = shlex.split(raw_value, posix=True)[0] if raw_value.strip() else ""
+    except Exception:
+        value = raw_value.strip().strip('"').strip("'")
+    return key, value
+
+
+def _read_env_sh_exports(path: Path | None = None) -> dict[str, str]:
+    path = path or _env_sh_path()
+    if not path.exists():
+        return {}
+    exports: dict[str, str] = {}
+    in_config = False
+    try:
+        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            stripped = line.strip()
+            if stripped == "# --- CONFIGURATION START ---":
+                in_config = True
+                continue
+            if stripped == "# --- CONFIGURATION END ---":
+                break
+            if not in_config:
+                continue
+            parsed = _parse_export_line(line)
+            if parsed:
+                exports[parsed[0]] = parsed[1]
+    except Exception:
+        return exports
+    return exports
+
+
+def _load_env_sh_defaults() -> None:
+    for key, value in _read_env_sh_exports().items():
+        os.environ.setdefault(key, value)
+
+
+_load_env_sh_defaults()
+
+
 # Caminhos e Chaves
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 FIREFLIES_API_KEY = os.environ.get("FIREFLIES_API_KEY", "")
@@ -288,7 +342,7 @@ PLAYWRIGHT_MCP_URL = f"http://{PLAYWRIGHT_MCP_HOST}:{PLAYWRIGHT_MCP_PORT}"
 CLOUDFLARED_PLAYWRIGHT_ENABLE = os.environ.get("CLOUDFLARED_PLAYWRIGHT_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 
 ## BRAVE SEARCH MCP (Node, requer BRAVE_API_KEY)
-BRAVE_MCP_ENABLE = os.environ.get("BRAVE_MCP_ENABLE", "true").lower() in ("1", "true", "yes", "on")
+BRAVE_MCP_ENABLE = os.environ.get("BRAVE_MCP_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 BRAVE_MCP_BIN = os.environ.get("BRAVE_MCP_BIN", "npx")
 BRAVE_MCP_PACKAGE = os.environ.get("BRAVE_MCP_PACKAGE", "@modelcontextprotocol/server-brave-search")
 BRAVE_MCP_PORT = int(os.environ.get("BRAVE_MCP_PORT", "8932"))
@@ -328,6 +382,22 @@ FIRECRAWL_STREAMABLE = os.environ.get("FIRECRAWL_STREAMABLE", "true").lower() in
 FIRECRAWL_URL = f"http://{FIRECRAWL_HOST}:{FIRECRAWL_PORT}/mcp"
 CLOUDFLARED_FIRECRAWL_ENABLE = os.environ.get("CLOUDFLARED_FIRECRAWL_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 
+## GOOGLE CALENDAR MCP (Node)
+GOOGLE_CALENDAR_MCP_ENABLE = os.environ.get("GOOGLE_CALENDAR_MCP_ENABLE", "true").lower() in ("1", "true", "yes", "on")
+GOOGLE_CALENDAR_MCP_BIN = os.environ.get("GOOGLE_CALENDAR_MCP_BIN", "npx")
+GOOGLE_CALENDAR_MCP_PACKAGE = os.environ.get("GOOGLE_CALENDAR_MCP_PACKAGE", "mcp-google-calendar")
+GOOGLE_CALENDAR_MCP_EXTRA_ARGS = os.environ.get("GOOGLE_CALENDAR_MCP_EXTRA_ARGS", "")
+GOOGLE_CALENDAR_MCP_PORT = int(os.environ.get("GOOGLE_CALENDAR_MCP_PORT", "8954"))
+GOOGLE_CALENDAR_MCP_HOST = os.environ.get("GOOGLE_CALENDAR_MCP_HOST", "localhost")
+GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH = os.environ.get(
+    "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH",
+    os.environ.get("CREDENTIALS_PATH", str(BASE_DIR / "gcp-oauth.keys.json")),
+)
+GOOGLE_DRIVE_MCP_OAUTH_PATH = os.environ.get("GDRIVE_MCP_OAUTH_PATH", GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH)
+GOOGLE_DRIVE_MCP_TOKEN_PATH = os.environ.get("GDRIVE_MCP_TOKEN_PATH", str(BASE_DIR / "token.json"))
+GOOGLE_DRIVE_MCP_SCOPES = os.environ.get("GDRIVE_MCP_SCOPES", "https://www.googleapis.com/auth/drive")
+GOOGLE_CALENDAR_MCP_URL = f"http://{GOOGLE_CALENDAR_MCP_HOST}:{GOOGLE_CALENDAR_MCP_PORT}/sse"
+
 ## FIREFLIES MCP (remote via mcp-remote)
 FIREFLIES_MCP_ENABLE = os.environ.get("FIREFLIES_MCP_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 FIREFLIES_MCP_BIN = os.environ.get("FIREFLIES_MCP_BIN", "npx")
@@ -337,36 +407,47 @@ FIREFLIES_MCP_EXTRA_ARGS = os.environ.get("FIREFLIES_MCP_EXTRA_ARGS", "")
 FIREFLIES_MCP_PORT = int(os.environ.get("FIREFLIES_MCP_PORT", "8946"))
 FIREFLIES_MCP_HOST = os.environ.get("FIREFLIES_MCP_HOST", "localhost")
 FIREFLIES_MCP_URL = f"http://{FIREFLIES_MCP_HOST}:{FIREFLIES_MCP_PORT}"
+
+## RECLAIM 2.0 OFFICIAL MCP (remote)
+RECLAIM_OFFICIAL_MCP_ENABLE = os.environ.get("RECLAIM_OFFICIAL_MCP_ENABLE", "false").lower() in ("1", "true", "yes", "on")
+RECLAIM_OFFICIAL_MCP_URL = os.environ.get("RECLAIM_OFFICIAL_MCP_URL", "https://mcp.reclaim.ai").strip() or "https://mcp.reclaim.ai"
+RECLAIM_OFFICIAL_MCP_PREFIX = os.environ.get("RECLAIM_OFFICIAL_MCP_PREFIX", "reclaim2").strip() or "reclaim2"
+RECLAIM_OFFICIAL_MCP_MOUNTED = False
 CLOUDFLARED_FIREFLIES_ENABLE = os.environ.get("CLOUDFLARED_FIREFLIES_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 
-## SEQUENTIAL THINKING (remote MCP via mcp-remote)
-SEQUENTIAL_MCP_ENABLE = os.environ.get("SEQUENTIAL_MCP_ENABLE", "true").lower() in ("1", "true", "yes", "on")
-SEQUENTIAL_MCP_BIN = os.environ.get("SEQUENTIAL_MCP_BIN", "npx")
-SEQUENTIAL_MCP_PACKAGE = os.environ.get("SEQUENTIAL_MCP_PACKAGE", "mcp-remote")
-SEQUENTIAL_MCP_REMOTE_URL = os.environ.get("SEQUENTIAL_MCP_REMOTE_URL", "https://remote.mcpservers.org/sequentialthinking/mcp")
-SEQUENTIAL_MCP_EXTRA_ARGS = os.environ.get("SEQUENTIAL_MCP_EXTRA_ARGS", "")
-SEQUENTIAL_MCP_PORT = int(os.environ.get("SEQUENTIAL_MCP_PORT", "8940"))
-SEQUENTIAL_MCP_HOST = os.environ.get("SEQUENTIAL_MCP_HOST", "localhost")
-SEQUENTIAL_MCP_URL = f"http://{SEQUENTIAL_MCP_HOST}:{SEQUENTIAL_MCP_PORT}"
-CLOUDFLARED_SEQUENTIAL_ENABLE = os.environ.get("CLOUDFLARED_SEQUENTIAL_ENABLE", "false").lower() in ("1", "true", "yes", "on")
+
+# Google Tasks lists used by day planning.
+# Integration with Reclaim 2.0 happens at the Google account level and may cover
+# multiple selected lists. RECLAIM_TASK_LIST_ID remains the committed operational
+# list; "Minhas tarefas" stays a raw inbox dump for triage and promotion only.
+RECLAIM_TASK_LIST_ID = os.environ.get("RECLAIM_TASK_LIST_ID", "TUZuVGxQZkRxSjRrWkNtbw")
+PERSONAL_TASK_LIST_ID = os.environ.get("PERSONAL_TASK_LIST_ID", "MDkyMTQ1ODY0NDMyNzczMDkyNTQ6MDow")
+PLAN_DAY_TASK_LIST_IDS = os.environ.get(
+    "PLAN_DAY_TASK_LIST_IDS",
+    f"{RECLAIM_TASK_LIST_ID},{PERSONAL_TASK_LIST_ID}",
+)
 
 # RECLAIM UI AUTOMATION (experimental)
 RECLAIM_UI_AUTOMATION_ENABLE = os.environ.get("RECLAIM_UI_AUTOMATION_ENABLE", "false").lower() in ("1", "true", "yes", "on")
 RECLAIM_UI_SESSION_FILE = Path(
-    os.environ.get("RECLAIM_UI_SESSION_FILE", str(BASE_DIR / ".ralph" / "reclaim_ui_session.json"))
+    os.environ.get("RECLAIM_UI_SESSION_FILE", str(BASE_DIR / RALPH_RUNTIME_REL / "reclaim_ui_session.json"))
 )
 RECLAIM_UI_AUDIT_FILE = Path(
-    os.environ.get("RECLAIM_UI_AUDIT_FILE", str(BASE_DIR / ".ralph" / "reclaim_ui_audit.jsonl"))
+    os.environ.get("RECLAIM_UI_AUDIT_FILE", str(BASE_DIR / RALPH_RUNTIME_REL / "reclaim_ui_audit.jsonl"))
 )
 RECLAIM_UI_SESSION_TTL_SEC = int(os.environ.get("RECLAIM_UI_SESSION_TTL_SEC", "43200"))
 RECLAIM_UI_CAPTCHA_TIMEOUT_SEC = int(os.environ.get("RECLAIM_UI_CAPTCHA_TIMEOUT_SEC", "900"))
-RECLAIM_UI_LOGIN_URL = os.environ.get("RECLAIM_UI_LOGIN_URL", "https://app.reclaim.ai")
-RECLAIM_UI_EXECUTOR_CMD = os.environ.get(
-    "RECLAIM_UI_EXECUTOR_CMD",
-    "internal",
-)
-RECLAIM_UI_EXECUTOR_TIMEOUT_SEC = int(os.environ.get("RECLAIM_UI_EXECUTOR_TIMEOUT_SEC", "25"))
+RECLAIM_UI_LOGIN_URL = "https://app.reclaim.ai/planner?login=1&taskSort=schedule&range=WEEK"
+RECLAIM_UI_EXECUTOR_CMD = "internal"
+RECLAIM_UI_EXECUTOR_TIMEOUT_SEC = int(os.environ.get("RECLAIM_UI_EXECUTOR_TIMEOUT_SEC", "60"))
 RECLAIM_UI_ASSIST_OPEN_BROWSER = os.environ.get("RECLAIM_UI_ASSIST_OPEN_BROWSER", "false").lower() in ("1", "true", "yes", "on")
+RECLAIM_UI_AUTOMATION_MODE = os.environ.get("RECLAIM_UI_AUTOMATION_MODE", "headless").strip().lower()
+RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR = Path(
+    os.environ.get("RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR", str(BASE_DIR / RALPH_RUNTIME_REL / "reclaim_playwright_profile"))
+)
+RECLAIM_UI_HEADLESS = os.environ.get("RECLAIM_UI_HEADLESS", "true").lower() in ("1", "true", "yes", "on")
+RECLAIM_UI_BOOTSTRAP_HEADLESS = os.environ.get("RECLAIM_UI_BOOTSTRAP_HEADLESS", "true").lower() in ("1", "true", "yes", "on")
+
 
 # --- PROMPTS EMBUTIDOS ---
 PROMPT_GCAL_EVENTEDIT_MASTER = "# prompt mestre: gerar link de criação de evento no google agenda (eventedit)\n\nvocê deve converter a descrição do evento em um link no formato:\n\nhttps://www.google.com/calendar/u/0/r/eventedit?text=&dates=&details=&location=&recur=\n\n## regras\n- se algum parâmetro não for informado, deixe em branco.\n- o parâmetro `text` (título) é obrigatório.\n- sempre retorne o link dentro de um bloco de código.\n- nunca use a extensão do google workspace.\n\n## parâmetros\n\n### título\n- formato: `text=...`\n- exemplo: `text=Garden%20Waste%20Collection`\n\n### datas\n- formato padrão: `dates=YYYYMMDDTHHMMSS/YYYYMMDDTHHMMSS`\n- as datas devem conter início e fim.\n- ano padrão: **2025** quando o usuário não informar.\n\n#### eventos de dia inteiro\n- usar: `YYYYMMDD/YYYYMMDD` (fim = dia seguinte)\n- exemplo: `dates=20250625/20250626`\n\n### descrição\n- formato: `details=...` (pode ser multi-linha; usar `%0A`)\n\n### localização\n- formato: `location=...`\n\n### disponibilidade (free/busy)\n- padrão: busy (não adicionar nada)\n- apenas se o usuário pedir explicitamente \"livre\"/\"free\": adicionar `trp=true`\n\n### recorrência (recur)\n- formato: `recur=RRULE:...` (RFC-5545)\n\nexemplos:\n- daily until: `recur=RRULE:FREQ=DAILY;UNTIL=20251224T000000Z`\n- weekly: `recur=RRULE:FREQ=WEEKLY;UNTIL=20251007T000000Z;WKST=SU;BYDAY=TU,TH`\n- monthly: `recur=RRULE:FREQ=MONTHLY;UNTIL=20251224T000000Z;BYDAY=1FR`\n\n## saída\n- retorne **apenas** o link final em um bloco de código.\n"
@@ -412,46 +493,22 @@ mcp = FastMCP("Jarvis Local v6 (Zap + Docs + Dev + Web)")
 mcp._deprecated_settings.sse_path = "/sse"
 mcp._deprecated_settings.message_path = "/messages/"
 
-# --- SEQUENTIAL THINKING NATIVE ---
-@mcp.tool()
-def sequential_thought(
-    thought: str,
-    thoughtNumber: int,
-    totalThoughts: int,
-    nextThoughtNeeded: bool,
-    isRevision: bool = False,
-    revisesThought: int | None = None,
-    branchFromThought: int | None = None,
-    branchId: str | None = None,
-    needsMoreThoughts: bool | None = None,
-) -> str:
+def _mcp_tool_when_env(env_key: str, default: str = "false"):
+    """Register a tool only while its MCP group is enabled.
+
+    Disabled groups must disappear from MCP tool discovery, not just return
+    runtime errors after the client already loaded their wrappers.
     """
-    A tool for dynamic and reflective problem-solving.
-    Allows the model to think sequentially, revise thoughts, and branch out.
-    
-    Args:
-        thought: The content of the current thought step.
-        thoughtNumber: The current step number (1-based).
-        totalThoughts: Estimated total steps needed.
-        nextThoughtNeeded: Whether more thinking is required.
-        isRevision: If this thought revises a previous one.
-        revisesThought: The ID of the thought being revised.
-        branchFromThought: The ID of the thought being branched from.
-        branchId: Identifier for the current branch.
-        needsMoreThoughts: Explicit signal if more steps are needed.
-    """
-    try:
-        # In a real stateful implementation, we would store the thought graph.
-        # For this stateless tool wrapper, we acknowledge the thought to the model.
-        # The model maintains the context in the conversation history.
-        result = {
-            "status": "success",
-            "thought_recorded": thoughtNumber,
-            "message": "Thought recorded. Proceed with the next step or final answer."
-        }
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+    enabled = str(os.environ.get(env_key, default)).strip().lower() in {"1", "true", "yes", "on"}
+    if enabled:
+        return mcp.tool()
+
+    def _disabled_tool(fn):
+        return fn
+
+    return _disabled_tool
+
+
 
 def _log_process(proc: subprocess.Popen, prefix: str) -> None:
     """Imprime as linhas de um processo em thread separada."""
@@ -698,8 +755,9 @@ if BaseHTTPMiddleware and hasattr(mcp, "http_app"):
                 services_check = [
                     ("Brave Search", BRAVE_MCP_ENABLE),
                     ("Firecrawl", FIRECRAWL_ENABLE),
-                    ("Sequential Thinking", SEQUENTIAL_MCP_ENABLE),
-                    ("Speedgrapher", True)  # Gerenciado pelo mcp-proxy pai
+                    ("Speedgrapher", True),
+                    ("Mermaid", MERMAID_ENABLE),
+                    ("Workflow", True),
                 ]
 
                 for name, enabled in services_check:
@@ -766,90 +824,590 @@ if BaseHTTPMiddleware and hasattr(mcp, "http_app"):
     mcp.http_app = types.MethodType(_http_app_with_extras, mcp)
 
 
-def write_mcp_status_report():
+def _registered_tool_names() -> list[str]:
+    """Return FastMCP tool names across FastMCP versions."""
+    try:
+        get_tools = getattr(mcp, "get_tools", None)
+        if callable(get_tools):
+            import asyncio
+
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                tools_map = asyncio.run(get_tools())
+                return sorted(name for name in tools_map.keys() if name)
+
+        tools_obj = getattr(mcp, "tools", [])
+        if isinstance(tools_obj, dict):
+            return sorted(name for name in tools_obj.keys() if name)
+        return sorted(name for name in (getattr(t, "name", "") for t in tools_obj) if name)
+    except Exception:
+        return []
+
+
+def _module_available(module_name: str) -> bool:
+    try:
+        import importlib.util
+
+        return importlib.util.find_spec(module_name) is not None
+    except Exception:
+        return False
+
+
+def _missing_google_token_scopes(token_path: Path, required_scopes: list[str]) -> list[str]:
+    token_data = _load_token_json(token_path) if token_path.exists() else {}
+    raw_scopes = token_data.get("scopes") or token_data.get("scope") or []
+    if isinstance(raw_scopes, str):
+        scopes = set(raw_scopes.split())
+    else:
+        scopes = {str(scope) for scope in raw_scopes}
+    return [scope for scope in required_scopes if scope not in scopes]
+
+
+def _join_reasons(reasons: list[str]) -> str:
+    return "; ".join(reason for reason in reasons if reason)
+
+
+def _reclaim_session_state_snapshot() -> str:
+    session = load_session(RECLAIM_UI_SESSION_FILE)
+    if not session:
+        return "not_bootstrapped"
+
+    state = str(session.get("state", "not_bootstrapped"))
+    now = time.time()
+    if state == "pending_manual_login":
+        started = _epoch_from_iso(session.get("started_at"))
+        timeout_sec = int(session.get("captcha_timeout_sec", RECLAIM_UI_CAPTCHA_TIMEOUT_SEC))
+        if started is not None and (now - started) > timeout_sec:
+            return "blocked_captcha"
+    elif state == "valid":
+        ttl = int(session.get("session_ttl_sec", RECLAIM_UI_SESSION_TTL_SEC))
+        last = _epoch_from_iso(session.get("last_validated_at")) or _epoch_from_iso(session.get("bootstrapped_at"))
+        if last is None or (now - last) > ttl:
+            return "expired"
+    return state
+
+
+def _reclaim_executor_available() -> bool:
+    executor_cmd = (RECLAIM_UI_EXECUTOR_CMD or "").strip()
+    if not executor_cmd or executor_cmd == "internal":
+        return bool(shutil.which("xdotool"))
+    try:
+        parts = shlex.split(executor_cmd)
+    except ValueError:
+        return False
+    return bool(parts and shutil.which(parts[0]))
+
+def _google_calendar_mcp_token_candidates(credentials_path: Path) -> list[Path]:
+    parent = credentials_path.expanduser().parent
+    candidates = [
+        parent / "mcp-google-calendar-token.json",
+        parent / "token.json",
+        BASE_DIR / "mcp-google-calendar-token.json",
+        BASE_DIR / "token.json",
+    ]
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.expanduser()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(resolved)
+    return unique
+
+
+def _google_calendar_mcp_token_exists(credentials_path: Path) -> bool:
+    return any(path.exists() for path in _google_calendar_mcp_token_candidates(credentials_path))
+
+
+
+
+
+def _google_workspace_required_scopes() -> list[str]:
+    return list(dict.fromkeys(_GOOGLE_TASKS_SCOPES + _GOOGLE_CALENDAR_SCOPES + _GOOGLE_DRIVE_SCOPES))
+
+def _is_google_invalid_grant(exc: Exception | str) -> bool:
+    text = str(exc or "").lower()
+    return "invalid_grant" in text or "token has been expired or revoked" in text
+
+
+def _invalidate_google_workspace_token(token_path: Path, reason: str = "invalid_grant") -> Path | None:
+    path = token_path.expanduser()
+    if not path.exists():
+        return None
+    stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    backup = path.with_name(f"{path.name}.{reason}.{stamp}.bak")
+    try:
+        path.rename(backup)
+        return backup
+    except Exception:
+        return None
+
+
+def _google_auth_actionable_error(exc: Exception | str) -> str:
+    global _GTASKS_SERVICE_CACHE, _GTASKS_SERVICE_CACHE_MTIME
+    _GTASKS_SERVICE_CACHE = None
+    _GTASKS_SERVICE_CACHE_MTIME = None
+    if _is_google_invalid_grant(exc):
+        return (
+            f"{exc}. Token OAuth inválido. Rode `python3 jarvis.py google-auth-refresh --force` "
+            "e reinicie o servidor MCP se ele já estava rodando."
+        )
+    return str(exc)
+
+
+def _google_workspace_token_probe(token_path: Path | None = None) -> dict:
+    token = (token_path or (BASE_DIR / "token.json")).expanduser()
+    if not token.exists():
+        return {"ok": False, "code": "token_missing", "detail": "token.json ausente"}
+    missing_scopes = _missing_google_token_scopes(token, _google_workspace_required_scopes())
+    if missing_scopes:
+        return {
+            "ok": False,
+            "code": "missing_scopes",
+            "detail": "token sem escopos: " + ", ".join(missing_scopes),
+        }
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        creds = Credentials.from_authorized_user_file(
+            str(token),
+            ["https://www.googleapis.com/auth/tasks"],
+        )
+        service = build("tasks", "v1", credentials=creds)
+        service.tasklists().list(maxResults=1).execute()
+        return {"ok": True, "code": "ok", "detail": "token validado por chamada real ao Google Tasks"}
+    except Exception as exc:
+        code = "invalid_grant" if _is_google_invalid_grant(exc) else "runtime_error"
+        return {"ok": False, "code": code, "detail": str(exc)}
+
+
+def _google_workspace_any_enabled() -> bool:
+    return any(
+        _truthy_env_value(os.environ.get(name, "true"))
+        for name in ("GOOGLE_CALENDAR_MCP_ENABLE", "GOOGLE_DRIVE_MCP_ENABLE", "GOOGLE_TASKS_MCP_ENABLE")
+    )
+def _google_token_fix_hint() -> str:
+    return f"rode `python jarvis.py mcp-status` e conclua o OAuth; token esperado em {BASE_DIR / 'token.json'}"
+
+
+def _google_credentials_fix_hint(path: Path) -> str:
+    return f"coloque o OAuth client em {path}"
+
+
+def _env_fix_hint(name: str) -> str:
+    return f"exporte {name}=..."
+
+
+def _install_fix_hint(name: str) -> str:
+    return f"instale {name} e rode novamente"
+
+
+def _with_fix(reason: str, fix: str = "") -> str:
+    reason = (reason or "").strip()
+    fix = (fix or "").strip()
+    if reason and fix:
+        return f"{reason} | dica: {fix}"
+    return reason or (f"dica: {fix}" if fix else "")
+
+
+def _write_env_sh_export(key: str, value: str, path: Path | None = None) -> None:
+    path = path or _env_sh_path()
+    line = f'export {key}={json.dumps(str(value))}'
+    if path.exists():
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    else:
+        lines = ["#!/bin/bash", "# --- CONFIGURATION START ---", "# --- CONFIGURATION END ---"]
+
+    replaced = False
+    insert_at = len(lines)
+    for idx, existing in enumerate(lines):
+        parsed = _parse_export_line(existing)
+        if parsed and parsed[0] == key:
+            lines[idx] = line
+            replaced = True
+            break
+        if existing.strip() == "# --- CONFIGURATION END ---":
+            insert_at = idx
+
+    if not replaced:
+        lines.insert(insert_at, line)
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        path.chmod(0o755)
+    except Exception:
+        pass
+
+
+def _truthy_env_value(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _set_runtime_config(key: str, value: str) -> None:
+    os.environ[key] = str(value)
+    bool_globals = {
+        "PLAYWRIGHT_MCP_ENABLE": "PLAYWRIGHT_MCP_ENABLE",
+        "BRAVE_MCP_ENABLE": "BRAVE_MCP_ENABLE",
+        "CHART_MCP_ENABLE": "CHART_MCP_ENABLE",
+        "ZOTERO_MCP_ENABLE": "ZOTERO_MCP_ENABLE",
+        "FIRECRAWL_ENABLE": "FIRECRAWL_ENABLE",
+        "GOOGLE_CALENDAR_MCP_ENABLE": "GOOGLE_CALENDAR_MCP_ENABLE",
+        "FIREFLIES_MCP_ENABLE": "FIREFLIES_MCP_ENABLE",
+        "RECLAIM_UI_AUTOMATION_ENABLE": "RECLAIM_UI_AUTOMATION_ENABLE",
+        "RECLAIM_OFFICIAL_MCP_ENABLE": "RECLAIM_OFFICIAL_MCP_ENABLE",
+        "MERMAID_ENABLE": "MERMAID_ENABLE",
+        "GOOGLE_DRIVE_MCP_ENABLE": None,
+        "GOOGLE_TASKS_MCP_ENABLE": None,
+        "GUPY_MCP_ENABLE": None,
+        "ONEDRIVE_MCP_ENABLE": None,
+        "SPEEDGRAPHER_ENABLE": None,
+        "PROJECT_WORKFLOW_STACK_ENABLE": None,
+        "AI_CODERS_CONTEXT_MCP_ENABLE": None,
+        "GSD_MCP_ENABLE": None,
+        "RALPH_MCP_ENABLE": None,
+    }
+    str_globals = {
+        "BRAVE_API_KEY": "BRAVE_API_KEY",
+        "ZOTERO_API_KEY": "ZOTERO_API_KEY",
+        "ZOTERO_USER_ID": "ZOTERO_USER_ID",
+        "FIRECRAWL_API_KEY": None,
+        "FIREFLIES_API_KEY": "FIREFLIES_API_KEY",
+        "GUPY_API_TOKEN": "GUPY_API_TOKEN",
+        "MSGRAPH_CLIENT_ID": "MSGRAPH_CLIENT_ID",
+        "GRAPH_CLIENT_ID": None,
+        "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH": "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH",
+        "GDRIVE_MCP_OAUTH_PATH": "GOOGLE_DRIVE_MCP_OAUTH_PATH",
+        "GDRIVE_MCP_TOKEN_PATH": "GOOGLE_DRIVE_MCP_TOKEN_PATH",
+        "GDRIVE_MCP_SCOPES": "GOOGLE_DRIVE_MCP_SCOPES",
+        "RECLAIM_OFFICIAL_MCP_URL": "RECLAIM_OFFICIAL_MCP_URL",
+        "RECLAIM_OFFICIAL_MCP_PREFIX": "RECLAIM_OFFICIAL_MCP_PREFIX",
+        "MERMAID_LINK_ONLY": None,
+    }
+    if key in bool_globals:
+        target = bool_globals[key]
+        if target:
+            globals()[target] = _truthy_env_value(value)
+    elif key in str_globals and str_globals[key]:
+        globals()[str_globals[key]] = str(value)
+
+
+def _persist_config_value(key: str, value: str) -> None:
+    _write_env_sh_export(key, value)
+    _set_runtime_config(key, value)
+
+def _run_google_workspace_oauth(force: bool = False) -> dict:
+    result = {"target": "Google Workspace MCPs", "attempted": False, "ok": False, "detail": ""}
+    token_path = BASE_DIR / "token.json"
+    if not _google_workspace_any_enabled():
+        result["detail"] = "Google Workspace MCPs desativados"
+        return result
+
+    if token_path.exists() and not force:
+        probe = _google_workspace_token_probe(token_path)
+        if probe.get("ok"):
+            result["ok"] = True
+            result["detail"] = probe.get("detail") or "token único validado para Tasks, Calendar e Drive"
+            return result
+        if probe.get("code") == "missing_scopes":
+            result["detail"] = probe.get("detail", "token sem escopos obrigatórios")
+        elif probe.get("code") == "invalid_grant":
+            backup = _invalidate_google_workspace_token(token_path)
+            result["detail"] = (
+                "token OAuth inválido detectado por chamada real"
+                + (f"; backup: {backup}" if backup else "")
+            )
+        else:
+            result["detail"] = probe.get("detail", "token não validado por chamada real")
+            return result
+    elif token_path.exists() and force:
+        backup = _invalidate_google_workspace_token(token_path, "forced")
+        result["detail"] = "renovação forçada" + (f"; backup: {backup}" if backup else "")
+
+    result["attempted"] = True
+    timeout_sec = int(os.environ.get("MCP_STATUS_AUTH_TIMEOUT_SEC", "600"))
+    cmd = [sys.executable or "python3", str(BASE_DIR / "jarvis.py"), "__auth_google_workspace_internal"]
+    print("🔐 Google Workspace sem token válido. Iniciando OAuth único para Tasks, Calendar e Drive.")
+    try:
+        proc = subprocess.run(cmd, cwd=str(BASE_DIR), timeout=max(30, timeout_sec))
+    except subprocess.TimeoutExpired:
+        result["detail"] = f"OAuth excedeu {timeout_sec}s sem concluir"
+        return result
+
+    result["ok"] = proc.returncode == 0
+    result["detail"] = "token único criado" if proc.returncode == 0 else f"OAuth retornou {proc.returncode}"
+    return result
+def _run_mcp_status_auto_auth() -> list[dict]:
+    actions = [_run_google_workspace_oauth()]
+    return [action for action in actions if action.get("attempted") or action.get("detail")]
+
+
+
+def _mcp_status_sort_key(item: dict) -> tuple[int, str]:
+    enabled = bool(item.get("enabled"))
+    ok = bool(item.get("ok"))
+    if enabled and not ok:
+        group = 0
+    elif not enabled:
+        group = 1
+    else:
+        group = 2
+    return group, str(item.get("name", ""))
+
+_MCP_TOOL_EXPECTATIONS = {
+    "Playwright MCP": {"wildcards": ["playwright_*"]},
+    "Brave MCP": {"wildcards": ["brave_*"]},
+    "Chart MCP": {"wildcards": ["chart_*"]},
+    "Zotero MCP": {"wildcards": ["zotero_*"]},
+    "Google Calendar MCP": {
+        "names": [
+            "gcal_add_event",
+            "gcal_create_event",
+            "gcal_find_locked_events",
+            "gcal_get_freebusy",
+            "gcal_list_events",
+            "gcal_list_events_detailed",
+        ]
+    },
+    "Google Drive MCP": {"wildcards": ["gdrive_*"], "proxy": True},
+    "Google Tasks MCP": {
+        "names": [
+            "gtasks_complete_task",
+            "gtasks_create_task_natural",
+            "gtasks_create_weekly_series",
+            "gtasks_delete_task",
+            "gtasks_list_tasks",
+            "gtasks_update_task_context",
+            "gtasks_smart_sync_add_reclaim",
+        ]
+    },
+
+    "Gupy MCP": {"names": ["gupy_test_token", "gupy_v1_close_job", "gupy_v1_list_jobs"]},
+    "OneDrive MCP": {"names": ["onedrive_auth_start", "onedrive_auth_poll", "onedrive_get_versions", "onedrive_list"]},
+    "Reclaim MCP": {
+        "names": [
+            "reclaim_next_task",
+            "reclaim_session_bootstrap",
+            "reclaim_session_status",
+            "reclaim_task_assist_confirm",
+            "reclaim_task_restart",
+            "reclaim_task_start",
+            "reclaim_task_stop",
+        ]
+    },
+    "Reclaim Official MCP": {"wildcards": ["reclaim2_*"], "proxy": True},
+    "Speedgrapher MCP": {"names": ["speedgrapher_fog_index"]},
+    "Mermaid MCP": {"names": ["mermaid_render"]},
+    "Project workflow stack": {"names": ["workflow_master_prompt_get", "workflow_stack"]},
+    "Firecrawl MCP": {"wildcards": ["firecrawl_*"]},
+    "Fireflies MCP": {"wildcards": ["fireflies_*"]},
+}
+
+
+def _mcp_status_tool_lists(payload: dict) -> tuple[list[str], list[str]]:
+    available = sorted(payload.get("registeredTools") or [])
+    available_set = set(available)
+    ok_proxy_items = {
+        str(item.get("name", ""))
+        for item in payload.get("items", [])
+        if item.get("enabled") and item.get("ok")
+    }
+    enabled_items = {
+        str(item.get("name", ""))
+        for item in payload.get("items", [])
+        if item.get("enabled")
+    }
+    unavailable: list[str] = []
+    for item_name, spec in _MCP_TOOL_EXPECTATIONS.items():
+        if item_name not in enabled_items:
+            continue
+        if spec.get("proxy") and item_name in ok_proxy_items:
+            continue
+        names = list(spec.get("names") or [])
+        wildcards = list(spec.get("wildcards") or [])
+        for name in names:
+            if name not in available_set:
+                unavailable.append(name)
+        for wildcard in wildcards:
+            prefix = wildcard[:-1] if wildcard.endswith("*") else wildcard
+            if not any(tool.startswith(prefix) for tool in available):
+                unavailable.append(wildcard)
+    return available, sorted(dict.fromkeys(unavailable))
+
+
+_MCP_TOOL_GROUP_RULES: list[tuple[str, tuple[str, ...]]] = [
+    ("speedgrapher", ("audit_seo", "editorial_*", "speedgrapher_*")),
+    ("gemini", ("gemini_*",)),
+    ("google calendar", ("gcal_*",)),
+    ("google tasks", ("gtasks_*", "plan_day_*")),
+    ("gupy", ("gupy_*",)),
+    ("onedrive", ("onedrive_*",)),
+    ("reclaim official", ("reclaim2_*", "reclaim_official_*")),
+    ("reclaim", ("reclaim_*",)),
+    ("workflow", ("workflow_*",)),
+    ("mermaid", ("mermaid_render",)),
+    ("firecrawl", ("firecrawl_*",)),
+    ("fireflies", ("fireflies_*",)),
+    ("google drive", ("gdrive_*",)),
+    ("brave", ("brave_*",)),
+    ("chart", ("chart_*",)),
+    ("playwright", ("playwright_*",)),
+    ("zotero", ("zotero_*",)),
+]
+_MCP_TOOL_GROUP_DESCRIPTIONS = {
+    "speedgrapher": "Ferramentas editoriais, SEO e legibilidade do stack Speedgrapher.",
+    "gemini": "Ferramentas de bridge e integração com o Gemini.",
+    "google calendar": "Ferramentas para listar, criar e inspecionar eventos do Google Calendar.",
+    "google tasks": "Ferramentas para criar, listar, sincronizar e planejar tarefas do Google Tasks.",
+    "gupy": "Ferramentas para consultar e operar vagas na Gupy.",
+    "onedrive": "Ferramentas de autenticação e leitura do OneDrive via Microsoft Graph.",
+    "reclaim": "Ferramentas de sessão e automação do Reclaim.",
+    "reclaim official": "Ferramentas do MCP oficial remoto do Reclaim 2.0.",
+    "workflow": "Ferramentas do workflow do projeto e do stack de contexto.",
+    "mermaid": "Ferramentas para renderização de diagramas Mermaid.",
+    "firecrawl": "Ferramentas do MCP Firecrawl.",
+    "fireflies": "Ferramentas do MCP Fireflies.",
+    "google drive": "Ferramentas do MCP Google Drive.",
+    "brave": "Ferramentas do MCP Brave Search.",
+    "chart": "Ferramentas do MCP Chart.",
+    "playwright": "Ferramentas do MCP Playwright.",
+    "zotero": "Ferramentas do MCP Zotero.",
+    "outros": "Ferramentas fora dos grupos conhecidos.",
+}
+
+_MCP_TOOL_DESCRIPTIONS = {
+    "audit_seo": "Audita SEO técnico de uma URL ou HTML.",
+    "editorial_context": "Carrega um texto no contexto editorial para revisão e edição.",
+    "editorial_expand": "Expande uma seção do outline em um parágrafo mais detalhado.",
+    "editorial_haiku": "Gera um haiku curto sobre um tema.",
+    "editorial_interview": "Inicia uma entrevista guiada para coletar material de escrita.",
+    "editorial_localize": "Traduz e localiza um texto para o idioma alvo.",
+    "editorial_outline": "Cria um outline estruturado a partir de um conceito.",
+    "editorial_publish": "Simula a publicação do conteúdo final.",
+    "editorial_readability": "Avalia legibilidade do texto com foco editorial.",
+    "editorial_reflect": "Analisa a sessão de escrita e sugere melhorias.",
+    "editorial_review": "Revisa o conteúdo com critérios editoriais.",
+    "editorial_voice": "Analisa o tom de voz e o estilo de um texto.",
+    "gcal_add_event": "Adiciona um evento no Google Calendar por texto natural.",
+    "gcal_create_event": "Cria evento no Google Calendar por API ou por texto.",
+    "gcal_find_locked_events": "Procura eventos travados do Reclaim no Google Calendar.",
+    "gcal_get_freebusy": "Retorna blocos ocupados em um intervalo do Calendar.",
+    "gcal_list_events": "Lista eventos do Google Calendar em um intervalo.",
+    "gcal_list_events_detailed": "Lista eventos com detalhes úteis para depuração.",
+    "gemini_bridge_health": "Verifica se o bridge/binário do Gemini está saudável.",
+    "gemini_prompt": "Executa um prompt no Gemini com saída estruturada.",
+    "gtasks_complete_task": "Marca uma tarefa do Google Tasks como concluída.",
+    "gtasks_create_task_natural": "Cria uma tarefa no Google Tasks por texto natural.",
+    "gtasks_create_weekly_series": "Cria uma série semanal de tarefas no Google Tasks.",
+    "gtasks_delete_task": "Apaga uma tarefa do Google Tasks.",
+    "gtasks_list_tasks": "Lista as tarefas atuais do Google Tasks.",
+    "gtasks_update_task_context": "Atualiza a descrição/notas de uma tarefa com contexto GTD.",
+    "gtasks_smart_sync_add_reclaim": "Sincroniza tarefas com fallback para formato Reclaim.",
+    "gupy_test_token": "Testa se o token da Gupy está válido.",
+    "gupy_v1_close_job": "Fecha uma vaga na API v1 da Gupy.",
+    "gupy_v1_list_jobs": "Lista vagas pela API pública v1 da Gupy.",
+    "mermaid_render": "Renderiza um diagrama Mermaid em PNG.",
+    "onedrive_auth_poll": "Finaliza o device flow de autenticação do OneDrive.",
+    "onedrive_auth_start": "Inicia o device flow de autenticação do OneDrive.",
+    "onedrive_get_versions": "Lista versões de um arquivo do OneDrive.",
+    "onedrive_list": "Lista itens de uma pasta do OneDrive.",
+    "plan_day_apply": "Aplica o plano preservando o fluxo Google Tasks → Reclaim, sem criar eventos diretos.",
+    "plan_day_from_tasks": "Monta um plano do dia com Tasks e Calendar.",
+    "reclaim_next_task": "Retorna a próxima tarefa candidata do Reclaim.",
+    "reclaim_session_bootstrap": "Inicia ou confirma a sessão manual do Reclaim.",
+    "reclaim_session_status": "Mostra o estado atual da sessão do Reclaim.",
+    "reclaim_task_assist_confirm": "Confirma manualmente um fallback do Reclaim.",
+    "reclaim_task_restart": "Reinicia uma tarefa ativa no Reclaim.",
+    "reclaim_task_start": "Inicia uma tarefa no Reclaim.",
+    "reclaim_task_stop": "Para a tarefa ativa no Reclaim.",
+    "reclaim_official_adapter_status": "Mostra o estado do adapter do MCP oficial do Reclaim 2.0.",
+    "speedgrapher_fog_index": "Calcula o índice Gunning Fog de um texto.",
+    "workflow_master_prompt_get": "Renderiza o prompt mestre interno do workflow.",
+    "workflow_stack": "Executa operações consolidadas do stack de workflow.",
+}
+
+
+def _mcp_tool_origin(tool_name: str) -> str:
+    name = str(tool_name or "")
+    for group, patterns in _MCP_TOOL_GROUP_RULES:
+        if any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
+            return group
+    return "outros"
+
+
+def _mcp_group_tools(names: list[str]) -> list[tuple[str, str]]:
+    grouped: dict[str, list[str]] = {}
+    for name in names:
+        grouped.setdefault(_mcp_tool_origin(name), []).append(name)
+
+    ordered_groups = [group for group, _ in _MCP_TOOL_GROUP_RULES if group in grouped]
+    extras = sorted(group for group in grouped if group not in ordered_groups)
+    entries: list[tuple[str, str]] = []
+    for origin in ordered_groups + extras:
+        tools = sorted(grouped[origin])
+        entries.append(("group", f"{origin} ({len(tools)})"))
+        entries.extend(("tool", tool) for tool in tools)
+    return entries
+
+
+def _mcp_tool_description(tool_name: str, kind: str = "tool") -> str:
+    if kind == "group":
+        return _MCP_TOOL_GROUP_DESCRIPTIONS.get(tool_name, "Grupo de ferramentas relacionado.")
+    if kind == "section":
+        return "Seção da lista de ferramentas."
+    return _MCP_TOOL_DESCRIPTIONS.get(tool_name, f"Ferramenta do grupo {_mcp_tool_origin(tool_name)}.")
+def write_mcp_status_report(payload: dict | None = None, *, announce: bool = True):
     """Gera um relatório simples (txt) com o status de configuração dos MCPs."""
+    payload = payload or _mcp_status_payload()
     lines = []
 
-    def add(name: str, ok: bool, reason: str = ""):
-        status = "configurado" if ok else "não configurado"
-        if reason and not ok:
-            status = f"{status} ({reason})"
-        lines.append(f"{name}: {status}")
-
-    def has_key(val: str) -> bool:
-        return bool(val and str(val).strip())
-
-    # Node-based MCPs
-    add(
-        "Playwright MCP",
-        PLAYWRIGHT_MCP_ENABLE and bool(shutil.which(PLAYWRIGHT_MCP_BIN)),
-        "npx/Node ausente ou desativado",
-    )
-    add(
-        "Brave MCP",
-        BRAVE_MCP_ENABLE and has_key(BRAVE_API_KEY) and bool(shutil.which(BRAVE_MCP_BIN)),
-        "falta BRAVE_API_KEY ou npx",
-    )
-    add(
-        "Chart MCP",
-        CHART_MCP_ENABLE and bool(shutil.which(CHART_MCP_BIN)),
-        "npx ausente ou desativado",
-    )
-    add(
-        "Zotero MCP",
-        ZOTERO_MCP_ENABLE
-        and has_key(ZOTERO_API_KEY)
-        and has_key(ZOTERO_USER_ID)
-        and bool(shutil.which(ZOTERO_MCP_BIN)),
-        "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx",
-    )
-    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
-    add(
-        "Firecrawl MCP",
-        FIRECRAWL_ENABLE and has_key(firecrawl_key) and bool(shutil.which("npx")),
-        "falta FIRECRAWL_API_KEY ou npx",
-    )
-    add(
-        "Fireflies MCP",
-        FIREFLIES_MCP_ENABLE and has_key(FIREFLIES_API_KEY) and bool(shutil.which(FIREFLIES_MCP_BIN)),
-        "falta FIREFLIES_API_KEY ou npx",
-    )
-    add(
-        "OpenRouter (tool)",
-        has_key(OPENROUTER_API_KEY) or has_key(OPENAI_API_KEY),
-        "falta OPENROUTER_API_KEY/OPENAI_API_KEY",
-    )
-    add(
-        "Sequential MCP",
-        SEQUENTIAL_MCP_ENABLE and bool(shutil.which(SEQUENTIAL_MCP_BIN)),
-        "npx ausente ou desativado",
-    )
-
-    # Ferramentas carregadas (snapshot em runtime)
-    # FastMCP recente não expõe mais `mcp.tools`; a forma correta é `await mcp.get_tools()`.
-    try:
-        import asyncio
-
-        async def _get_names():
-            tools_map = await mcp.get_tools()
-            return sorted([name for name in tools_map.keys() if name])
-
-        tools = asyncio.run(_get_names())
-
-        lines.append("")
-        lines.append("Ferramentas registradas:")
-        if not tools:
-            lines.append("- (nenhuma ou indisponível neste modo)")
+    for item in sorted(payload.get("items", []), key=_mcp_status_sort_key):
+        name = item.get("name", "")
+        ok = bool(item.get("ok"))
+        enabled = bool(item.get("enabled"))
+        reason = (item.get("reason") or "").strip()
+        status = "configurado" if ok else "falha"
+        if not enabled:
+            status = "desativado"
+        if (not ok) and reason:
+            lines.append(f"{name}: {status} ({reason})")
         else:
-            for name in tools:
-                lines.append(f"- {name}")
-    except Exception as e:  # pragma: no cover
+            lines.append(f"{name}: {status}")
+
+    auth_actions = payload.get("authActions") or []
+    if auth_actions:
         lines.append("")
-        lines.append(f"(Falha ao listar ferramentas: {e})")
+        lines.append("Autenticação automática:")
+        for action in auth_actions:
+            target = action.get("target", "")
+            detail = action.get("detail", "")
+            status = "ok" if action.get("ok") else "info"
+            if action.get("attempted") and not action.get("ok"):
+                status = "falha"
+            lines.append(f"- {target}: {status} ({detail})")
+
+    available_tools, unavailable_tools = _mcp_status_tool_lists(payload)
+    lines.append("")
+    lines.append(f"Ferramentas disponíveis: {len(available_tools)}")
+    if not available_tools:
+        lines.append("- (nenhuma)")
+    else:
+        for name in available_tools:
+            lines.append(f"- {name}")
+
+    lines.append("")
+    lines.append(f"Ferramentas indisponíveis: {len(unavailable_tools)}")
+    if not unavailable_tools:
+        lines.append("- (nenhuma)")
+    else:
+        for name in unavailable_tools:
+            lines.append(f"- {name}")
 
     report_path = Path.cwd() / "mcp_status.txt"
     report_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"📝 Relatório MCP salvo em {report_path}")
+    if announce:
+        print(f"📝 Relatório MCP salvo em {report_path}")
 
 def start_playwright_mcp():
     """Sobe o Playwright MCP via npx (Node)."""
@@ -1123,6 +1681,95 @@ def start_firecrawl_mcp():
         print(f"⚠️  Falha ao montar Firecrawl MCP no servidor principal: {e}")
     return proc
 
+def start_google_drive_mcp():
+    """Monta o Google Drive MCP diretamente dentro do Jarvis."""
+    enabled = os.environ.get("GOOGLE_DRIVE_MCP_ENABLE", "true").lower() in ("1", "true", "yes", "on")
+    if not enabled:
+        print("ℹ️  Google Drive MCP desativado via env.", file=sys.stderr)
+        return
+
+    npx_path = shutil.which("npx")
+    if not npx_path:
+        print("⚠️  npx não encontrado. Google Drive MCP requer Node.js.", file=sys.stderr)
+        return
+
+    env = os.environ.copy()
+    env["GOOGLE_CLIENT_ID"] = os.environ.get("GOOGLE_CLIENT_ID", "")
+    env["GOOGLE_CLIENT_SECRET"] = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    env["GDRIVE_MCP_OAUTH_PATH"] = GOOGLE_DRIVE_MCP_OAUTH_PATH
+    env["GDRIVE_MCP_TOKEN_PATH"] = GOOGLE_DRIVE_MCP_TOKEN_PATH
+    env["GDRIVE_MCP_SCOPES"] = GOOGLE_DRIVE_MCP_SCOPES
+
+    backend = {
+        "mcpServers": {
+            "google-drive": {
+                "command": npx_path,
+                "args": ["-y", "@ibarcarty/mcp-server-google-drive"],
+                "env": env,
+            }
+        }
+    }
+    try:
+        proxy = FastMCP.as_proxy(backend, name="google-drive-mcp")
+        mcp.mount(proxy, prefix="gdrive")
+        print("🔗 Google Drive MCP montado no servidor principal com prefixo gdrive_*")
+    except Exception as e:
+        print(f"⚠️  Falha ao montar Google Drive MCP no servidor principal: {e}")
+
+def start_google_calendar_mcp():
+    if not GOOGLE_CALENDAR_MCP_ENABLE:
+        print("ℹ️  Google Calendar MCP desativado via env (GOOGLE_CALENDAR_MCP_ENABLE=false).")
+        return None
+    if not shutil.which(GOOGLE_CALENDAR_MCP_BIN):
+        print(f"⚠️  npx/Node não encontrado (binário: {GOOGLE_CALENDAR_MCP_BIN}).")
+        print("    Instale Node ou defina GOOGLE_CALENDAR_MCP_ENABLE=false.")
+        return None
+
+    ensure_port_free(GOOGLE_CALENDAR_MCP_PORT, "google-calendar-mcp")
+    cmd = [GOOGLE_CALENDAR_MCP_BIN, "-y", GOOGLE_CALENDAR_MCP_PACKAGE, "--port", str(GOOGLE_CALENDAR_MCP_PORT)]
+    env = os.environ.copy()
+
+    env["CREDENTIALS_PATH"] = str(Path(GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH).expanduser())
+    env["PORT"] = str(GOOGLE_CALENDAR_MCP_PORT)
+
+    print(f"📅 Iniciando Google Calendar MCP em {GOOGLE_CALENDAR_MCP_URL} ...")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, env=env)
+    threading.Thread(target=_log_process, args=(proc, "google-calendar-mcp"), daemon=True).start()
+    atexit.register(stop_process, proc)
+    
+    # Monta no servidor principal
+    try:
+        # Aguarda um pouco para o processo subir
+        time.sleep(2)
+        proxy = FastMCP.as_proxy(GOOGLE_CALENDAR_MCP_URL, name="google-calendar-mcp")
+        mcp.mount(proxy, prefix="gcal")
+        print(f"🔗 Google Calendar MCP montado no servidor principal com prefixo gcal_*")
+    except Exception as e:
+        print(f"⚠️  Falha ao montar Google Calendar MCP no servidor principal: {e}")
+    
+    return proc
+    print(f"📅 Iniciando Google Calendar MCP em {GOOGLE_CALENDAR_MCP_URL} ...")
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        text=True,
+        env=env,
+        cwd=str(BASE_DIR),
+    )
+    threading.Thread(target=_log_process, args=(proc, "google-calendar-mcp"), daemon=True).start()
+    atexit.register(stop_process, proc)
+
+    try:
+        time.sleep(3)
+        proxy = FastMCP.as_proxy(GOOGLE_CALENDAR_MCP_URL, name="google-calendar-mcp")
+        mcp.mount(proxy, prefix="gcalendar")
+        print(f"🔗 Google Calendar MCP montado no servidor principal com prefixo gcalendar_* (url={GOOGLE_CALENDAR_MCP_URL}).")
+    except Exception as e:
+        print(f"⚠️  Falha ao montar Google Calendar MCP no servidor principal: {e}")
+    return proc
+
 
 def start_fireflies_mcp():
     """Proxy remoto para Fireflies via mcp-remote (Node)."""
@@ -1167,18 +1814,34 @@ def start_fireflies_mcp():
     return proc
 
 
-def start_sequential_mcp():
-    """Versão Nativa: Sequential Thinking agora roda dentro do processo Python."""
-    if not SEQUENTIAL_MCP_ENABLE:
-        print("ℹ️  Sequential MCP desativado via env.", file=sys.stderr)
+def start_reclaim_official_mcp():
+    """Monta o MCP oficial remoto do Reclaim 2.0 sem remover fallbacks locais."""
+    global RECLAIM_OFFICIAL_MCP_MOUNTED
+    if not RECLAIM_OFFICIAL_MCP_ENABLE:
+        print("ℹ️  Reclaim official MCP desativado via env (RECLAIM_OFFICIAL_MCP_ENABLE=false).")
         return None
-    
-    print("🧠 Sequential Thinking (Nativo) ativado e pronto.", file=sys.stderr)
-    # Não iniciamos subprocesso, pois a ferramenta @mcp.tool já foi registrada.
+
+    if not RECLAIM_OFFICIAL_MCP_URL.startswith(("https://", "http://")):
+        print(f"⚠️  RECLAIM_OFFICIAL_MCP_URL inválida: {RECLAIM_OFFICIAL_MCP_URL!r}")
+        return None
+
+    try:
+        proxy = FastMCP.as_proxy(RECLAIM_OFFICIAL_MCP_URL, name="reclaim-official-mcp")
+        mcp.mount(proxy, prefix=RECLAIM_OFFICIAL_MCP_PREFIX)
+        RECLAIM_OFFICIAL_MCP_MOUNTED = True
+        print(
+            "🔗 Reclaim official MCP montado no servidor principal "
+            f"com prefixo {RECLAIM_OFFICIAL_MCP_PREFIX}_* (url={RECLAIM_OFFICIAL_MCP_URL})."
+        )
+    except Exception as e:
+        RECLAIM_OFFICIAL_MCP_MOUNTED = False
+        print(f"⚠️  Falha ao montar Reclaim official MCP no servidor principal: {e}")
     return None
 
 
-@mcp.tool()
+
+
+@_mcp_tool_when_env("MERMAID_ENABLE", "false")
 def mermaid_render(code: str, filename: str | None = None) -> str:
     """Gera PNG a partir de código Mermaid usando kroki.io."""
     if not MERMAID_ENABLE:
@@ -1292,43 +1955,6 @@ def mermaid_render(code: str, filename: str | None = None) -> str:
     return fallback
 
 
-@mcp.tool()
-def openrouter_chat(prompt: str, model: str = os.environ.get("OPENAI_MODEL_NAME", "google/gemini-2.0-flash-lite-preview-02-05:free"), system: str | None = None, temperature: float = 0.7) -> str:
-    """Chama o endpoint chat do OpenRouter (OpenAI-compatível)."""
-    key = OPENROUTER_API_KEY or OPENAI_API_KEY
-    if not key:
-        return "❌ OPENROUTER_API_KEY/OPENAI_API_KEY não definido."
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature,
-    }
-    try:
-        resp = httpx.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        choices = data.get("choices") or []
-        if not choices:
-            return "❌ OpenRouter não retornou choices."
-        content = choices[0].get("message", {}).get("content") or ""
-        return content.strip() if content else "❌ OpenRouter retornou resposta vazia."
-    except httpx.HTTPStatusError as e:
-        return f"❌ OpenRouter erro HTTP {e.response.status_code}: {e.response.text}"
-    except Exception as e:
-        return f"❌ Falha ao chamar OpenRouter: {e}"
 
 @mcp.tool()
 def speedgrapher_fog_index(text: str) -> str:
@@ -1545,19 +2171,125 @@ def workflow_master_prompt_get(
         story_label=story_value,
         run_quality_gates=str(bool(run_quality_gates)).lower(),
     )
+
+_GTASKS_SERVICE_CACHE = None
+_GTASKS_SERVICE_CACHE_MTIME = None
+
+
+def _gtasks_service():
+    """Return a cached Google Tasks service for the current Jarvis process."""
+    global _GTASKS_SERVICE_CACHE, _GTASKS_SERVICE_CACHE_MTIME
+
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    token_path = BASE_DIR / "token.json"
+    if not token_path.exists():
+        raise RuntimeError("token.json não encontrado.")
+    token_mtime = token_path.stat().st_mtime
+    if _GTASKS_SERVICE_CACHE is not None and _GTASKS_SERVICE_CACHE_MTIME == token_mtime:
+        return _GTASKS_SERVICE_CACHE
+    creds = Credentials.from_authorized_user_file(
+        str(token_path),
+        ["https://www.googleapis.com/auth/tasks"],
+    )
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            token_path.write_text(creds.to_json(), encoding="utf-8")
+            token_mtime = token_path.stat().st_mtime
+        except Exception as exc:
+            if _is_google_invalid_grant(exc):
+                _GTASKS_SERVICE_CACHE = None
+                _GTASKS_SERVICE_CACHE_MTIME = None
+            raise
+    _GTASKS_SERVICE_CACHE = build("tasks", "v1", credentials=creds)
+    _GTASKS_SERVICE_CACHE_MTIME = token_mtime
+    return _GTASKS_SERVICE_CACHE
+
+
+def _normalize_task_title(value: str) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip()).casefold()
+
+
+def _looks_like_gtasks_id(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]{12,}", (value or "").strip()))
+
+
+def _resolve_gtasks_task(service, task_list_id: str, task_ref: str) -> dict:
+    """Resolve task_ref as id first, then as exact title, then unique substring."""
+    task_ref = (task_ref or "").strip()
+    if not task_ref:
+        raise RuntimeError("task_id/título vazio.")
+
+    if _looks_like_gtasks_id(task_ref):
+        try:
+            return service.tasks().get(tasklist=task_list_id, task=task_ref).execute()
+        except Exception:
+            pass
+
+    target = _normalize_task_title(task_ref)
+    results = service.tasks().list(tasklist=task_list_id, showCompleted=False, maxResults=100).execute()
+    items = results.get("items", []) or []
+    exact = [item for item in items if _normalize_task_title(item.get("title", "")) == target]
+    if len(exact) == 1:
+        return exact[0]
+    if len(exact) > 1:
+        raise RuntimeError(f"título ambíguo, {len(exact)} tarefas com título exato.")
+
+    partial = [item for item in items if target and target in _normalize_task_title(item.get("title", ""))]
+    if len(partial) == 1:
+        return partial[0]
+    if len(partial) > 1:
+        titles = "; ".join(item.get("title", "") for item in partial[:5])
+        raise RuntimeError(f"título ambíguo, {len(partial)} tarefas encontradas: {titles}")
+    raise RuntimeError(f"tarefa não encontrada por id ou título: {task_ref}")
+
+def _gtasks_structured_notes(
+    *,
+    bloqueios: str = "",
+    updates: str = "",
+    contexto: str = "",
+    plano_acao: str = "",
+) -> str:
+    def _section(title: str, value: str) -> str:
+        raw = (value or "").strip()
+        if not raw:
+            return f"{title}:\n-"
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        bullets = []
+        for line in lines:
+            bullets.append(line if line.startswith(("-", "*")) else f"- {line}")
+        return f"{title}:\n" + "\n".join(bullets)
+
+    return "\n\n".join(
+        (
+            _section("Bloqueios", bloqueios),
+            _section("Updates", updates),
+            _section("Contexto", contexto),
+            _section("Plano de acao", plano_acao),
+        )
+    )
+
+
+def _gtasks_merge_notes(existing: str, new_notes: str) -> str:
+    existing = (existing or "").strip()
+    if not existing or existing == "Jarvis":
+        return new_notes
+    if existing == new_notes:
+        return existing
+    return f"{existing}\n\n---\n\n{new_notes}"
+
+
+
 @mcp.tool()
 def gtasks_list_tasks(task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw") -> str:
-    """Lista as tarefas atuais com seus IDs (necessário para concluir/deletar)."""
+    """Lista as tarefas atuais com seus IDs."""
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-        
-        token_path = BASE_DIR / "token.json"
-        if not token_path.exists(): return "Erro: token.json não encontrado."
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
-        
-        results = service.tasks().list(tasklist=task_list_id, showCompleted=False).execute()
+        service = _gtasks_service()
+
+        results = service.tasks().list(tasklist=task_list_id, showCompleted=False, maxResults=100).execute()
         items = results.get('items', [])
         
         if not items: return f"Lista '{task_list_id}' vazia."
@@ -1568,41 +2300,107 @@ def gtasks_list_tasks(task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw") -> str:
             output.append(f"- ID: {item['id']}\n  Título: {item['title']}{due}")
             
         return "\n".join(output)
-    except Exception as e: return f"Erro: {e}"
+    except Exception as e: return f"Erro: {_google_auth_actionable_error(e)}"
+
 
 @mcp.tool()
-def gtasks_complete_task(task_id: str, task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw") -> str:
-    """Marca uma tarefa específica como concluída."""
+def gtasks_update_task_context(
+    task_id: str,
+    bloqueios: str = "",
+    updates: str = "",
+    contexto: str = "",
+    plano_acao: str = "",
+    task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw",
+    mode: str = "replace",
+) -> str:
+    """Atualiza a descrição/notas de uma tarefa com estrutura GTD.
+
+    Use depois de coletar contexto do usuário por perguntas. Resolve task_id por
+    ID, título exato ou trecho único. mode aceita:
+    - replace: substitui notes pela estrutura Bloqueios/Updates/Contexto/Plano de acao.
+    - append: preserva notes existentes e anexa a nova estrutura.
+    """
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-        
-        token_path = BASE_DIR / "token.json"
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
-        
-        task = service.tasks().get(tasklist=task_list_id, task=task_id).execute()
-        task['status'] = 'completed'
-        service.tasks().update(tasklist=task_list_id, task=task_id, body=task).execute()
-        
+        service = _gtasks_service()
+        task = _resolve_gtasks_task(service, task_list_id, task_id)
+        new_notes = _gtasks_structured_notes(
+            bloqueios=bloqueios,
+            updates=updates,
+            contexto=contexto,
+            plano_acao=plano_acao,
+        )
+        normalized_mode = (mode or "replace").strip().lower()
+        if normalized_mode not in {"replace", "append"}:
+            return "Erro ao atualizar tarefa: mode deve ser 'replace' ou 'append'."
+
+        task["notes"] = (
+            _gtasks_merge_notes(task.get("notes", ""), new_notes)
+            if normalized_mode == "append"
+            else new_notes
+        )
+        updated = service.tasks().update(tasklist=task_list_id, task=task["id"], body=task).execute()
+        return (
+            "✅ descrição da tarefa atualizada.\n"
+            f"- id: {updated.get('id')}\n"
+            f"- título: {updated.get('title')}\n"
+            f"- modo: {normalized_mode}\n"
+            f"- notes:\n{updated.get('notes', '')}"
+        )
+    except Exception as e:
+        return f"Erro ao atualizar tarefa: {_google_auth_actionable_error(e)}"
+@mcp.tool()
+def gtasks_complete_task(task_id: str, task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw") -> str:
+    """Marca uma tarefa como concluída por ID, título exato ou trecho único do título."""
+    try:
+        service = _gtasks_service()
+        task = _resolve_gtasks_task(service, task_list_id, task_id)
+        task["status"] = "completed"
+        service.tasks().update(tasklist=task_list_id, task=task["id"], body=task).execute()
+
         return f"✅ Tarefa '{task['title']}' marcada como concluída!"
-    except Exception as e: return f"Erro ao concluir: {e}"
+    except Exception as e:
+        return f"Erro ao concluir: {_google_auth_actionable_error(e)}"
 
 @mcp.tool()
 def gtasks_delete_task(task_id: str, task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw") -> str:
     """Deleta permanentemente uma tarefa específica."""
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-        
-        token_path = BASE_DIR / "token.json"
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
-        
+        service = _gtasks_service()
         service.tasks().delete(tasklist=task_list_id, task=task_id).execute()
         return f"🗑️ Tarefa {task_id} deletada com sucesso."
-    except Exception as e: return f"Erro ao deletar: {e}"
+    except Exception as e: return f"Erro ao deletar: {_google_auth_actionable_error(e)}"
 
+
+@mcp.tool()
+def gtasks_move_task(
+    task_id: str,
+    source_task_list_id: str,
+    destination_task_list_id: str,
+) -> str:
+    """Move uma tarefa entre listas do Google Tasks preservando título, notas e due."""
+    try:
+        service = _gtasks_service()
+
+        task = service.tasks().get(tasklist=source_task_list_id, task=task_id).execute()
+        body = {
+            "title": task.get("title", ""),
+            "notes": task.get("notes", ""),
+        }
+        if task.get("due"):
+            body["due"] = task["due"]
+
+        created = service.tasks().insert(tasklist=destination_task_list_id, body=body).execute()
+        service.tasks().delete(tasklist=source_task_list_id, task=task_id).execute()
+
+        return (
+            "✅ tarefa movida.\n"
+            f"- origem: {source_task_list_id}\n"
+            f"- destino: {destination_task_list_id}\n"
+            f"- novo_id: {created.get('id', '')}\n"
+            f"- título: {created.get('title', body['title'])}"
+        )
+    except Exception as e:
+        return f"Erro ao mover tarefa: {_google_auth_actionable_error(e)}"
 
 @mcp.tool()
 def gtasks_create_task_natural(
@@ -1627,8 +2425,6 @@ def gtasks_create_task_natural(
     """
     try:
         from datetime import datetime, date, timedelta, timezone
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
 
         def _br(d: date) -> str:
             return f"{d.day:02d}/{d.month:02d}/{d.year}"
@@ -1686,12 +2482,7 @@ def gtasks_create_task_natural(
             f"(duration:{int(duration_min)}m due:{_us(due_date)} priority:{priority} type:{task_type})"
         )
 
-        token_path = BASE_DIR / "token.json"
-        if not token_path.exists():
-            return "Erro: token.json não encontrado. Rode: ./.venv-super/bin/python jarvis.py auth-google --scope tasks."
-
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
+        service = _gtasks_service()
 
         body = {
             'title': title,
@@ -1703,7 +2494,7 @@ def gtasks_create_task_natural(
 
     except Exception as e:
         import traceback
-        return f"Erro ao criar tarefa (no-llm): {e}\n{traceback.format_exc()}"
+        return f"Erro ao criar tarefa (no-llm): {_google_auth_actionable_error(e)}\n{traceback.format_exc()}"
 
 
 
@@ -1748,7 +2539,7 @@ def gcal_list_events(
 
         token_path = BASE_DIR / "token.json"
         if not token_path.exists():
-            return "Erro: token.json não encontrado. Rode: ./.venv-super/bin/python jarvis.py auth-google --scope tasks para autorizar Calendar + Tasks."
+            return "Erro: token.json não encontrado. Rode: python jarvis.py mcp-status para autenticar Google automaticamente."
 
         scopes = [
             'https://www.googleapis.com/auth/calendar.readonly',
@@ -1969,7 +2760,7 @@ def gcal_get_freebusy(
 
         token_path = BASE_DIR / "token.json"
         if not token_path.exists():
-            return "Erro: token.json não encontrado. Rode: ./.venv-super/bin/python jarvis.py auth-google --scope tasks para autorizar Calendar + Tasks."
+            return "Erro: token.json não encontrado. Rode: python jarvis.py mcp-status para autenticar Google automaticamente."
 
         scopes = [
             'https://www.googleapis.com/auth/calendar.readonly',
@@ -2392,28 +3183,24 @@ def gcal_create_event(
 @mcp.tool()
 def plan_day_from_tasks(
     day: str,
-    task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw",
+    task_list_id: str = "",
+    task_list_ids: list[str] | None = None,
     calendar_ids: list[str] = ["primary"],
     day_start: str = "08:00",
-    day_end: str = "20:00",
+    day_end: str = "22:30",
     min_slot_min: int = 15,
     buffer_min: int = 15,
     include_overdue: bool = True,
 ) -> str:
-    """Planeja o dia (sem LLM) juntando Google Tasks + Google Calendar.
+    """Planeja o dia juntando Google Tasks e Google Calendar.
 
-    - lê tarefas do Google Tasks (não conclui/não altera nada)
-    - lê blocos ocupados (busy) do Google Calendar
-    - sugere uma ordem e um agenda de execução nos espaços livres
+    Por padrão lê duas listas:
+    - Reclaim: lista operacional comprometida que entra na alocação do dia.
+    - Minhas tarefas: dump desestruturado usado para triagem, perguntas e promoção
+      manual para a lista operacional Reclaim.
 
-    Params:
-    - day: YYYY-MM-DD (no fuso America/Sao_Paulo)
-    - day_start/day_end: HH:MM
-
-    Retorna um plano em texto com:
-    - busy blocks
-    - free slots
-    - alocação sugerida (tarefa -> horário)
+    Dia normal padrão: 08:00–22:30. Se o usuário disser que está madrugando,
+    planeje tarefas para agora, sem esperar o próximo bloco diurno.
     """
     try:
         from datetime import datetime, date, time, timedelta, timezone
@@ -2423,7 +3210,6 @@ def plan_day_from_tasks(
         except Exception:
             tz = None
 
-        # parse day
         y, mo, da = map(int, day.split('-'))
         day_d = date(y, mo, da)
 
@@ -2431,39 +3217,113 @@ def plan_day_from_tasks(
             hh, mm = map(int, hm.split(':'))
             return time(hh, mm)
 
+        def _split_task_list_ids(raw: str) -> list[str]:
+            return [part.strip() for part in (raw or "").split(",") if part.strip()]
+
+        def _task_list_ids_for_plan() -> list[str]:
+            if task_list_ids is not None:
+                raw_ids = [str(tlid).strip() for tlid in task_list_ids if str(tlid).strip()]
+            elif task_list_id.strip():
+                raw_ids = _split_task_list_ids(task_list_id)
+            else:
+                raw_ids = _split_task_list_ids(PLAN_DAY_TASK_LIST_IDS)
+
+            seen: set[str] = set()
+            out: list[str] = []
+            for tlid in raw_ids:
+                if tlid not in seen:
+                    seen.add(tlid)
+                    out.append(tlid)
+            return out or [RECLAIM_TASK_LIST_ID]
+
+        def _task_list_label(tlid: str) -> str:
+            if tlid == RECLAIM_TASK_LIST_ID:
+                return "Reclaim"
+            if tlid == PERSONAL_TASK_LIST_ID:
+                return "Minhas tarefas"
+            return tlid
+
         start_local = datetime.combine(day_d, _t(day_start), tzinfo=tz) if tz else datetime.combine(day_d, _t(day_start), tzinfo=timezone.utc)
         end_local = datetime.combine(day_d, _t(day_end), tzinfo=tz) if tz else datetime.combine(day_d, _t(day_end), tzinfo=timezone.utc)
+        if end_local <= start_local:
+            end_local = end_local + timedelta(days=1)
 
-        # auth
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
         token_path = BASE_DIR / "token.json"
         if not token_path.exists():
             return "Erro: token.json não encontrado."
 
-        scopes = [
-            'https://www.googleapis.com/auth/tasks',
-            'https://www.googleapis.com/auth/calendar.readonly',
-        ]
-        creds = Credentials.from_authorized_user_file(str(token_path), scopes)
+        task_creds = Credentials.from_authorized_user_file(
+            str(token_path),
+            ['https://www.googleapis.com/auth/tasks'],
+        )
 
-        # calendar busy
-        cal_svc = build('calendar', 'v3', credentials=creds)
-        fb_body = {
-            "timeMin": start_local.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
-            "timeMax": end_local.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
-            "items": [{"id": cid} for cid in calendar_ids],
-        }
-        fb = cal_svc.freebusy().query(body=fb_body).execute()
+        calendar_error = ""
+        calendar_source = "google_calendar"
+        official_schedule_status = "not_used"
+        official_schedule_detail = ""
+        official_schedule_events: list[dict] = []
+        generic_reclaim_meetings = []
+        reclaim_official_task_events: list[dict] = []
         busy_blocks = []
-        for cid in calendar_ids:
-            for b in fb.get('calendars', {}).get(cid, {}).get('busy', []):
-                bs = datetime.fromisoformat(b['start'].replace('Z', '+00:00'))
-                be = datetime.fromisoformat(b['end'].replace('Z', '+00:00'))
-                busy_blocks.append((bs, be, cid))
+
+        official_schedule = _reclaim_official_get_schedule(day)
+        if official_schedule.get("ok"):
+            calendar_source = "reclaim_official_get_schedule"
+            official_schedule_status = "ok"
+            official_schedule_events = list(official_schedule.get("events") or [])
+            busy_blocks, generic_reclaim_meetings, reclaim_official_task_events = _reclaim_official_events_to_busy(
+                official_schedule_events,
+                day,
+                tz,
+            )
+        else:
+            official_schedule_status = str(official_schedule.get("status") or "error")
+            official_schedule_detail = str(official_schedule.get("detail") or "")
+            try:
+                calendar_creds = Credentials.from_authorized_user_file(
+                    str(token_path),
+                    ['https://www.googleapis.com/auth/calendar.readonly'],
+                )
+                cal_svc = build('calendar', 'v3', credentials=calendar_creds)
+                fb_body = {
+                    "timeMin": start_local.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "timeMax": end_local.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "items": [{"id": cid} for cid in calendar_ids],
+                }
+                fb = cal_svc.freebusy().query(body=fb_body).execute()
+                for cid in calendar_ids:
+                    events = cal_svc.events().list(
+                        calendarId=cid,
+                        timeMin=fb_body["timeMin"],
+                        timeMax=fb_body["timeMax"],
+                        singleEvents=True,
+                        orderBy='startTime',
+                        maxResults=250,
+                    ).execute().get('items', [])
+                    for ev in events:
+                        summary = (ev.get('summary') or '').strip()
+                        normalized = summary.replace('🤝', '').strip().lower()
+                        if normalized != "meeting":
+                            continue
+                        ext_private = (ev.get('extendedProperties') or {}).get('private') or {}
+                        if not any("reclaim" in str(k).lower() or "reclaim" in str(v).lower() for k, v in ext_private.items()):
+                            continue
+                        st = (ev.get('start') or {}).get('dateTime') or (ev.get('start') or {}).get('date') or ''
+                        en = (ev.get('end') or {}).get('dateTime') or (ev.get('end') or {}).get('date') or ''
+                        generic_reclaim_meetings.append((st, en, cid))
+                for cid in calendar_ids:
+                    for b in fb.get('calendars', {}).get(cid, {}).get('busy', []):
+                        bs = datetime.fromisoformat(b['start'].replace('Z', '+00:00'))
+                        be = datetime.fromisoformat(b['end'].replace('Z', '+00:00'))
+                        busy_blocks.append((bs, be, cid))
+            except Exception as cal_err:
+                calendar_error = str(cal_err)
+                busy_blocks = []
+                generic_reclaim_meetings = []
         busy_blocks.sort(key=lambda x: x[0])
 
-        # merge overlaps
         merged = []
         for bs, be, cid in busy_blocks:
             if not merged:
@@ -2474,27 +3334,49 @@ def plan_day_from_tasks(
             else:
                 merged.append([bs, be])
 
-        # free slots (com buffer entre blocos)
         buf = timedelta(minutes=int(buffer_min))
         free = []
         cur = start_local.astimezone(timezone.utc)
         end_utc = end_local.astimezone(timezone.utc)
         for bs, be in merged:
-            # deixa buffer antes do próximo busy
             fs = cur
             fe = bs - buf
             if fe > fs:
                 free.append((fs, fe))
-            # pula busy + buffer depois
             cur = max(cur, be + buf)
         if cur < end_utc:
             free.append((cur, end_utc))
 
-        # tasks
-        tasks_svc = build('tasks', 'v1', credentials=creds)
-        items = tasks_svc.tasks().list(tasklist=task_list_id, showCompleted=False).execute().get('items', [])
+        tasks_svc = build('tasks', 'v1', credentials=task_creds)
+        plan_task_list_ids = _task_list_ids_for_plan()
+        items = []
+        fetch_errors = []
+        fetched_counts = []
+        for tlid in plan_task_list_ids:
+            label = _task_list_label(tlid)
+            try:
+                page_token = None
+                count = 0
+                while True:
+                    req = tasks_svc.tasks().list(
+                        tasklist=tlid,
+                        showCompleted=False,
+                        pageToken=page_token,
+                    )
+                    res = req.execute()
+                    for it in res.get('items', []):
+                        it = dict(it)
+                        it['_task_list_id'] = tlid
+                        it['_task_list_label'] = label
+                        items.append(it)
+                        count += 1
+                    page_token = res.get('nextPageToken')
+                    if not page_token:
+                        break
+                fetched_counts.append(f"{label}: {count}")
+            except Exception as list_err:
+                fetch_errors.append(f"{label}: {list_err}")
 
-        # parse title params
         def _parse_params(title: str) -> dict:
             out = {}
             m = re.search(r"\(([^)]*)\)\s*$", title)
@@ -2520,20 +3402,23 @@ def plan_day_from_tasks(
                 'p3': 3,
             }.get(s, 4)
 
-        today_local = datetime.now(tz).date() if tz else datetime.now().date()
-
         task_objs = []
+        dump_objs = []
         for it in items:
             title = it.get('title', '')
             due_iso = (it.get('due') or '')
             due_d = None
+            params = _parse_params(title)
             if due_iso:
                 try:
                     due_d = date.fromisoformat(due_iso[:10])
-                except:
+                except Exception:
                     due_d = None
-
-            params = _parse_params(title)
+            if due_d is None and params.get('due'):
+                try:
+                    due_d = datetime.strptime(str(params['due']), "%m/%d/%Y").date()
+                except Exception:
+                    due_d = None
             dur_min = 30
             if 'duration' in params:
                 m = re.match(r"(\d+)", str(params['duration']))
@@ -2541,17 +3426,12 @@ def plan_day_from_tasks(
                     dur_min = int(m.group(1))
             pr = params.get('priority', 'P2')
             upnext = bool(params.get('upnext', False))
-
-            # filter
-            if due_d and due_d > day_d:
-                continue
-            if due_d and due_d < day_d and (not include_overdue):
-                continue
-
-            # if overdue by day, bubble it up
             overdue = bool(due_d and due_d < day_d)
+            source_id = it.get('_task_list_id', '')
+            source_label = it.get('_task_list_label', source_id)
+            is_dump = source_id == PERSONAL_TASK_LIST_ID
 
-            task_objs.append({
+            obj = {
                 'id': it.get('id'),
                 'title': title,
                 'dur_min': dur_min,
@@ -2560,7 +3440,19 @@ def plan_day_from_tasks(
                 'upnext': upnext,
                 'overdue': overdue,
                 'due': due_d,
-            })
+                'source': source_label,
+                'is_dump': is_dump,
+            }
+
+            if is_dump:
+                dump_objs.append(obj)
+                continue
+
+            if due_d and due_d > day_d:
+                continue
+            if due_d and due_d < day_d and (not include_overdue):
+                continue
+            task_objs.append(obj)
 
         task_objs.sort(key=lambda t: (
             0 if t['upnext'] else 1,
@@ -2568,8 +3460,13 @@ def plan_day_from_tasks(
             t['priority_rank'],
             t['due'] or day_d,
         ))
+        dump_objs.sort(key=lambda t: (
+            0 if t['overdue'] else 1,
+            0 if t['due'] is None else 1,
+            t['priority_rank'],
+            t['due'] or date.max,
+        ))
 
-        # allocate into free slots
         allocations = []
         slot_i = 0
         slot_start = free[0][0] if free else None
@@ -2597,20 +3494,55 @@ def plan_day_from_tasks(
                 st = slot_start
                 en = slot_start + chunk
                 allocations.append((tsk, st, en, False))
-                # buffer entre tarefas
                 slot_start = en + buf
                 remaining -= chunk
-                # avoid tiny remainder
                 if slot_start is not None and slot_end is not None and (slot_end - slot_start) < timedelta(minutes=int(min_slot_min)):
                     _advance_slot()
 
-        # output
         def _fmt_dt(dt: datetime) -> str:
             dloc = dt.astimezone(tz) if tz else dt
             return dloc.strftime('%H:%M')
 
+        def _fmt_due(due_d: date | None) -> str:
+            return due_d.isoformat() if due_d else "sem due"
+
+        questions = []
+        for tsk in task_objs:
+            if tsk['overdue']:
+                questions.append(
+                    f"Reclaim: por que '{tsk['title']}' ainda está pendente com due {_fmt_due(tsk['due'])}? Manter hoje ou adiar?"
+                )
+            if len(questions) >= 4:
+                break
+        for tsk in dump_objs:
+            if tsk['overdue']:
+                questions.append(
+                    f"Minhas tarefas: '{tsk['title']}' está vencida desde {_fmt_due(tsk['due'])}. Promover para Reclaim, adiar ou descartar?"
+                )
+            elif tsk['due'] is None:
+                questions.append(
+                    f"Minhas tarefas: '{tsk['title']}' não tem due. Isso deve virar compromisso no Reclaim ou ficar no dump?"
+                )
+            if len(questions) >= 8:
+                break
+
         out = []
-        out.append(f"📅 plano do dia {day} (fuso: America/Sao_Paulo)")
+        out.append(f"plano do dia {day} (fuso: America/Sao_Paulo)")
+        out.append(f"listas lidas: {', '.join(fetched_counts) if fetched_counts else '(nenhuma)'}")
+        out.append(f"agenda lida via: {calendar_source}")
+        if calendar_source == "reclaim_official_get_schedule":
+            out.append(f"eventos lidos do Reclaim oficial: {len(official_schedule_events)}")
+        else:
+            out.append(f"Reclaim oficial get_schedule: {official_schedule_status}{(': ' + official_schedule_detail) if official_schedule_detail else ''}")
+        out.append("tools oficiais de task: indisponíveis por upgrade nesta conta; tarefas lidas via Google Tasks/Jarvis.")
+        if fetch_errors:
+            out.append(f"falhas ao ler listas: {'; '.join(fetch_errors)}")
+        if calendar_error:
+            out.append(f"falha ao ler agenda: {calendar_error}")
+        out.append("")
+        out.append("política:")
+        out.append("- Reclaim entra como lista operacional do dia e pode ser alocado.")
+        out.append("- Minhas tarefas entra como dump desestruturado para triagem, sem alocação automática.")
         out.append("")
         out.append("busy (agenda):")
         if merged:
@@ -2618,6 +3550,16 @@ def plan_day_from_tasks(
                 out.append(f"- {_fmt_dt(bs)}–{_fmt_dt(be)}")
         else:
             out.append("- (sem busy)")
+        if generic_reclaim_meetings:
+            out.append("")
+            out.append("reuniões Reclaim com nome genérico:")
+            for st, en, cid in generic_reclaim_meetings:
+                try:
+                    st_s = _fmt_dt(datetime.fromisoformat(st.replace('Z', '+00:00')))
+                    en_s = _fmt_dt(datetime.fromisoformat(en.replace('Z', '+00:00')))
+                except Exception:
+                    st_s, en_s = st, en
+                out.append(f"- {st_s}–{en_s} ({cid}): abrir automação do navegador do Reclaim para identificar o título real. `Travel` não precisa dessa checagem.")
 
         out.append("")
         out.append("free slots:")
@@ -2629,11 +3571,31 @@ def plan_day_from_tasks(
 
         out.append("")
         out.append("alocação sugerida:")
-        for tsk, st, en, unscheduled in allocations:
-            if unscheduled or st is None:
-                out.append(f"- (sem espaço) {tsk['title']}")
-            else:
-                out.append(f"- {_fmt_dt(st)}–{_fmt_dt(en)} {tsk['title']}")
+        if allocations:
+            for tsk, st, en, unscheduled in allocations:
+                title = tsk['title']
+                if unscheduled or st is None:
+                    out.append(f"- (sem espaço) {title}")
+                else:
+                    out.append(f"- {_fmt_dt(st)}–{_fmt_dt(en)} {title}")
+        else:
+            out.append("- (nenhum compromisso elegível no Reclaim)")
+
+        out.append("")
+        out.append("dump Minhas tarefas (não alocado automaticamente):")
+        if dump_objs:
+            for tsk in dump_objs[:12]:
+                out.append(f"- {_fmt_due(tsk['due'])} {tsk['title']}")
+        else:
+            out.append("- (sem itens)")
+
+        out.append("")
+        out.append("perguntas de triagem:")
+        if questions:
+            for q in questions:
+                out.append(f"- {q}")
+        else:
+            out.append("- (sem perguntas críticas agora)")
 
         return "\n".join(out)
 
@@ -2822,61 +3784,114 @@ def plan_day_apply(
     day: str,
     create_events: bool = True,
     calendar_id: str = "primary",
-    task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw",
+    task_list_id: str = "",
+    task_list_ids: list[str] | None = None,
+    day_end: str = "22:30",
 ) -> str:
-    """Aplica o planejamento do dia criando eventos no Calendar para as tarefas.
+    """Aplica o planejamento sem criar eventos diretos no Calendar.
 
-    - chama internamente o mesmo algoritmo de plan_day_from_tasks
-    - cria eventos com summary igual ao título da tarefa
-
-    Observação: requer oauth com calendar.events.
+    O Reclaim deve sincronizar a agenda a partir das tarefas no Google Tasks.
+    A integração técnica é no nível da conta Google; esta ferramenta preserva a convenção da lista operacional Reclaim e não cria blocos manuais no Calendar.
     """
     try:
-        plan = plan_day_from_tasks(day=day, task_list_id=task_list_id)
-        if not create_events:
-            return plan
+        planner = getattr(plan_day_from_tasks, "fn", plan_day_from_tasks)
+        plan = planner(day=day, task_list_id=task_list_id, task_list_ids=task_list_ids)
 
-        # extrair linhas de alocação do plano
         lines = plan.splitlines()
         alloc_start = None
-        for i,l in enumerate(lines):
+        for i, l in enumerate(lines):
             if l.strip().lower().startswith('alocação sugerida'):
-                alloc_start = i+1
+                alloc_start = i + 1
                 break
-        if alloc_start is None:
-            return plan + "\n\n(sem alocação para aplicar)"
 
-        try:
-            from zoneinfo import ZoneInfo
-            tz = ZoneInfo("America/Sao_Paulo")
-        except Exception:
-            tz = None
-
-        from datetime import datetime, timezone
-        created = 0
+        scheduled = 0
         skipped = 0
-        for l in lines[alloc_start:]:
-            l = l.strip()
-            if not l.startswith('- '):
-                continue
-            l2 = l[2:]
-            if l2.startswith('(sem espaço)'):
-                skipped += 1
-                continue
-            # format: HH:MM–HH:MM title
-            m = re.match(r"(\d{2}:\d{2})–(\d{2}:\d{2})\s+(.*)$", l2)
-            if not m:
-                continue
-            st_hm, en_hm, summary = m.groups()
-            start_iso = f"{day}T{st_hm}:00-03:00"
-            end_iso = f"{day}T{en_hm}:00-03:00"
-            res = gcal_create_event(summary=summary, start=start_iso, end=end_iso, calendar_id=calendar_id)
-            if res.startswith('✅'):
-                created += 1
-            else:
-                skipped += 1
+        scheduled_titles: list[str] = []
+        if alloc_start is not None:
+            for l in lines[alloc_start:]:
+                l = l.strip()
+                if not l:
+                    break
+                if not l.startswith('- '):
+                    continue
+                l2 = l[2:]
+                if l2.startswith('(sem espaço)'):
+                    skipped += 1
+                    continue
+                m = re.match(r"\d{2}:\d{2}–\d{2}:\d{2}\s+(.*)$", l2)
+                if m:
+                    scheduled += 1
+                    scheduled_titles.append(m.group(1).strip())
 
-        return plan + f"\n\n---\n✅ eventos criados: {created}\n↩️ pulados/sem espaço: {skipped}"
+        def _verify_real_agenda(attempt: int) -> tuple[str, bool]:
+            try:
+                from zoneinfo import ZoneInfo
+                verify_tz = ZoneInfo("America/Sao_Paulo")
+            except Exception:
+                verify_tz = None
+            observed = _reclaim_official_get_schedule(day, force=True)
+            out = ["", f"verificação real na agenda, tentativa {attempt}/3:"]
+            if not observed.get("ok"):
+                out.append(f"- status: não verificada, Reclaim oficial get_schedule falhou ({observed.get('status')}: {observed.get('detail')})")
+                return "\n".join(out), False
+            events = list(observed.get("events") or [])
+            _, _, task_events = _reclaim_official_events_to_busy(events, day, verify_tz)
+            quality = _reclaim_official_agenda_quality(events, day, day_end, verify_tz)
+            out.append("- status: agenda lida após a aplicação via Reclaim oficial.")
+            out.append(f"- eventos observados na agenda: {len(events)}")
+            out.append(f"- eventos de tarefa Reclaim observados: {len(task_events)}")
+            out.extend(_format_reclaim_agenda_quality(quality))
+            allocation_ok = True
+            if scheduled_titles:
+                matched = []
+                for title in scheduled_titles:
+                    if any(title.lower() in (ev.get("title", "") or "").lower() for ev in task_events):
+                        matched.append(title)
+                out.append(f"- alocações com horário no plano: {len(scheduled_titles)}")
+                out.append(f"- alocações encontradas como evento de tarefa: {len(matched)}")
+                allocation_ok = len(matched) == len(scheduled_titles)
+                if not allocation_ok:
+                    out.append("- resultado: aplicação real não confirmada para todas as alocações planejadas.")
+                else:
+                    out.append("- resultado: alocações planejadas aparecem na agenda observada.")
+            else:
+                out.append("- alocações com horário no plano: 0")
+                out.append("- resultado: não havia novo bloco com horário para confirmar; a qualidade da agenda ainda foi validada.")
+            ok = bool(quality.get("ok")) and allocation_ok
+            if ok:
+                out.append("- decisão: agenda aceita.")
+            else:
+                out.append("- decisão: agenda não aceita; precisa de nova iteração, desbloqueio, snooze validado ou ajuste manual no Reclaim.")
+            return "\n".join(out), ok
+
+        verification = ""
+        verification_ok = False
+        for attempt in range(1, 4):
+            verification, verification_ok = _verify_real_agenda(attempt)
+            if verification_ok:
+                break
+            if attempt < 3:
+                time.sleep(10)
+        if not create_events:
+            return plan + "\n" + verification
+        if alloc_start is None:
+            return plan + "\n\n---\n(sem alocação para aplicar)" + "\n" + verification
+
+        final_status = "✅ plano verificado na agenda real." if verification_ok else "⚠️ plano enviado ao fluxo, mas agenda real não ficou boa."
+
+        return (
+            plan
+            + "\n\n---\n"
+            + final_status + "\n"
+            + "📅 eventos diretos criados no Calendar: 0\n"
+            + "📡 agenda: Reclaim oficial quando `get_schedule` responde; fallback Google Calendar.\n"
+            + "🧾 tarefas: Google Tasks/Jarvis enquanto task tools oficiais do Reclaim retornam upgrade.\n"
+            + f"🧭 tarefas Reclaim consideradas alocáveis: {scheduled}\n"
+            + f"↩️ tarefas sem espaço: {skipped}\n"
+            + "Observação: o Reclaim é responsável por sincronizar e rearranjar os blocos no Calendar."
+            + "\n"
+            + verification
+        )
 
     except Exception as e:
         import traceback
@@ -3095,32 +4110,26 @@ def gtasks_smart_sync_add_reclaim(
         }
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
-    # se não foi informado, usa a lista padrão do reclaim (sincronizada com reclaim.ai)
+    # se não foi informado, usa a lista operacional padrão do fluxo Reclaim
     if not task_list_id:
         task_list_id = os.environ.get("RECLAIM_TASK_LIST_ID", "TUZuVGxQZkRxSjRrWkNtbw")
 
     # -------- modo llm (tentativa principal) --------
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
         # usa o langchain_openai padrão para ter acesso ao método .invoke() síncrono
         from langchain_openai import ChatOpenAI
 
         # 1. autenticação
-        token_path = BASE_DIR / "token.json"
-        if not token_path.exists():
-            return _fallback_basic(
-                reason="token_missing",
-                detail="token.json não encontrado. rode auth-google ou use fallback criando tarefas linha a linha.",
-            )
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
+        try:
+            service = _gtasks_service()
+        except Exception as auth_err:
+            return _fallback_basic(reason="google_auth_failed", detail=_google_auth_actionable_error(auth_err))
 
         # 2. listar atuais
         try:
             results = service.tasks().list(tasklist=task_list_id, showCompleted=False).execute()
         except Exception as api_err:
-            return _fallback_basic(reason="google_tasks_list_failed", detail=str(api_err))
+            return _fallback_basic(reason="google_tasks_list_failed", detail=_google_auth_actionable_error(api_err))
 
         items = results.get('items', [])
         current_titles = [i.get('title', '') for i in items if i.get('title')]
@@ -3302,19 +4311,16 @@ Sem texto fora do bloco.
 # --- MERGED LOCAL SCRIPTS (auth/bridge/venv/oci) ---
 _GOOGLE_TASKS_SCOPES = [
     'https://www.googleapis.com/auth/tasks',
-    # mantém um mínimo de calendar pra fluxos que criam/consultam eventos,
-    # mas o escopo "calendar" dedicado fica abaixo.
-    'https://www.googleapis.com/auth/calendar.events',
 ]
 
 _GOOGLE_CALENDAR_SCOPES = [
-    # calendar completo (eventos + leitura do calendário)
-    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events',
 ]
 
 _GOOGLE_DRIVE_SCOPES = [
-    'https://www.googleapis.com/auth/tasks',
-    'https://www.googleapis.com/auth/drive.file',
+    # escopo padrão do @ibarcarty/mcp-server-google-drive, cobre Drive, Docs, Sheets e Slides.
+    'https://www.googleapis.com/auth/drive',
 ]
 
 _GEMINI_BRIDGE_BIN = os.environ.get(
@@ -3385,11 +4391,14 @@ def _auth_google_cli(
     if not requested_scopes:
         requested_scopes = ["tasks"]
 
-    allowed = {"tasks", "calendar", "drive"}
+    if "all" in requested_scopes:
+        requested_scopes = ["tasks", "calendar", "drive"]
+
+    allowed = {"tasks", "calendar", "drive", "all"}
     invalid = [s for s in requested_scopes if s not in allowed]
     if invalid:
         print(
-            "❌ Escopo inválido: {invalid}. Use --scope tasks,calendar,drive (separado por vírgula).".format(
+            "❌ Escopo inválido: {invalid}. Use --scope all ou tasks,calendar,drive (separado por vírgula).".format(
                 invalid=", ".join(invalid)
             ),
             file=sys.stderr,
@@ -3490,72 +4499,6 @@ def _auth_google_cli(
     return 0
 
 
-def _graph_login_cli(
-    client_id: str = "",
-    authority: str = "https://login.microsoftonline.com/consumers",
-    cache_path: str = "~/.graph_token_cache.bin",
-) -> int:
-    try:
-        import msal
-    except Exception as e:
-        print(f"❌ msal não disponível: {e}", file=sys.stderr)
-        return 1
-
-    client_id = (client_id or "").strip()
-    if not client_id:
-        print("❌ GRAPH_CLIENT_ID/MSGRAPH_CLIENT_ID não definido.", file=sys.stderr)
-        return 1
-
-    scopes = ["Files.ReadWrite.All", "offline_access"]
-    cache_file = Path(cache_path).expanduser()
-    cache_file.parent.mkdir(parents=True, exist_ok=True)
-
-    cache = msal.SerializableTokenCache()
-    if cache_file.exists():
-        try:
-            cache.deserialize(cache_file.read_text(encoding='utf-8'))
-        except Exception:
-            pass
-
-    app = msal.PublicClientApplication(client_id, authority=authority, token_cache=cache)
-
-    try:
-        accounts = app.get_accounts() or []
-    except Exception:
-        accounts = []
-    for account in accounts:
-        try:
-            silent = app.acquire_token_silent(scopes, account=account)
-        except Exception:
-            silent = None
-        if silent and "access_token" in silent:
-            try:
-                cache_file.write_text(cache.serialize(), encoding='utf-8')
-            except Exception:
-                pass
-            print(f"✅ Login Graph já válido em cache ({cache_file}). Seguindo sem novo login.")
-            return 0
-
-    flow = app.initiate_device_flow(scopes=scopes)
-    if "user_code" not in flow:
-        print(f"❌ Falhou em iniciar device flow: {flow}", file=sys.stderr)
-        return 1
-
-    print(flow.get("message", "Siga o fluxo de autenticação no link indicado."))
-    result = app.acquire_token_by_device_flow(flow)
-
-    try:
-        cache_file.write_text(cache.serialize(), encoding='utf-8')
-    except Exception:
-        pass
-
-    if "access_token" not in result:
-        print("❌ Login Graph falhou:", file=sys.stderr)
-        print(json.dumps(result, indent=2, ensure_ascii=False), file=sys.stderr)
-        return 1
-
-    print(f"✅ Login Graph concluído. Cache salvo em {cache_file}")
-    return 0
 
 
 def _extract_freeze_packages(venv_dir: Path) -> list[str]:
@@ -3832,6 +4775,24 @@ def _gemini_bridge_subprocess_context() -> tuple[dict, object | None, str]:
     env.setdefault('CI', '1')
     env.setdefault('NO_UPDATE_NOTIFIER', '1')
     env.setdefault('NPM_CONFIG_UPDATE_NOTIFIER', 'false')
+    for key_name in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        raw_key = (env.get(key_name, "") or "").strip()
+        if raw_key.startswith("sk-") or raw_key.startswith("sk-or-"):
+            env.pop(key_name, None)
+            continue
+    if not _gemini_bridge_google_api_key(env):
+        try:
+            env_text = _env_sh_path().read_text(encoding="utf-8")
+            for match in re.finditer(r"^export\s+(GEMINI_API_KEY|GOOGLE_API_KEY)=[\"']?([^\"'\n]+)", env_text, re.MULTILINE):
+                candidate = (match.group(2) or "").strip()
+                if candidate.startswith("AIza"):
+                    env[match.group(1)] = candidate
+                    env.setdefault("GOOGLE_API_KEY", candidate)
+                    env.setdefault("GEMINI_API_KEY", candidate)
+                    break
+        except Exception:
+            pass
+
 
     run_as_user = ""
     preexec_fn = None
@@ -3872,6 +4833,17 @@ def _gemini_bridge_subprocess_context() -> tuple[dict, object | None, str]:
             run_as_user = ""
 
     return env, preexec_fn, run_as_user
+
+def _gemini_bridge_google_api_key(env: dict) -> str:
+    for key_name in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        raw_key = (env.get(key_name) or os.environ.get(key_name) or "").strip()
+        if not raw_key:
+            continue
+        if raw_key.startswith("sk-") or raw_key.startswith("sk-or-"):
+            continue
+        if raw_key.startswith("AIza"):
+            return raw_key
+    return ""
 
 
 def _test_gemini_model_availability(model: str, api_key: str, timeout_sec: float = 10.0) -> dict:
@@ -3939,7 +4911,7 @@ def _test_gemini_model_availability(model: str, api_key: str, timeout_sec: float
 def _get_best_available_gemini_model(api_key: str = None, timeout_sec: float = 15.0) -> str:
     """Testa múltiplos modelos e retorna o primeiro disponível."""
     if not api_key:
-        api_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+        api_key = _gemini_bridge_google_api_key(os.environ)
     
     if not api_key:
         return "gemini-2.5-flash"  # Fallback padrão
@@ -3953,11 +4925,12 @@ def _get_best_available_gemini_model(api_key: str = None, timeout_sec: float = 1
     ]
     
     print("🔍 Testando disponibilidade dos modelos do Gemini...", file=sys.stderr)
-    
+    invalid_api_key_detected = False
+
     for model in models_to_test:
         result = _test_gemini_model_availability(model, api_key, timeout_sec)
         print(f"  • {model}: {result['status']}", file=sys.stderr)
-        
+
         if result['success']:
             print(f"✅ Modelo selecionado: {model}", file=sys.stderr)
             return model
@@ -3968,10 +4941,16 @@ def _get_best_available_gemini_model(api_key: str = None, timeout_sec: float = 1
             print(f"⚠️  Capacity exhausted para {model}, tentando próximo...", file=sys.stderr)
             continue
         else:
+            error_text = str(result.get('error', '') or '')
+            if 'API_KEY_INVALID' in error_text or 'API key not valid' in error_text:
+                invalid_api_key_detected = True
+                print("⚠️  GEMINI_API_KEY/GOOGLE_API_KEY inválida; usando fallback local de modelo.", file=sys.stderr)
+                break
             print(f"❌ Erro no modelo {model}: {result['error']}", file=sys.stderr)
-    
+
     # Se nenhum modelo funcionar, retorna o fallback
-    print("⚠️  Nenhum modelo disponível, usando fallback: gemini-2.5-flash", file=sys.stderr)
+    if not invalid_api_key_detected:
+        print("⚠️  Nenhum modelo disponível, usando fallback: gemini-2.5-flash", file=sys.stderr)
     return "gemini-2.5-flash"
 
 
@@ -3983,7 +4962,7 @@ def _gemini_api_fallback_prompt(
     timeout_sec: float,
     env: dict,
 ) -> dict:
-    api_key = (env.get("GEMINI_API_KEY") or env.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+    api_key = _gemini_bridge_google_api_key(env)
     if not api_key:
         raise RuntimeError("Sem GEMINI_API_KEY/GOOGLE_API_KEY para fallback HTTP.")
 
@@ -4153,7 +5132,7 @@ def _gemini_bridge_run_prompt(
     env, preexec_fn, run_as_user = _gemini_bridge_subprocess_context()
     dns_ok, dns_detail = _gemini_dns_preflight(env=env, preexec_fn=preexec_fn)
     prefer_http = (os.environ.get("GEMINI_BRIDGE_PREFER_HTTP", "true") or "").strip().lower() in {"1", "true", "yes", "on"}
-    has_api_key = bool((env.get("GEMINI_API_KEY") or env.get("GOOGLE_API_KEY") or "").strip())
+    has_api_key = bool(_gemini_bridge_google_api_key(env))
 
     if prefer_http and has_api_key:
         try:
@@ -4168,15 +5147,7 @@ def _gemini_bridge_run_prompt(
             fallback["dns_preflight_detail"] = dns_detail
             return fallback
         except Exception as exc:
-            return {
-                "ok": False,
-                "error": f"fallback_http_failed: {exc}",
-                "provider": "google_api_fallback",
-                "dns_preflight_ok": dns_ok,
-                "dns_preflight_detail": dns_detail,
-                "run_as_user": run_as_user or env.get("USER", ""),
-                "gemini_cli_home": env.get("GEMINI_CLI_HOME", ""),
-            }
+            print(f"⚠️  Gemini HTTP fallback falhou; tentando Gemini CLI: {exc}", file=sys.stderr)
 
     cmd = [gemini_bin, '-p', prompt, '--output-format', fmt]
     if model_name:
@@ -4247,7 +5218,7 @@ def _gemini_bridge_health_payload() -> dict:
         debug_ctx_home = env.get("HOME", "")
         debug_ctx_gemini_home = env.get("GEMINI_CLI_HOME", "")
         prefer_http = (os.environ.get("GEMINI_BRIDGE_PREFER_HTTP", "true") or "").strip().lower() in {"1", "true", "yes", "on"}
-        has_api_key = bool((env.get("GEMINI_API_KEY") or env.get("GOOGLE_API_KEY") or "").strip())
+        has_api_key = bool(_gemini_bridge_google_api_key(env))
         degraded = False
         if prefer_http and has_api_key:
             try:
@@ -4310,7 +5281,7 @@ def _gemini_bridge_health_payload() -> dict:
         }
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GEMINI_BRIDGE_MCP_ENABLE", "false")
 def gemini_prompt(
     prompt: str,
     output_format: str = _GEMINI_BRIDGE_DEFAULT_OUTPUT,
@@ -4342,7 +5313,7 @@ def gemini_prompt(
         return {'ok': False, 'error': str(exc)}
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GEMINI_BRIDGE_MCP_ENABLE", "false")
 def gemini_bridge_health() -> dict:
     """Verifica se o binário Gemini está acessível para este bridge."""
     return _gemini_bridge_health_payload()
@@ -4698,6 +5669,432 @@ def _build_reclaim_runtime_prefix(env: dict[str, str], run_as_user: str) -> list
     return runtime_prefix
 
 
+
+def run_reclaim_playwright_action(action: str, title: str, timeout_sec: int = 25, extra_env: dict | None = None) -> dict:
+    """Headless Reclaim executor using Playwright DOM access.
+
+    It confirms only DOM-observable states. Login/captcha produces assist-mode errors
+    instead of falling back to blind xdotool.
+    """
+    normalized_action = (action or "").strip().lower()
+    normalized_title = (title or "").strip()
+    if normalized_action not in {"start", "stop", "restart", "next", "done", "up_next", "set_priority", "due_date", "snooze", "calendar_context_menu", "calendar_unlock", "calendar_reschedule"}:
+        return {
+            "status": "error",
+            "result": "invalid_action",
+            "error": {"code": "invalid_action", "message": f"Ação inválida para headless: {action}"},
+            "action": normalized_action,
+            "title": normalized_title,
+            "executor": "jarvis_playwright_reclaim_ui",
+            "executed_at": _iso_now(),
+        }
+
+    try:
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+    except Exception as exc:
+        return {
+            "status": "error",
+            "result": "playwright_unavailable",
+            "error": {"code": "playwright_unavailable", "message": str(exc)},
+            "action": normalized_action,
+            "title": normalized_title,
+            "executor": "jarvis_playwright_reclaim_ui",
+            "executed_at": _iso_now(),
+        }
+
+    RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    timeout_ms = max(1000, int(timeout_sec) * 1000)
+
+    def _payload(status: str, result: str, **extra) -> dict:
+        out = {
+            "status": status,
+            "result": result,
+            "action": normalized_action,
+            "title": normalized_title,
+            "executor": "jarvis_playwright_reclaim_ui",
+            "mode": "headless_playwright",
+            "headless": bool(RECLAIM_UI_HEADLESS),
+            "user_data_dir": str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+            "executed_at": _iso_now(),
+        }
+        out.update(extra)
+        return out
+
+    try:
+        with sync_playwright() as pw:
+            context = pw.chromium.launch_persistent_context(
+                str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+                headless=bool(RECLAIM_UI_HEADLESS),
+                viewport={"width": 1366, "height": 768},
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.goto(RECLAIM_UI_LOGIN_URL, wait_until="commit", timeout=timeout_ms)
+                try:
+                    page.wait_for_load_state("domcontentloaded", timeout=min(timeout_ms, 8000))
+                except Exception:
+                    pass
+
+                url = page.url or ""
+                body_text = ""
+                try:
+                    body_text = page.locator("body").inner_text(timeout=3000)
+                except Exception:
+                    body_text = ""
+                auth_haystack = (url + "\n" + body_text[:2000]).lower()
+                if (
+                    "accounts.google.com" in auth_haystack
+                    or "captcha" in auth_haystack
+                    or "sign in" in auth_haystack
+                    or "fazer login" in auth_haystack
+                ):
+                    return _payload(
+                        "error",
+                        "login_or_captcha_required",
+                        page_url=url,
+                        error={
+                            "code": "login_or_captcha_required",
+                            "message": "Headless chegou em login/captcha. Abra o perfil Playwright em modo visível para intervenção manual.",
+                        },
+                    )
+
+                if normalized_action == "next":
+                    return _payload(
+                        "error",
+                        "next_not_supported_headless",
+                        page_url=url,
+                        error={"code": "next_not_supported_headless", "message": "Headless não escolhe próximo item sem título alvo."},
+                    )
+
+                if normalized_action == "stop":
+                    candidates = [
+                        'button[aria-label="Stop"]',
+                        'button[aria-label="Stop Task"]',
+                        'button[aria-label="Pause"]',
+                        'button[aria-label="Pause Task"]',
+                    ]
+                    for selector in candidates:
+                        loc = page.locator(selector).first
+                        if loc.count() > 0:
+                            loc.click(timeout=5000)
+                            return _payload("ok", "action_sent_unverified", page_url=url, selector=selector)
+                    return _payload(
+                        "error",
+                        "stop_selector_unknown",
+                        page_url=url,
+                        error={"code": "stop_selector_unknown", "message": "Seletor DOM do botão Stop/Pause não encontrado."},
+                    )
+
+                if not normalized_title:
+                    return _payload(
+                        "error",
+                        "title_required_headless",
+                        page_url=url,
+                        error={"code": "title_required_headless", "message": "Headless exige título alvo para ação por tarefa."},
+                    )
+
+                rows = page.locator('[aria-roledescription="draggable"]')
+                row_count = rows.count()
+                target_row = None
+                for idx in range(row_count):
+                    row = rows.nth(idx)
+                    try:
+                        text = row.inner_text(timeout=1000)
+                    except Exception:
+                        continue
+                    if normalized_title in text:
+
+                        target_row = row
+                        break
+                if target_row is None:
+                    return _payload(
+                        "error",
+                        "title_not_found_in_dom",
+                        page_url=url,
+                        rows=row_count,
+                        error={"code": "title_not_found_in_dom", "message": "Título não encontrado na lista DOM do Reclaim."},
+                    )
+
+                selector_by_action = {
+                    "start": 'button[aria-label="Start Task now"]',
+                    "done": 'button[aria-label="Mark done"]',
+                    "up_next": 'button[aria-label="Send to Up Next"]',
+                }
+                selector = selector_by_action.get(normalized_action)
+                if not selector:
+                    return _payload(
+                        "error",
+                        "unsupported_headless_action",
+                        page_url=url,
+                        error={"code": "unsupported_headless_action", "message": f"Ação sem seletor headless: {normalized_action}"},
+                    )
+                button = target_row.locator(selector).first
+                if button.count() <= 0:
+                    return _payload(
+                        "error",
+                        "button_not_found_in_row",
+                        page_url=url,
+                        selector=selector,
+                        error={"code": "button_not_found_in_row", "message": "Botão esperado não existe no bloco da tarefa alvo."},
+                    )
+                button.click(timeout=5000)
+                page.wait_for_timeout(1500)
+
+                confirm_text = ""
+                try:
+                    confirm_text = page.locator("body").inner_text(timeout=3000)
+                except Exception:
+                    confirm_text = ""
+                if normalized_action == "start" and normalized_title in confirm_text and ("In progress" in confirm_text or "Now:" in confirm_text):
+                    return _payload("ok", "action_confirmed_dom", page_url=page.url, selector=selector)
+                return _payload("ok", "action_sent_unverified", page_url=page.url, selector=selector)
+            finally:
+                context.close()
+    except PlaywrightTimeoutError as exc:
+        return _payload(
+            "error",
+            "playwright_timeout",
+            error={"code": "playwright_timeout", "message": str(exc)},
+        )
+    except Exception as exc:
+        return _payload(
+            "error",
+            "playwright_exception",
+            error={"code": "playwright_exception", "message": str(exc)},
+        )
+
+
+def _reclaim_cdp_available(url: str = "http://127.0.0.1:9222") -> bool:
+    try:
+        import urllib.request
+
+        with urllib.request.urlopen(url.rstrip("/") + "/json/version", timeout=1.5) as response:
+            return 200 <= int(getattr(response, "status", 0) or 0) < 300
+    except Exception:
+        return False
+
+
+def _reclaim_playwright_profile_in_use(profile_dir: str | Path) -> bool:
+    profile = Path(profile_dir or "").expanduser()
+    lock_path = profile / "SingletonLock"
+    if not (lock_path.exists() or lock_path.is_symlink()):
+        return False
+    try:
+        target = os.readlink(lock_path)
+    except Exception:
+        target = ""
+    m = re.search(r"-(\d+)$", target)
+    if not m:
+        return True
+    try:
+        os.kill(int(m.group(1)), 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except Exception:
+        return True
+
+
+def _reclaim_profile_in_use_payload(action: str, title: str) -> dict:
+    return {
+        "status": "error",
+        "result": "profile_in_use",
+        "error": {
+            "code": "profile_in_use",
+            "message": "Perfil Playwright do Reclaim já está aberto sem CDP disponível. Feche a janela visível de login ou reabra o bootstrap com CDP e tente novamente.",
+        },
+        "action": (action or "").strip().lower(),
+        "title": (title or "").strip(),
+        "executor": "jarvis_playwright_reclaim_ui",
+        "mode": "headless_playwright",
+        "headless": bool(RECLAIM_UI_HEADLESS),
+        "user_data_dir": str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+        "next_step": "Feche o Chrome aberto pelo bootstrap do Reclaim e tente de novo, ou rode reclaim_session_bootstrap(open_browser=true) para abrir uma janela com CDP.",
+        "executed_at": _iso_now(),
+    }
+
+
+def run_reclaim_playwright_action(action: str, title: str, timeout_sec: int = 25, extra_env: dict | None = None) -> dict:
+    """Headless Reclaim executor wrapper.
+
+    Runs Playwright in a bounded subprocess so a stuck browser cannot hang the MCP server.
+    """
+    normalized_action = (action or "").strip().lower()
+    normalized_title = (title or "").strip()
+    worker = BASE_DIR / "reclaim_playwright_worker.py"
+    if not worker.exists():
+        return {
+            "status": "error",
+            "result": "playwright_worker_missing",
+            "error": {"code": "playwright_worker_missing", "message": f"Worker não encontrado: {worker}"},
+            "action": normalized_action,
+            "title": normalized_title,
+            "executor": "jarvis_playwright_reclaim_ui",
+            "executed_at": _iso_now(),
+        }
+    cmd = [
+        str(VENV_SUPER_PY if VENV_SUPER_PY.exists() else sys.executable),
+        str(worker),
+        "--action", normalized_action,
+        "--title", normalized_title,
+        "--url", RECLAIM_UI_LOGIN_URL,
+        "--user-data-dir", str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+        "--timeout-ms", str(max(1000, int(timeout_sec) * 1000)),
+        "--value", str(extra_env.get("value", "") if isinstance(extra_env, dict) else ""),
+    ]
+    if RECLAIM_UI_HEADLESS:
+        cmd.append("--headless")
+    worker_env = os.environ.copy()
+    cdp_url = worker_env.get("RECLAIM_UI_CDP_URL", "http://127.0.0.1:9222")
+    if _reclaim_playwright_profile_in_use(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR) and not _reclaim_cdp_available(cdp_url):
+        return _reclaim_profile_in_use_payload(normalized_action, normalized_title)
+    worker_env.setdefault("RECLAIM_UI_CDP_URL", "http://127.0.0.1:9222")
+    if _reclaim_cdp_available(cdp_url):
+        worker_env.setdefault("RECLAIM_UI_RAW_CDP_ENABLE", "true")
+    default_cookie_profile = Path.home() / ".config" / "google-chrome" / "Default"
+    if default_cookie_profile.exists():
+        worker_env.setdefault("RECLAIM_UI_COOKIE_SOURCE_PROFILE", str(default_cookie_profile))
+    proc = None
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(BASE_DIR),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=worker_env,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=max(5, int(timeout_sec) + 15))
+            returncode = proc.returncode
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            stdout, stderr = "", ""
+            return {
+                "status": "error",
+                "result": "playwright_subprocess_timeout",
+                "error": {"code": "playwright_subprocess_timeout", "message": "Worker Playwright excedeu timeout e foi encerrado."},
+                "action": normalized_action,
+                "title": normalized_title,
+                "executor": "jarvis_playwright_reclaim_ui",
+                "mode": "headless_playwright",
+                "headless": bool(RECLAIM_UI_HEADLESS),
+                "user_data_dir": str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+                "worker_stdout": (stdout or "").strip(),
+                "worker_stderr": (stderr or "").strip(),
+                "executed_at": _iso_now(),
+            }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "result": "playwright_subprocess_exception",
+            "error": {"code": "playwright_subprocess_exception", "message": str(exc)},
+            "action": normalized_action,
+            "title": normalized_title,
+            "executor": "jarvis_playwright_reclaim_ui",
+            "mode": "headless_playwright",
+            "headless": bool(RECLAIM_UI_HEADLESS),
+            "user_data_dir": str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR),
+            "executed_at": _iso_now(),
+        }
+    stdout = (stdout or "").strip()
+    stderr = (stderr or "").strip()
+    parsed = None
+    for line in reversed(stdout.splitlines()):
+        try:
+            parsed = json.loads(line)
+            break
+        except Exception:
+            continue
+    if isinstance(parsed, dict):
+        if stderr:
+            parsed.setdefault("worker_stderr", stderr)
+        parsed.setdefault("worker_returncode", returncode)
+        error_code = parsed.get("error", {}).get("code") or parsed.get("result")
+        if error_code == "login_or_captcha_required":
+            try:
+                session = load_session(RECLAIM_UI_SESSION_FILE) or {}
+                session.setdefault("version", 1)
+                session["state"] = "pending_manual_login"
+                session["started_at"] = _iso_now()
+                session["message"] = "Reclaim UI retornou login/captcha durante automação."
+                session.pop("expires_at", None)
+                save_session(RECLAIM_UI_SESSION_FILE, session)
+            except Exception:
+                pass
+        return parsed
+    return {
+        "status": "error",
+        "result": "playwright_worker_invalid_output",
+        "error": {"code": "playwright_worker_invalid_output", "message": "Worker não retornou JSON válido."},
+        "action": normalized_action,
+        "title": normalized_title,
+        "executor": "jarvis_playwright_reclaim_ui",
+        "worker_returncode": returncode,
+        "worker_stdout": stdout,
+        "worker_stderr": stderr,
+        "executed_at": _iso_now(),
+    }
+
+def _terminate_reclaim_profile_chrome_processes(profile_dir: str | Path) -> None:
+    profile_raw = str(profile_dir or '').strip()
+    if not profile_raw:
+        return
+    try:
+        cp = subprocess.run(['ps', '-eo', 'pid,args'], text=True, capture_output=True, timeout=10, check=False)
+    except Exception:
+        return
+    targets: list[int] = []
+    for line in (cp.stdout or '').splitlines():
+        if profile_raw not in line or 'chrome' not in line:
+            continue
+        parts = line.strip().split(None, 1)
+        if not parts:
+            continue
+        try:
+            targets.append(int(parts[0]))
+        except Exception:
+            continue
+    for pid in targets:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            continue
+    if targets:
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            alive: list[int] = []
+            for pid in targets:
+                try:
+                    os.kill(pid, 0)
+                    alive.append(pid)
+                except Exception:
+                    pass
+            if not alive:
+                break
+            time.sleep(0.2)
+        for pid in targets:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except Exception:
+                pass
+    for lock_name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+        try:
+            lock_path = Path(profile_raw) / lock_name
+            if lock_path.exists() or lock_path.is_symlink():
+                lock_path.unlink()
+        except Exception:
+            pass
+
+
 def run_reclaim_ui_action(
     action: str,
     title: str,
@@ -4708,7 +6105,7 @@ def run_reclaim_ui_action(
     normalized_action = (action or "").strip().lower()
     normalized_title = (title or "").strip()
 
-    if normalized_action not in {"start", "stop", "restart", "next"}:
+    if normalized_action not in {"start", "stop", "restart", "next", "done", "up_next", "set_priority", "due_date", "snooze", "calendar_context_menu", "calendar_unlock", "calendar_reschedule"}:
         return {
             "status": "error",
             "error": {
@@ -4726,6 +6123,20 @@ def run_reclaim_ui_action(
 
     requested_executor = (executor_cmd or "").strip()
     use_external_executor = bool(requested_executor and requested_executor.lower() not in {"internal", "embedded", "embedded_xdotool"})
+    automation_mode = (RECLAIM_UI_AUTOMATION_MODE or "").strip().lower()
+    if not use_external_executor and automation_mode in {"headless", "playwright", "elements_first"}:
+        headless_action = run_reclaim_playwright_action(
+            action=normalized_action,
+            title=normalized_title,
+            timeout_sec=timeout,
+            extra_env=extra_env,
+        )
+        if (
+            automation_mode in {"headless", "playwright"}
+            or headless_action.get("status") == "ok"
+            or headless_action.get("result") in {"login_or_captcha_required", "title_not_found_in_dom", "stop_selector_unknown"}
+        ):
+            return headless_action
     if use_external_executor:
         try:
             executor_parts = shlex.split(requested_executor)
@@ -4889,9 +6300,9 @@ def run_reclaim_ui_action(
         return payload
 
     step_sleep = max(0.01, float(os.environ.get("RECLAIM_UI_STEP_SLEEP_SEC", "0.15")))
-    type_delay_ms = str(int(float(os.environ.get("RECLAIM_UI_TYPE_DELAY_MS", "1"))))
+    type_delay_ms = str(int(float(os.environ.get("RECLAIM_UI_TYPE_DELAY_MS", "10"))))
     window_regex = os.environ.get(
-        "RECLAIM_UI_WINDOW_REGEX", "Reclaim|app.reclaim.ai|Google Chrome|Chromium|Firefox"
+        "RECLAIM_UI_WINDOW_REGEX", "Reclaim|app\\.reclaim\\.ai"
     )
     start_seq = os.environ.get("RECLAIM_UI_START_SEQUENCE", "Tab Return")
     stop_seq = os.environ.get("RECLAIM_UI_STOP_SEQUENCE", "Escape")
@@ -4920,6 +6331,73 @@ def run_reclaim_ui_action(
                 return False, (cp.stderr or cp.stdout or "").strip()
             time.sleep(step_sleep)
         return True, ""
+
+    def _paste_text(window_id: str, text_value: str, *, step_timeout: int = 10) -> tuple[bool, str]:
+        text_value = text_value or ""
+        if shutil.which("xsel"):
+            cp = subprocess.run(
+                runtime_prefix + ["xsel", "--clipboard", "--input"],
+                input=text_value,
+                env=env,
+                text=True,
+                capture_output=True,
+                timeout=max(1, min(timeout, step_timeout)),
+                check=False,
+            )
+            if cp.returncode != 0:
+                return False, (cp.stderr or cp.stdout or "").strip()
+            ok, err = _send_keys(window_id, "ctrl+v")
+            return (True, "") if ok else (False, err)
+
+        if shutil.which("xclip"):
+            try:
+                proc = subprocess.Popen(
+                    runtime_prefix + ["xclip", "-selection", "clipboard"],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    text=True,
+                )
+                try:
+                    proc.communicate(input=text_value, timeout=1)
+                except subprocess.TimeoutExpired:
+                    pass
+                ok, err = _send_keys(window_id, "ctrl+v")
+                time.sleep(step_sleep)
+                if proc.poll() is None:
+                    proc.terminate()
+                if not ok:
+                    return False, err
+                return True, ""
+            except Exception as exc:
+                return False, str(exc)
+
+        cp = _run_xdotool(["type", "--window", window_id, "--delay", type_delay_ms, "--", text_value], step_timeout=step_timeout)
+        return cp.returncode == 0, (cp.stderr or cp.stdout or "").strip()
+
+
+    def _get_window_name(window_id: str) -> str:
+        cp = _run_xdotool(["getwindowname", window_id], step_timeout=3)
+        if cp.returncode != 0:
+            return ""
+        return (cp.stdout or "").strip()
+
+    def _is_reclaim_window_name(name: str) -> bool:
+        normalized = (name or "").lower()
+        return "reclaim" in normalized or "app.reclaim.ai" in normalized or "planner |" in normalized
+
+    def _active_reclaim_window_id() -> tuple[str, str]:
+        cp = _run_xdotool(["getactivewindow"], step_timeout=3)
+        if cp.returncode != 0:
+            return "", ""
+        active_id = (cp.stdout or "").strip()
+        if not active_id:
+            return "", ""
+        active_name = _get_window_name(active_id)
+        if _is_reclaim_window_name(active_name):
+            return active_id, active_name
+        return "", ""
 
     def _click(window_id: str, x: str, y: str) -> tuple[bool, str]:
         cp = _run_xdotool(["mousemove", "--window", window_id, str(x), str(y), "click", "1"])
@@ -4987,44 +6465,53 @@ def run_reclaim_ui_action(
                 "executed_at": _iso_now(),
             }
 
-    try:
-        search_cp = _run_xdotool(["search", "--name", window_regex], step_timeout=8)
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "error",
-            "error": {
-                "code": "window_search_timeout",
-                "message": "Busca de janela do Reclaim excedeu timeout.",
-            },
-            "action": normalized_action,
-            "title": normalized_title,
-            "executor": "jarvis_internal_reclaim_ui",
-            "executed_at": _iso_now(),
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": {
-                "code": "executor_exception",
-                "message": str(e),
-            },
-            "action": normalized_action,
-            "title": normalized_title,
-            "executor": "jarvis_internal_reclaim_ui",
-            "executed_at": _iso_now(),
-        }
-    if search_cp.returncode != 0:
-        return {
-            "status": "error",
-            "result": "window_not_found",
-            "error": {"code": "window_not_found", "message": f"Nenhuma janela encontrada para regex: {window_regex}"},
-            "action": normalized_action,
-            "title": normalized_title,
-            "executor": "jarvis_internal_reclaim_ui",
-            "executed_at": _iso_now(),
-        }
-    window_lines = [ln.strip() for ln in (search_cp.stdout or "").splitlines() if ln.strip()]
-    window_id = window_lines[-1] if window_lines else ""
+    window_id, window_name = _active_reclaim_window_id()
+    if not window_id:
+        try:
+            search_cp = _run_xdotool(["search", "--name", window_regex], step_timeout=8)
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "error",
+                "error": {
+                    "code": "window_search_timeout",
+                    "message": "Busca de janela do Reclaim excedeu timeout.",
+                },
+                "action": normalized_action,
+                "title": normalized_title,
+                "executor": "jarvis_internal_reclaim_ui",
+                "executed_at": _iso_now(),
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": {
+                    "code": "executor_exception",
+                    "message": str(e),
+                },
+                "action": normalized_action,
+                "title": normalized_title,
+                "executor": "jarvis_internal_reclaim_ui",
+                "executed_at": _iso_now(),
+            }
+        if search_cp.returncode != 0:
+            return {
+                "status": "error",
+                "result": "window_not_found",
+                "error": {"code": "window_not_found", "message": f"Nenhuma janela encontrada para regex: {window_regex}"},
+                "action": normalized_action,
+                "title": normalized_title,
+                "executor": "jarvis_internal_reclaim_ui",
+                "executed_at": _iso_now(),
+            }
+        window_lines = [ln.strip() for ln in (search_cp.stdout or "").splitlines() if ln.strip()]
+        for candidate_id in reversed(window_lines):
+            candidate_name = _get_window_name(candidate_id)
+            if _is_reclaim_window_name(candidate_name):
+                window_id, window_name = candidate_id, candidate_name
+                break
+        if not window_id and window_lines:
+            window_id = window_lines[-1]
+            window_name = _get_window_name(window_id)
     if not window_id:
         return {
             "status": "error",
@@ -5043,14 +6530,22 @@ def run_reclaim_ui_action(
         _run_xdotool(["windowraise", window_id], step_timeout=5)
     time.sleep(step_sleep)
 
-    # Pre-flight: garantir que estamos na tela padrão desejada do Reclaim.
+    # Pre-flight: garantir que estamos no Reclaim sem recarregar uma aba já aberta.
     ensure_url = os.environ.get("RECLAIM_UI_ENSURE_URL", "true").strip().lower() in {"1", "true", "yes", "on"}
-    ensure_url_value = os.environ.get("RECLAIM_UI_LOGIN_URL", "").strip()
-    if ensure_url and ensure_url_value:
-        _send_keys(window_id, "ctrl+l")
-        _run_xdotool(["type", "--window", window_id, "--delay", type_delay_ms, "--", ensure_url_value], step_timeout=10)
+    reuse_open_tab = os.environ.get("RECLAIM_UI_REUSE_OPEN_TAB", "true").strip().lower() in {"1", "true", "yes", "on"}
+    ensure_url_value = RECLAIM_UI_LOGIN_URL
+    if not window_name:
+        window_name = _get_window_name(window_id)
+    already_on_reclaim = _is_reclaim_window_name(window_name)
+    if ensure_url and ensure_url_value and not (reuse_open_tab and already_on_reclaim):
+        ok, err = _send_keys(window_id, "ctrl+l")
+        if not ok:
+            return {"status": "error", "result": "url_focus_failed", "error": {"code": "url_focus_failed", "message": "Falha ao focar a barra de URL."}, "action": normalized_action, "title": normalized_title, "window_id": window_id, "executor": "jarvis_internal_reclaim_ui", "executor_stderr": err, "executed_at": _iso_now()}
+        ok, err = _paste_text(window_id, ensure_url_value, step_timeout=10)
+        if not ok:
+            return {"status": "error", "result": "url_paste_failed", "error": {"code": "url_paste_failed", "message": "Falha ao inserir URL do Reclaim."}, "action": normalized_action, "title": normalized_title, "window_id": window_id, "executor": "jarvis_internal_reclaim_ui", "executor_stderr": err, "executed_at": _iso_now()}
         _send_keys(window_id, "Return")
-        time.sleep(max(step_sleep, float(os.environ.get("RECLAIM_UI_NAV_SLEEP_SEC", "0.6"))))
+        time.sleep(max(step_sleep, float(os.environ.get("RECLAIM_UI_NAV_SLEEP_SEC", "8"))))
 
     if normalized_action == "next":
         return {
@@ -5058,7 +6553,7 @@ def run_reclaim_ui_action(
             "result": "next_not_supported_internal",
             "error": {
                 "code": "next_not_supported_internal",
-                "message": "Executor interno não resolve próximo item visual. Configure RECLAIM_UI_EXECUTOR_CMD para extração por elementos.",
+                "message": "Executor interno não resolve próximo item visual.",
             },
             "action": normalized_action,
             "title": normalized_title,
@@ -5081,17 +6576,17 @@ def run_reclaim_ui_action(
                 "executor_stderr": err,
                 "executed_at": _iso_now(),
             }
-        type_cp = _run_xdotool(["type", "--window", window_id, "--delay", type_delay_ms, "--", normalized_title], step_timeout=10)
-        if type_cp.returncode != 0:
+        ok, err = _paste_text(window_id, normalized_title, step_timeout=10)
+        if not ok:
             return {
                 "status": "error",
                 "result": "type_failed",
-                "error": {"code": "type_failed", "message": "Falha ao digitar o título na UI."},
+                "error": {"code": "type_failed", "message": "Falha ao inserir o título na UI."},
                 "action": normalized_action,
                 "title": normalized_title,
                 "window_id": window_id,
                 "executor": "jarvis_internal_reclaim_ui",
-                "executor_stderr": (type_cp.stderr or type_cp.stdout or "").strip(),
+                "executor_stderr": err,
                 "executed_at": _iso_now(),
             }
         _send_keys(window_id, "Return")
@@ -5127,12 +6622,13 @@ def run_reclaim_ui_action(
 
     payload: dict = {
         "status": "ok",
-        "result": "action_executed",
-        "message": "Ação enviada para UI do Reclaim.",
+        "result": "action_sent_unverified",
+        "message": "Ação enviada para a janela do Reclaim, sem confirmação visual/DOM de que o timer iniciou.",
         "mode": "embedded_xdotool",
         "action": normalized_action,
         "title": normalized_title,
         "window_id": window_id,
+        "window_name": window_name,
         "executor": "jarvis_internal_reclaim_ui",
         "executed_at": _iso_now(),
     }
@@ -5146,24 +6642,82 @@ def run_reclaim_ui_action(
 # =================
 
 VALID_CONFIRM_RESULTS = {"started", "stopped", "restarted", "canceled"}
-
-
-def _open_login_url(url: str | None) -> dict:
+def _open_login_url(url: str | None, *, visible_required: bool = False) -> dict:
+    headless_bootstrap = bool(RECLAIM_UI_BOOTSTRAP_HEADLESS and not visible_required)
     payload = {
         "url": str(url or ""),
         "opened": False,
         "method": "manual",
+        "headless": headless_bootstrap,
     }
     if not url:
         payload["reason"] = "login_url_missing"
         return payload
 
-    if not os.environ.get("DISPLAY"):
+    browser_mode = os.environ.get("RECLAIM_UI_BROWSER_MODE", "").strip().lower()
+    chrome_user_data_dir = os.environ.get("RECLAIM_UI_CHROME_USER_DATA_DIR", "").strip()
+
+    if not headless_bootstrap and not os.environ.get("DISPLAY"):
         payload["reason"] = "display_missing"
         return payload
 
-    browser_mode = os.environ.get("RECLAIM_UI_BROWSER_MODE", "").strip().lower()
-    chrome_user_data_dir = os.environ.get("RECLAIM_UI_CHROME_USER_DATA_DIR", "").strip()
+    if browser_mode == "playwright" or (not browser_mode and RECLAIM_UI_AUTOMATION_MODE in {"headless", "playwright"}):
+        chrome = (
+            shutil.which("google-chrome")
+            or shutil.which("google-chrome-stable")
+            or shutil.which("chromium")
+            or shutil.which("chromium-browser")
+        )
+        if not chrome:
+            payload["reason"] = "chrome_not_found_for_playwright_profile"
+            return payload
+        try:
+            runtime_env, run_as_user = _build_reclaim_runtime_env(None)
+            runtime_prefix = _build_reclaim_runtime_prefix(runtime_env, run_as_user)
+            _terminate_reclaim_profile_chrome_processes(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR)
+            visible_cdp = os.environ.get("RECLAIM_UI_VISIBLE_CDP", "true").lower() in ("1", "true", "yes", "on")
+            cmd = runtime_prefix + [
+                chrome,
+                f"--user-data-dir={RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR}",
+            ]
+            if headless_bootstrap or visible_cdp:
+                cmd.extend([
+                    "--remote-debugging-address=127.0.0.1",
+                    "--remote-debugging-port=9222",
+                    "--remote-allow-origins=*",
+                ])
+            if headless_bootstrap:
+                cmd.extend([
+                    "--headless",
+                    "--disable-gpu",
+                    "--hide-scrollbars",
+                    "--mute-audio",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                ])
+            else:
+                cmd.append("--new-window")
+            cmd.append(url)
+            log_path = BASE_DIR / "reclaim_chrome.log"
+            log_handle = open(log_path, "ab")
+            subprocess.Popen(
+                cmd,
+                stdout=log_handle,
+                stderr=log_handle,
+                cwd=str(BASE_DIR),
+                env=runtime_env,
+                start_new_session=True,
+            )
+            payload["opened"] = True
+            payload["method"] = "chrome_persistent_profile_headless_cdp" if headless_bootstrap else ("chrome_persistent_profile_visible_cdp" if visible_cdp else "chrome_persistent_profile_visible_login")
+            payload["user_data_dir"] = str(RECLAIM_UI_PLAYWRIGHT_USER_DATA_DIR)
+            payload["chrome_log"] = str(log_path)
+            if run_as_user:
+                payload["executor_user"] = run_as_user
+            return payload
+        except Exception as exc:
+            payload["reason"] = str(exc)
+            return payload
 
     if browser_mode == "app":
         chrome = (
@@ -5188,22 +6742,42 @@ def _open_login_url(url: str | None) -> dict:
             payload["opened"] = True
             payload["method"] = "chrome_app"
             return payload
-        except Exception as exc:
-            payload["reason"] = str(exc)
+        except Exception as e:
+            payload["reason"] = str(e)
             return payload
 
     opener = shutil.which("xdg-open")
     if not opener:
-        payload["reason"] = "xdg-open_not_found"
+        payload["reason"] = "xdg-open não disponível"
         return payload
-
     try:
-        subprocess.Popen([opener, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            [opener, url],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         payload["opened"] = True
         payload["method"] = "xdg-open"
-    except Exception as exc:
-        payload["reason"] = str(exc)
-    return payload
+        return payload
+    except Exception as e:
+        payload["reason"] = str(e)
+        return payload
+
+
+def _reclaim_open_login_url(*, visible_required: bool = False) -> dict:
+    return _open_login_url(RECLAIM_UI_LOGIN_URL, visible_required=visible_required)
+
+
+def _reclaim_login_workaround_hint() -> dict:
+    return {
+        "mode": "manual_remote_workaround",
+        "steps": [
+            f"1. Abra {RECLAIM_UI_LOGIN_URL} em um navegador com interface gráfica.",
+            "2. Faça login no Reclaim e resolva captcha, se houver.",
+            "3. Volte ao agente e execute reclaim_session_bootstrap(manual_login_confirmed=true, captcha_resolved=true, open_browser=false).",
+        ],
+    }
+
 
 
 def _build_manual_steps(action: str, title: str, reason: str | None) -> list[str]:
@@ -5241,7 +6815,7 @@ def create_assist_request(
     assist_id = str(uuid.uuid4())
     normalized_action = (action or "").strip().lower()
     normalized_title = (title or "").strip()
-    visual_flow = _open_login_url(login_url) if open_browser else {"url": login_url or ""}
+    visual_flow = _open_login_url(login_url, visible_required=True) if open_browser else {"url": login_url or ""}
     default_result = {
         "start": "started",
         "stop": "stopped",
@@ -5314,10 +6888,7 @@ def confirm_assist_completion(
     )
     return payload
 
-# --- END MERGED: reclaim_ui.py ---
 
-
-# --- RECLAIM UI AUTOMATION (BASE CONTRACT) ---
 _RECLAIM_UI_DISABLED_MESSAGE = (
     "Reclaim UI automation is disabled. "
     "Set RECLAIM_UI_AUTOMATION_ENABLE=true and restart the server."
@@ -5338,7 +6909,6 @@ def _reclaim_ui_disabled(action: str) -> str:
     }
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
-
 def _reclaim_ui_base_payload(action: str) -> dict:
     return {
         "status": "ok",
@@ -5350,63 +6920,353 @@ def _reclaim_ui_base_payload(action: str) -> dict:
     }
 
 
-def _reclaim_open_login_url() -> dict:
-    payload = {
-        "url": RECLAIM_UI_LOGIN_URL,
-        "opened": False,
-        "method": "manual",
+def _reclaim_official_tool_names() -> list[str]:
+    prefix = f"{RECLAIM_OFFICIAL_MCP_PREFIX}_"
+    return [name for name in _registered_tool_names() if name.startswith(prefix)]
+
+
+def _reclaim_official_adapter_payload() -> dict:
+    official_tools = _reclaim_official_tool_names()
+    provider_order = ["official_mcp", "google_tasks_calendar", "dom_cdp"]
+    capability_map = {
+        "schedule_analysis": "official_mcp if available; otherwise google calendar + google tasks",
+        "task_crud": "official_mcp if task tools are observed; otherwise google tasks",
+        "task_start_stop": "official_mcp if work-session/timer tools are observed; otherwise dom_cdp",
+        "task_complete": "official_mcp if task completion is observed; otherwise google tasks/dom_cdp",
+        "task_snooze_reschedule": "official_mcp only with preview/approval; otherwise dom_cdp with visual validation",
+        "event_unlock": "dom_cdp until the official MCP exposes an explicit unlock-equivalent tool",
+    }
+    return {
+        "status": "ok",
+        "adapter": "reclaim_official_mcp",
+        "official_mcp": {
+            "enabled": bool(RECLAIM_OFFICIAL_MCP_ENABLE),
+            "url": RECLAIM_OFFICIAL_MCP_URL,
+            "prefix": RECLAIM_OFFICIAL_MCP_PREFIX,
+            "mounted": bool(RECLAIM_OFFICIAL_MCP_MOUNTED),
+            "observed_tools": official_tools,
+            "observed_tool_count": len(official_tools),
+        },
+        "fallbacks": {
+            "google_tasks_calendar": True,
+            "dom_cdp": bool(RECLAIM_UI_AUTOMATION_ENABLE),
+        },
+        "provider_order": provider_order,
+        "capability_map": capability_map,
+        "audited_capabilities": {
+            "ok_now": [
+                "get_schedule",
+                "get_user_preferences",
+                "focus_stats",
+                "top_contacts",
+                "search_contacts",
+                "get_pending_changes",
+                "suggested_times_for_event",
+            ],
+            "blocked_upgrade": [
+                "get_event_details",
+                "find_open_time",
+                "get_org_relationships",
+                "get_zoom_meeting_summary",
+                "add_event",
+                "update_event",
+                "cancel_event",
+                "reschedule_event",
+                "change_rsvp",
+                "add_video_conference",
+                "get_suggested_tasks",
+                "get_at_risk_tasks",
+                "start_task",
+                "stop_task",
+                "log_task",
+                "create_reclaim_task",
+                "update_reclaim_task",
+                "delete_reclaim_task",
+                "search_reclaim_tasks",
+                "apply_changes",
+            ],
+            "server_error": ["suggested_times"],
+        },
+        "policy": [
+            "Do not remove existing Reclaim UI/Google Tasks tools.",
+            "Prefer official MCP only for capabilities that were observed and validated.",
+            "Keep plan_day_apply on Google Tasks -> Reclaim -> Calendar; never create direct Calendar events for Reclaim tasks.",
+            "Keep event unlock on DOM/CDP until official MCP support is proven.",
+            "Jarvis direct use requires confirmed remote MCP OAuth support or tools already exposed by a compatible authenticated client.",
+        ],
     }
 
-    if not os.environ.get("DISPLAY"):
-        payload["reason"] = "DISPLAY não definido"
-        return payload
 
-    browser_mode = os.environ.get("RECLAIM_UI_BROWSER_MODE", "").strip().lower()
-    chrome_user_data_dir = os.environ.get("RECLAIM_UI_CHROME_USER_DATA_DIR", "").strip()
+@mcp.tool()
+def reclaim_official_adapter_status() -> str:
+    """Mostra o estado do adapter do MCP oficial do Reclaim 2.0."""
+    return json.dumps(_reclaim_official_adapter_payload(), indent=2, ensure_ascii=False)
 
-    if browser_mode == "app":
-        chrome = (
-            shutil.which("google-chrome")
-            or shutil.which("google-chrome-stable")
-            or shutil.which("chromium")
-            or shutil.which("chromium-browser")
-        )
-        if not chrome:
-            payload["reason"] = "chrome_not_found_for_app_mode"
-            return payload
-        try:
-            cmd = [
-                chrome,
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-            ]
-            if chrome_user_data_dir:
-                cmd.append(f"--user-data-dir={chrome_user_data_dir}")
-            cmd.append(f"--app={RECLAIM_UI_LOGIN_URL}")
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            payload["opened"] = True
-            payload["method"] = "chrome_app"
-            return payload
-        except Exception as e:
-            payload["reason"] = str(e)
-            return payload
 
-    opener = shutil.which("xdg-open")
-    if not opener:
-        payload["reason"] = "xdg-open não disponível"
-        return payload
+
+
+_RECLAIM_OFFICIAL_SCHEDULE_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
+_RECLAIM_OFFICIAL_TOOL_STATUS_CACHE: dict[str, tuple[float, dict[str, str]]] = {}
+
+
+def _reclaim_official_mcp_call_tool(name: str, arguments: dict | None = None, timeout_sec: int = 45) -> dict:
+    """Call one tool through mcp-remote and return the raw JSON-RPC response."""
+    import select
+
+    proc = subprocess.Popen(
+        ["mcp-remote", RECLAIM_OFFICIAL_MCP_URL],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+    next_id = 1
+
+    def _send(method: str, params: dict | None = None) -> int:
+        nonlocal next_id
+        req_id = next_id
+        next_id += 1
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params or {}}) + "\n")
+        proc.stdin.flush()
+        return req_id
+
+    def _notify(method: str, params: dict | None = None) -> None:
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": method, "params": params or {}}) + "\n")
+        proc.stdin.flush()
+
+    def _wait(req_id: int, timeout: int) -> dict:
+        assert proc.stdout is not None
+        assert proc.stderr is not None
+        end = time.time() + timeout
+        last_stderr: deque[str] = deque(maxlen=12)
+        while time.time() < end:
+            ready, _, _ = select.select([proc.stdout, proc.stderr], [], [], 0.2)
+            for stream in ready:
+                line = stream.readline()
+                if not line:
+                    continue
+                if stream is proc.stderr:
+                    last_stderr.append(line.strip())
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if obj.get("id") == req_id:
+                    return obj
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {
+                "code": -32000,
+                "message": "timeout waiting for mcp-remote response",
+                "stderr": list(last_stderr),
+            },
+        }
+
     try:
-        subprocess.Popen(
-            [opener, RECLAIM_UI_LOGIN_URL],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        init_id = _send(
+            "initialize",
+            {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "clientInfo": {"name": "jarvis-reclaim-official-adapter", "version": "1.0"},
+            },
         )
-        payload["opened"] = True
-        payload["method"] = "xdg-open"
-        return payload
-    except Exception as e:
-        payload["reason"] = str(e)
-        return payload
+        init_res = _wait(init_id, timeout_sec)
+        if init_res.get("error"):
+            return init_res
+        _notify("notifications/initialized")
+        call_id = _send("tools/call", {"name": name, "arguments": arguments or {}})
+        return _wait(call_id, timeout_sec)
+    finally:
+        try:
+            proc.terminate()
+            proc.wait(timeout=3)
+        except Exception:
+            with contextlib.suppress(Exception):
+                proc.kill()
+
+
+def _reclaim_official_tool_result_status(response: dict) -> tuple[str, str]:
+    if response.get("error"):
+        return "server_error", str(response.get("error"))[:500]
+    result = response.get("result") or {}
+    text = "\n".join(
+        item.get("text", "")
+        for item in (result.get("content") or [])
+        if item.get("type") == "text"
+    )
+    if result.get("isError"):
+        low = text.lower()
+        if "upgraded subscription" in low or "not available for this user's account" in low:
+            return "blocked_upgrade", text[:500]
+        return "server_error", text[:500]
+    return "ok", text[:500]
+
+
+def _reclaim_official_capability_status(force: bool = False) -> dict[str, str]:
+    cached = _RECLAIM_OFFICIAL_TOOL_STATUS_CACHE.get("v1")
+    if cached and not force and (time.time() - cached[0]) < 900:
+        return cached[1]
+    probes = {
+        "get_schedule": ("get_schedule", {"start": "2026-06-18", "end": "2026-06-18", "showResults": False}),
+        "get_user_preferences": ("get_user_preferences", {"type": "BASIC"}),
+        "focus_stats": ("focus_stats", {"start": "2026-06-18", "end": "2026-06-18"}),
+        "get_pending_changes": ("get_pending_changes", {}),
+        "get_suggested_tasks": ("get_suggested_tasks", {}),
+        "get_at_risk_tasks": ("get_at_risk_tasks", {}),
+        "search_reclaim_tasks": (
+            "search_reclaim_tasks",
+            {"query": "", "chatContextSummary": "Capability probe; do not change data."},
+        ),
+        "find_open_time": ("find_open_time", {"lookaheadDays": 1, "hoursType": "PERSONAL"}),
+        "start_task": ("start_task", {"title": "__JARVIS_CAPABILITY_PROBE_INEXISTENT_TASK__"}),
+    }
+    statuses: dict[str, str] = {}
+    for key, (tool, args) in probes.items():
+        status, _ = _reclaim_official_tool_result_status(_reclaim_official_mcp_call_tool(tool, args, timeout_sec=30))
+        statuses[key] = status
+    _RECLAIM_OFFICIAL_TOOL_STATUS_CACHE["v1"] = (time.time(), statuses)
+    return statuses
+
+
+def _reclaim_official_get_schedule(day: str, show_results: bool = False, force: bool = False) -> dict:
+    cache_key = (day, "1" if show_results else "0")
+    cached = _RECLAIM_OFFICIAL_SCHEDULE_CACHE.get(cache_key)
+    if cached and (not force) and (time.time() - cached[0]) < 300:
+        return cached[1]
+    response = _reclaim_official_mcp_call_tool(
+        "get_schedule",
+        {"start": day, "end": day, "showResults": bool(show_results)},
+        timeout_sec=60,
+    )
+    status, detail = _reclaim_official_tool_result_status(response)
+    if status != "ok":
+        result = {"ok": False, "status": status, "detail": detail, "events": []}
+        _RECLAIM_OFFICIAL_SCHEDULE_CACHE[cache_key] = (time.time(), result)
+        return result
+    events = (((response.get("result") or {}).get("structuredContent") or {}).get("result") or [])
+    result = {"ok": True, "status": "ok", "detail": "", "events": events}
+    _RECLAIM_OFFICIAL_SCHEDULE_CACHE[cache_key] = (time.time(), result)
+    return result
+
+
+def _reclaim_official_parse_event_dt(raw: str, day: str, tzinfo) -> datetime | None:
+    if not raw:
+        return None
+    cleaned = str(raw).replace("\u202f", " ").replace("\xa0", " ").replace(" ", " ").strip()
+    formats = ("%m/%d/%y, %I:%M %p", "%m/%d/%Y, %I:%M %p", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M")
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(cleaned, fmt)
+            return dt.replace(tzinfo=tzinfo) if tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+    try:
+        dt = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else (dt.replace(tzinfo=tzinfo) if tzinfo else dt.replace(tzinfo=timezone.utc))
+    except Exception:
+        return None
+
+
+def _reclaim_official_events_to_busy(events: list[dict], day: str, tzinfo) -> tuple[list[tuple[datetime, datetime, str]], list[tuple[str, str, str]], list[dict]]:
+    busy: list[tuple[datetime, datetime, str]] = []
+    generic_meetings: list[tuple[str, str, str]] = []
+    reclaim_task_events: list[dict] = []
+    for ev in events:
+        st = _reclaim_official_parse_event_dt(ev.get("start", ""), day, tzinfo)
+        en = _reclaim_official_parse_event_dt(ev.get("end", ""), day, tzinfo)
+        if not st or not en or en <= st:
+            continue
+        platform = str(ev.get("platform") or "reclaim-official")
+        busy.append((st.astimezone(timezone.utc), en.astimezone(timezone.utc), platform))
+        title = (ev.get("title") or "").strip()
+        normalized = title.replace("🤝", "").strip().lower()
+        if normalized == "meeting":
+            generic_meetings.append((ev.get("start", ""), ev.get("end", ""), platform))
+        desc = str(ev.get("description") or "")
+        if "Reclaim" in desc or title.startswith("[") or ev.get("category") == "PRODUCTIVITY":
+            reclaim_task_events.append(ev)
+    return busy, generic_meetings, reclaim_task_events
+
+
+def _reclaim_official_agenda_quality(events: list[dict], day: str, day_end: str, tzinfo) -> dict:
+    cutoff_h, cutoff_m = map(int, day_end.split(":"))
+    y, mo, da = map(int, day.split("-"))
+    cutoff = datetime(y, mo, da, cutoff_h, cutoff_m, tzinfo=tzinfo) if tzinfo else datetime(y, mo, da, cutoff_h, cutoff_m, tzinfo=timezone.utc)
+    intervals = []
+    for ev in events:
+        st = _reclaim_official_parse_event_dt(ev.get("start", ""), day, tzinfo)
+        en = _reclaim_official_parse_event_dt(ev.get("end", ""), day, tzinfo)
+        if not st or not en or en <= st:
+            continue
+        intervals.append((st, en, ev))
+    intervals.sort(key=lambda item: item[0])
+
+    overlaps = []
+    for prev, cur in zip(intervals, intervals[1:]):
+        p_st, p_en, p_ev = prev
+        c_st, c_en, c_ev = cur
+        if c_st < p_en:
+            overlaps.append(
+                {
+                    "first": p_ev.get("title", ""),
+                    "second": c_ev.get("title", ""),
+                    "start": c_st.strftime("%H:%M"),
+                    "end": min(p_en, c_en).strftime("%H:%M"),
+                }
+            )
+
+    after_cutoff = []
+    for st, en, ev in intervals:
+        if en > cutoff:
+            after_cutoff.append(
+                {
+                    "title": ev.get("title", ""),
+                    "start": st.strftime("%H:%M"),
+                    "end": en.strftime("%H:%M"),
+                }
+            )
+
+    task_events = []
+    for _, _, ev in intervals:
+        title = (ev.get("title") or "").strip()
+        desc = str(ev.get("description") or "")
+        if "Reclaim" in desc or title.startswith("[") or ev.get("category") == "PRODUCTIVITY":
+            task_events.append(ev)
+
+    issues = []
+    if overlaps:
+        issues.append("overlap")
+    if after_cutoff:
+        issues.append("after_cutoff")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "overlaps": overlaps,
+        "after_cutoff": after_cutoff,
+        "event_count": len(intervals),
+        "task_event_count": len(task_events),
+    }
+
+
+def _format_reclaim_agenda_quality(quality: dict) -> list[str]:
+    lines = []
+    if quality.get("ok"):
+        lines.append("- qualidade: sem conflitos detectados e sem eventos após o limite configurado.")
+        return lines
+    lines.append("- qualidade: ruim, precisa de nova iteração ou intervenção.")
+    for item in quality.get("overlaps", [])[:6]:
+        lines.append(f"- conflito {item['start']}–{item['end']}: {item['first']} / {item['second']}")
+    for item in quality.get("after_cutoff", [])[:6]:
+        lines.append(f"- fora do limite {item['start']}–{item['end']}: {item['title']}")
+    return lines
+def _reclaim_open_login_url(*, visible_required: bool = False) -> dict:
+    return _open_login_url(RECLAIM_UI_LOGIN_URL, visible_required=visible_required)
 
 
 def _reclaim_login_workaround_hint() -> dict:
@@ -5421,22 +7281,8 @@ def _reclaim_login_workaround_hint() -> dict:
 
 
 def _reclaim_fetch_gtasks_candidates(task_list_id: str) -> dict:
-    token_path = BASE_DIR / "token.json"
-    if not token_path.exists():
-        return {
-            "status": "error",
-            "error": {
-                "code": "token_missing",
-                "message": "token.json não encontrado para resolver títulos via Google Tasks.",
-            },
-            "candidates": [],
-        }
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-
-        creds = Credentials.from_authorized_user_file(str(token_path), ['https://www.googleapis.com/auth/tasks'])
-        service = build('tasks', 'v1', credentials=creds)
+        service = _gtasks_service()
         results = service.tasks().list(tasklist=task_list_id, showCompleted=False).execute()
         items = results.get('items', [])
         candidates = [
@@ -5455,8 +7301,8 @@ def _reclaim_fetch_gtasks_candidates(task_list_id: str) -> dict:
         return {
             "status": "error",
             "error": {
-                "code": "gtasks_resolution_failed",
-                "message": f"Falha ao buscar tarefas no Google Tasks: {e}",
+                "code": "gtasks_invalid_grant" if _is_google_invalid_grant(e) else "gtasks_resolution_failed",
+                "message": f"Falha ao buscar tarefas no Google Tasks: {_google_auth_actionable_error(e)}",
             },
             "candidates": [],
         }
@@ -5530,8 +7376,7 @@ def _reclaim_pick_next_candidate(candidates: list) -> dict:
     }
 
 
-@mcp.tool()
-def reclaim_session_bootstrap(
+def _reclaim_session_bootstrap_impl(
     manual_login_confirmed: bool = False,
     captcha_resolved: bool = True,
     open_browser: bool = True,
@@ -5544,9 +7389,10 @@ def reclaim_session_bootstrap(
         "url": RECLAIM_UI_LOGIN_URL,
         "opened": False,
         "method": "manual",
+        "headless": False,
     }
     if open_browser:
-        visual_flow = _reclaim_open_login_url()
+        visual_flow = _reclaim_open_login_url(visible_required=not manual_login_confirmed)
 
     bootstrap_session(
         path=RECLAIM_UI_SESSION_FILE,
@@ -5593,6 +7439,20 @@ def reclaim_session_bootstrap(
 
 
 @mcp.tool()
+def reclaim_session_bootstrap(
+    manual_login_confirmed: bool = False,
+    captcha_resolved: bool = True,
+    open_browser: bool = True,
+) -> str:
+    """Bootstrap de sessão Reclaim UI com persistência local."""
+    return _reclaim_session_bootstrap_impl(
+        manual_login_confirmed=manual_login_confirmed,
+        captcha_resolved=captcha_resolved,
+        open_browser=open_browser,
+    )
+
+
+@mcp.tool()
 def reclaim_session_status() -> str:
     """Status da sessão Reclaim UI com validação e expiração."""
     if not RECLAIM_UI_AUTOMATION_ENABLE:
@@ -5609,8 +7469,25 @@ def reclaim_session_status() -> str:
 
     state = session_data.get("state")
     if state == "valid":
-        payload["result"] = "valid"
-        payload["next_step"] = "Sessão válida para start/stop/restart."
+        validation = run_reclaim_playwright_action(action="next", title="", timeout_sec=10)
+        payload["ui_validation"] = validation
+        validation_code = validation.get("error", {}).get("code") or validation.get("result")
+        if validation_code == "login_or_captcha_required":
+            session_data = get_session_status(
+                path=RECLAIM_UI_SESSION_FILE,
+                session_ttl_sec=RECLAIM_UI_SESSION_TTL_SEC,
+            )
+            payload["session"] = session_data
+            payload["status"] = "error"
+            payload["result"] = "pending_manual_login"
+            payload["next_step"] = "Login/captcha detectado no Reclaim. Rode reclaim_session_bootstrap(open_browser=true), conclua o login e confirme."
+        elif validation_code == "profile_in_use":
+            payload["status"] = "error"
+            payload["result"] = "profile_in_use"
+            payload["next_step"] = validation.get("next_step") or "Feche a janela visível do perfil Playwright e tente novamente."
+        else:
+            payload["result"] = "valid"
+            payload["next_step"] = "Sessão válida para start/stop/restart."
     elif state == "expired":
         payload["status"] = "error"
         payload["result"] = "expired"
@@ -5640,7 +7517,7 @@ def reclaim_task_start(
     task_list_id: str = "TUZuVGxQZkRxSjRrWkNtbw",
     visual_candidates: list[str] | None = None,
 ) -> str:
-    """Inicia tarefa no Reclaim por título exato ou por detecção automática (quando título vazio)."""
+    """Envia pedido de início ao Reclaim. O retorno confirma envio, não prova timer ativo."""
     if not RECLAIM_UI_AUTOMATION_ENABLE:
         return _reclaim_ui_disabled("reclaim_task_start")
 
@@ -5696,10 +7573,10 @@ def reclaim_task_start(
             resolved_title = (ui_action.get("target_title") or "").strip()
             if resolved_title:
                 payload["task"]["title"] = resolved_title
-            payload["result"] = "started"
+            payload["result"] = ui_action.get("result") or "start_requested_unverified"
             payload["executed_at"] = ui_action.get("executed_at")
-            payload["message"] = "Ação Start executada na UI do Reclaim (modo automático)."
-            payload["next_step"] = "Verifique o timer ativo no Reclaim para confirmar o foco."
+            payload["message"] = "Pedido de Start enviado ao Reclaim, mas ainda sem confirmação confiável do timer."
+            payload["next_step"] = "Confirme visualmente o timer no Reclaim ou valide pela sincronização do Calendar após alguns minutos."
         else:
             reason = ui_action.get("error", {}).get("code") or ui_action.get("result")
             detail = ui_action.get("error", {}).get("message") or ui_action.get("message")
@@ -5774,10 +7651,10 @@ def reclaim_task_start(
         )
         payload["ui_action"] = ui_action
         if ui_action.get("status") == "ok":
-            payload["result"] = "started"
+            payload["result"] = ui_action.get("result") or "start_requested_unverified"
             payload["executed_at"] = ui_action.get("executed_at")
-            payload["message"] = "Ação Start executada na UI do Reclaim."
-            payload["next_step"] = "Verifique o timer ativo no Reclaim para confirmar o foco."
+            payload["message"] = "Pedido de Start enviado ao Reclaim, mas ainda sem confirmação confiável do timer."
+            payload["next_step"] = "Confirme visualmente o timer no Reclaim ou valide pela sincronização do Calendar após alguns minutos."
         else:
             reason = ui_action.get("error", {}).get("code") or ui_action.get("result")
             detail = ui_action.get("error", {}).get("message") or ui_action.get("message")
@@ -6082,6 +7959,137 @@ def reclaim_task_restart(title: str | None = None) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
+def _reclaim_task_dom_action(
+    tool_name: str,
+    action: str,
+    title: str,
+    value: str = "",
+) -> str:
+    """Executa uma ação DOM/CDP por título no Reclaim."""
+    if not RECLAIM_UI_AUTOMATION_ENABLE:
+        return _reclaim_ui_disabled(tool_name)
+
+    normalized_title = normalize_title(title)
+    payload = _reclaim_ui_base_payload(tool_name)
+    payload["task"] = {
+        "title": normalized_title,
+        "action": action,
+    }
+    if value:
+        payload["task"]["value"] = value
+    payload["session_file"] = str(RECLAIM_UI_SESSION_FILE)
+
+    session_data = get_session_status(
+        path=RECLAIM_UI_SESSION_FILE,
+        session_ttl_sec=RECLAIM_UI_SESSION_TTL_SEC,
+    )
+    payload["session"] = session_data
+    session_state = session_data.get("state")
+    if session_state != "valid":
+        payload["status"] = "error"
+        payload["result"] = "session_invalid"
+        payload["error"] = {
+            "code": "session_not_valid",
+            "message": f"Sessão inválida para {action}: {session_state}",
+        }
+        payload["next_step"] = "Rode reclaim_session_bootstrap(manual_login_confirmed=true) para revalidar a sessão."
+        return json.dumps(payload, indent=2, ensure_ascii=False)
+
+    ui_action = run_reclaim_ui_action(
+        action=action,
+        title=normalized_title,
+        timeout_sec=RECLAIM_UI_EXECUTOR_TIMEOUT_SEC,
+        executor_cmd=RECLAIM_UI_EXECUTOR_CMD,
+        extra_env={"value": value},
+    )
+    payload["ui_action"] = ui_action
+    if ui_action.get("status") == "ok":
+        payload["result"] = ui_action.get("result") or f"{action}_sent_unverified"
+        payload["executed_at"] = ui_action.get("executed_at")
+        payload["message"] = "Ação enviada ao Reclaim via DOM/CDP."
+        payload["next_step"] = "Valide o DOM do Reclaim ou a sincronização posterior quando a ação alterar agenda."
+    else:
+        reason = ui_action.get("error", {}).get("code") or ui_action.get("result")
+        detail = ui_action.get("error", {}).get("message") or ui_action.get("message")
+        assist = create_assist_request(
+            audit_path=RECLAIM_UI_AUDIT_FILE,
+            action=action,
+            title=normalized_title,
+            reason=reason,
+            detail=detail,
+            login_url=RECLAIM_UI_LOGIN_URL,
+            open_browser=RECLAIM_UI_ASSIST_OPEN_BROWSER,
+            session_state=session_state,
+        )
+        payload["assist"] = assist
+        payload["status"] = "assist_mode"
+        payload["result"] = "assistance_required"
+        payload["message"] = "Automação falhou e entrou em modo assistido para completar a ação manual."
+        payload["next_step"] = assist["confirm_next_step"]
+
+    append_audit_event(
+        RECLAIM_UI_AUDIT_FILE,
+        {
+            "action": tool_name,
+            "result": payload.get("result"),
+            "task_title": normalized_title,
+            "task_action": action,
+            "value": value,
+            "session_state": session_state,
+            "assist_id": payload.get("assist", {}).get("assist_id"),
+        },
+    )
+    return json.dumps(payload, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def reclaim_task_up_next(title: str) -> str:
+    """Envia a tarefa para Up Next no Reclaim via DOM/CDP."""
+    return _reclaim_task_dom_action("reclaim_task_up_next", "up_next", title)
+
+
+@mcp.tool()
+def reclaim_task_done(title: str) -> str:
+    """Marca a tarefa como concluída no Reclaim via DOM/CDP."""
+    return _reclaim_task_dom_action("reclaim_task_done", "done", title)
+
+
+@mcp.tool()
+def reclaim_task_set_priority(title: str, priority: str) -> str:
+    """Define prioridade da tarefa no Reclaim. Valores: Critical, High priority, Medium priority, Low priority."""
+    return _reclaim_task_dom_action("reclaim_task_set_priority", "set_priority", title, priority)
+
+
+@mcp.tool()
+def reclaim_task_due_date(title: str, option: str = "") -> str:
+    """Abre/seleciona Due date da tarefa no Reclaim. Sem option, retorna o submenu visível."""
+    return _reclaim_task_dom_action("reclaim_task_due_date", "due_date", title, option)
+
+
+@mcp.tool()
+def reclaim_task_snooze(title: str, option: str = "") -> str:
+    """Abre/seleciona Snooze da tarefa no Reclaim. Sem option, retorna o submenu visível."""
+    return _reclaim_task_dom_action("reclaim_task_snooze", "snooze", title, option)
+
+
+@mcp.tool()
+def reclaim_event_context_menu(title: str) -> str:
+    """Abre o menu de contexto do evento no calendário e retorna as opções visíveis, sem clicar nelas."""
+    return _reclaim_task_dom_action("reclaim_event_context_menu", "calendar_context_menu", title)
+
+
+@mcp.tool()
+def reclaim_event_unlock(title: str) -> str:
+    """Clica com botão direito no evento do calendário e escolhe Unlock quando disponível."""
+    return _reclaim_task_dom_action("reclaim_event_unlock", "calendar_unlock", title)
+
+
+@mcp.tool()
+def reclaim_event_reschedule(title: str, option: str = "") -> str:
+    """Clica com botão direito no evento, escolhe Reschedule e opcionalmente uma opção do popover."""
+    return _reclaim_task_dom_action("reclaim_event_reschedule", "calendar_reschedule", title, option)
+
+
 @mcp.tool()
 def reclaim_task_assist_confirm(
     assist_id: str,
@@ -6212,6 +8220,16 @@ def auto_diagnostico_e_correcao():
     if not os.environ.get("OPENAI_API_KEY"):
         print("⚠️  AVISO CRÍTICO: OPENAI_API_KEY não encontrada no ambiente!", file=sys.stderr)
     
+    # Verificação do Google Calendar MCP
+    if os.environ.get("GOOGLE_CALENDAR_MCP_ENABLE", "false").lower() in ("1", "true", "yes", "on"):
+        cred_path = Path(os.environ.get("GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH", str(BASE_DIR / "gcp-oauth.keys.json"))).expanduser()
+        if not cred_path.exists():
+            print(f"⚠️  Google Calendar MCP: Arquivo de credenciais não encontrado em {cred_path}", file=sys.stderr)
+        else:
+            token_path = cred_path.parent / "mcp-google-calendar-token.json"
+            if not token_path.exists():
+                print(f"⚠️  Google Calendar MCP: Token OAuth não encontrado em {token_path}", file=sys.stderr)
+                print(f"    Para autorizar, rode no terminal: export CREDENTIALS_PATH=\"{cred_path}\" && npx -y mcp-google-calendar", file=sys.stderr)
     # 2. Verificação de Dependências Externas
     if not shutil.which("npx"):
         print("⚠️  Node.js (npx) ausente. 'Filesystem MCP' não funcionará.", file=sys.stderr)
@@ -6232,260 +8250,6 @@ def mostrar_link_externo():
     base = public_url.rstrip("/")
     print(f"endpoint publico: {base}/mcp", file=sys.stderr)
 
-# --- 7. NATIVE RAG (ChromaDB) ---
-class _DeterministicEmbeddingFunction:
-    """Fallback offline de embedding para evitar dependência de rede."""
-
-    def __init__(self, dim: int = 384):
-        self.dim = dim
-
-    def name(self) -> str:
-        return "deterministic-embedding-v1"
-
-    def is_legacy(self) -> bool:
-        return True
-
-    def _embed_text(self, text: str) -> list[float]:
-        import hashlib
-        import math
-
-        raw = text or ""
-        vec: list[float] = []
-        counter = 0
-        while len(vec) < self.dim:
-            digest = hashlib.sha256(f"{counter}:{raw}".encode("utf-8", errors="ignore")).digest()
-            for i in range(0, len(digest), 4):
-                chunk = digest[i:i+4]
-                if len(chunk) < 4:
-                    continue
-                value = int.from_bytes(chunk, byteorder="big", signed=False)
-                vec.append((value / 4294967295.0) * 2.0 - 1.0)
-                if len(vec) >= self.dim:
-                    break
-            counter += 1
-
-        norm = math.sqrt(sum(v * v for v in vec)) or 1.0
-        return [v / norm for v in vec]
-
-    def __call__(self, input):
-        texts = [input] if isinstance(input, str) else list(input or [])
-        return [self._embed_text(t) for t in texts]
-
-    def embed_query(self, input: str):
-        return [self._embed_text(input)]
-
-    def embed_documents(self, input):
-        texts = [input] if isinstance(input, str) else list(input or [])
-        return [self._embed_text(t) for t in texts]
-
-
-def _resolve_embedding_function():
-    from chromadb.utils import embedding_functions
-    mode = os.environ.get("RAG_EMBEDDING_MODE", "deterministic").strip().lower()
-
-    if mode in ("deterministic", "offline", "local"):
-        return _DeterministicEmbeddingFunction(), "deterministic"
-
-    try:
-        ef = embedding_functions.DefaultEmbeddingFunction()
-        return ef, "default"
-    except Exception as e:
-        print(f"⚠️ RAG: fallback para embedding offline determinístico ({e})", file=sys.stderr)
-        return _DeterministicEmbeddingFunction(), "deterministic"
-
-
-def _rag_collection_name(embedding_name: str) -> str:
-    if embedding_name == "default":
-        return "knowledge_base"
-    return "knowledge_base_offline"
-
-
-@mcp.tool()
-def rag_index(path: str) -> str:
-    """Indexa documentos (.txt, .md, .pdf) de uma pasta para busca semântica."""
-    try:
-        import chromadb
-        
-        # Configura Chroma (Persistente)
-        client = chromadb.PersistentClient(path=str(BASE_DIR / "chroma_db"))
-        ef, ef_name = _resolve_embedding_function()
-        collection = client.get_or_create_collection(
-            name=_rag_collection_name(ef_name),
-            embedding_function=ef,
-        )
-        
-        target_path = Path(path)
-        if not target_path.exists(): return "Caminho não encontrado."
-        
-        files = []
-        if target_path.is_file(): files = [target_path]
-        else: files = list(target_path.rglob("*"))
-        
-        indexed_count = 0
-        ids, docs, metadatas = [], [], []
-        
-        for file in files:
-            if file.suffix not in [".txt", ".md", ".pdf"]: continue
-            
-            text = ""
-            if file.suffix == ".pdf":
-                try:
-                    from pypdf import PdfReader
-                    reader = PdfReader(file)
-                    text = "\n".join([p.extract_text() for p in reader.pages])
-                except Exception as pdf_error:
-                    print(f"⚠️ RAG: ignorando PDF '{file}' ({pdf_error})", file=sys.stderr)
-                    continue
-            else:
-                try: text = file.read_text(errors="ignore")
-                except: continue
-            
-            if not text.strip(): continue
-            
-            # Chunking simples (1000 chars)
-            chunks = [text[i:i+1000] for i in range(0, len(text), 900)]
-            for i, chunk in enumerate(chunks):
-                ids.append(f"{file.name}_{i}")
-                docs.append(chunk)
-                metadatas.append({"source": str(file), "chunk": i})
-                
-            indexed_count += 1
-            
-        if docs:
-            # Upsert (em lotes de 100 para não travar)
-            batch_size = 100
-            for i in range(0, len(docs), batch_size):
-                collection.upsert(
-                    ids=ids[i:i+batch_size],
-                    documents=docs[i:i+batch_size],
-                    metadatas=metadatas[i:i+batch_size]
-                )
-                
-        return f"Indexação concluída! {indexed_count} arquivos processados, {len(docs)} fragmentos criados. Embedding: {ef_name}."
-    except Exception as e:
-        return f"Erro ao indexar: {e}"
-
-@mcp.tool()
-def rag_search(query: str, n_results: int = 5) -> str:
-    """Busca semântica na base de conhecimento indexada."""
-    try:
-        import chromadb
-        
-        client = chromadb.PersistentClient(path=str(BASE_DIR / "chroma_db"))
-        ef, ef_name = _resolve_embedding_function()
-        collection = client.get_collection(
-            name=_rag_collection_name(ef_name),
-            embedding_function=ef,
-        )
-        
-        results = collection.query(query_texts=[query], n_results=n_results)
-        
-        output = [f"🔍 Resultados para: '{query}' (embedding: {ef_name})\n"]
-        for i, doc in enumerate(results['documents'][0]):
-            meta = results['metadatas'][0][i]
-            output.append(f"--- Fonte: {meta['source']} ---\n{doc}\n")
-            
-        return "\n".join(output)
-    except Exception as e:
-        return f"Erro na busca (talvez precise indexar primeiro): {e}"
-
-
-def _mcp_text_content(payload: dict) -> dict:
-    return {
-        "content": [
-            {
-                "type": "text",
-                "text": json.dumps(payload, ensure_ascii=True),
-            }
-        ]
-    }
-
-
-def _title_from_source(source: str | None, fallback: str) -> str:
-    if not source:
-        return fallback
-    name = Path(source).name
-    return name or fallback
-
-
-@mcp.tool()
-def search(query: str) -> dict:
-    """Search the local vector store and return MCP connector results."""
-    results: list[dict] = []
-    query = (query or "").strip()
-    if not query:
-        return _mcp_text_content({"results": results})
-
-    try:
-        import chromadb
-
-        client = chromadb.PersistentClient(path=str(BASE_DIR / "chroma_db"))
-        ef, ef_name = _resolve_embedding_function()
-        collection = client.get_collection(
-            name=_rag_collection_name(ef_name),
-            embedding_function=ef,
-        )
-        max_results = int(os.environ.get("MCP_SEARCH_MAX_RESULTS", "5"))
-        data = collection.query(
-            query_texts=[query],
-            n_results=max_results,
-            include=["ids", "metadatas"],
-        )
-        ids = data.get("ids", [[]])[0]
-        metas = data.get("metadatas", [[]])[0]
-        for idx, doc_id in enumerate(ids):
-            meta = metas[idx] if idx < len(metas) else {}
-            source = meta.get("source") if isinstance(meta, dict) else None
-            title = _title_from_source(source, doc_id)
-            url = source if source and re.match(r"^https?://", source) else SERVER_URL
-            results.append({"id": doc_id, "title": title, "url": url})
-    except Exception:
-        results = []
-
-    return _mcp_text_content({"results": results})
-
-
-@mcp.tool()
-def fetch(id: str) -> dict:
-    """Fetch a document by id from the local vector store."""
-    doc_id = (id or "").strip()
-    payload = {
-        "id": doc_id,
-        "title": doc_id,
-        "text": "",
-        "url": SERVER_URL,
-        "metadata": {},
-    }
-
-    if not doc_id:
-        payload["metadata"]["error"] = "missing id"
-        return _mcp_text_content(payload)
-
-    try:
-        import chromadb
-        from chromadb.utils import embedding_functions
-
-        client = chromadb.PersistentClient(path=str(BASE_DIR / "chroma_db"))
-        ef = embedding_functions.DefaultEmbeddingFunction()
-        collection = client.get_collection(name="knowledge_base", embedding_function=ef)
-        data = collection.get(ids=[doc_id], include=["documents", "metadatas"])
-        docs = data.get("documents") or []
-        metas = data.get("metadatas") or []
-        if docs:
-            payload["text"] = docs[0] or ""
-        if metas:
-            meta = metas[0] or {}
-            if isinstance(meta, dict):
-                source = meta.get("source")
-                payload["metadata"] = meta
-                payload["title"] = _title_from_source(source, doc_id)
-                if source and re.match(r"^https?://", source):
-                    payload["url"] = source
-    except Exception as e:
-        payload["metadata"] = {"error": str(e)}
-
-    return _mcp_text_content(payload)
-
 
 # --- GUPY (R&S Public API v1) ---
 def _gupy_client() -> httpx.Client:
@@ -6502,7 +8266,7 @@ def _gupy_client() -> httpx.Client:
     )
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GUPY_MCP_ENABLE", "true")
 def gupy_test_token() -> str:
     """Testa se o token da Gupy (GUPY_API_TOKEN) está válido."""
     try:
@@ -6515,7 +8279,7 @@ def gupy_test_token() -> str:
         return f"erro: {e}\n{traceback.format_exc()}"
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GUPY_MCP_ENABLE", "true")
 def gupy_v1_list_jobs(
     status: str = "published",
     page: int = 1,
@@ -6542,7 +8306,7 @@ def gupy_v1_list_jobs(
                     r_name = j.get("recruiterName")
                     r_id = j.get("recruiterId")
                     if r_email or r_name or r_id:
-                        extra = f" | recruiter={r_name or ''} <{r_email or ''}> id={r_id or ''}".replace("\x1c", "")
+                        extra = f" | recruiter={r_name or ''} <{r_email or ''}> id={r_id or ''}".replace("\x1c", "")
                 out.append(
                     f"- id={j.get('id')} | {j.get('status')} | {j.get('name')} | createdAt={j.get('createdAt')}{extra}"
                 )
@@ -6555,7 +8319,7 @@ def gupy_v1_list_jobs(
         return f"Erro: {e}\n{traceback.format_exc()}"
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GUPY_MCP_ENABLE", "true")
 def gupy_v1_close_job(job_id: int, cancel_reason: str = "") -> str:
     """Fecha uma vaga via API v1 (PATCH status=closed)."""
     try:
@@ -6666,8 +8430,7 @@ def _msgraph_get(url: str, params: dict | None = None):
     return r
 
 
-@mcp.tool()
-def onedrive_auth_start() -> dict:
+def _onedrive_auth_start_impl() -> dict:
     """Inicia login via device code no Microsoft Graph (OneDrive pessoal)."""
     _msgraph_require_client_id()
     scope = "https://graph.microsoft.com/Files.ReadWrite.All offline_access"
@@ -6692,7 +8455,13 @@ def onedrive_auth_start() -> dict:
     return flow
 
 
-@mcp.tool()
+@_mcp_tool_when_env("ONEDRIVE_MCP_ENABLE", "true")
+def onedrive_auth_start() -> dict:
+    """Inicia login via device code no Microsoft Graph (OneDrive pessoal)."""
+    return _onedrive_auth_start_impl()
+
+
+@_mcp_tool_when_env("ONEDRIVE_MCP_ENABLE", "true")
 def onedrive_auth_poll(device_code: str = "", timeout_seconds: int = 300) -> dict:
     """Conclui login iniciado por onedrive_auth_start, com polling."""
     _msgraph_require_client_id()
@@ -6754,7 +8523,7 @@ def onedrive_auth_poll(device_code: str = "", timeout_seconds: int = 300) -> dic
     return {"ok": False, "error": "timeout"}
 
 
-@mcp.tool()
+@_mcp_tool_when_env("ONEDRIVE_MCP_ENABLE", "true")
 def onedrive_list(path: str = "", limit: int = 50) -> dict:
     """Lista itens de uma pasta no OneDrive pessoal."""
     path = (path or "").strip().strip("/")
@@ -6771,7 +8540,7 @@ def onedrive_list(path: str = "", limit: int = 50) -> dict:
     return r.json()
 
 
-@mcp.tool()
+@_mcp_tool_when_env("ONEDRIVE_MCP_ENABLE", "true")
 def onedrive_get_versions(item_id: str, limit: int = 50) -> dict:
     """Lista histórico de versões de um arquivo OneDrive (driveItem)."""
     item_id = (item_id or "").strip()
@@ -6916,10 +8685,11 @@ def _run_server() -> int:
         start_chart_mcp()
         start_zotero_mcp()
         start_firecrawl_mcp()
+        start_google_calendar_mcp()
         start_fireflies_mcp()
+        start_reclaim_official_mcp()
+        start_google_drive_mcp()
         start_filesystem_mcp()
-    # Ferramentas locais (não MCP)
-    start_sequential_mcp()
 
     # Verifica modo de operação
     sys.stderr.write(f"DEBUG: [__main__] mcp_mode={mcp_mode}\n")
@@ -7165,12 +8935,12 @@ def _tail_text_file(path: Path, lines: int = 120) -> str:
 def _apply_oci_profile_env(target_env: dict) -> None:
     oracle_defaults = {
         "SPEEDGRAPHER_ENABLE": "true",
-        "SEQUENTIAL_MCP_ENABLE": "true",
         "FILESYSTEM_MCP_ENABLE": "false",
         "PLAYWRIGHT_MCP_ENABLE": "true",
-        "BRAVE_MCP_ENABLE": "true",
+        "BRAVE_MCP_ENABLE": "false",
         "FIRECRAWL_ENABLE": "false",
         "FIREFLIES_MCP_ENABLE": "false",
+        "GOOGLE_CALENDAR_MCP_ENABLE": "true",
         "ZOTERO_MCP_ENABLE": "false",
         "CHART_MCP_ENABLE": "false",
         "MERMAID_ENABLE": "true",
@@ -7457,7 +9227,7 @@ def _resolve_project_python(py_bin: str | None = None) -> str:
 
 
 def _resolve_gsd_ralph_workspace() -> Path:
-    return BASE_DIR / ".agents" / "workflow"
+    return BASE_DIR / ".context" / "workflow"
 
 
 def _jarvis_ready_marker_path() -> Path:
@@ -7758,7 +9528,81 @@ def _resolve_ai_coders_context_global_cli() -> dict:
         "error": "ai_coders_context_cli_not_found",
         "package_root": str(pkg_root),
     }
+def _validate_ai_context_mcp_manually(timeout_sec: float = 10.0) -> dict:
+    cli = _resolve_ai_coders_context_global_cli()
+    if not cli.get("ok"):
+        return {"ok": False, "reason": "cli_not_found", "detail": str(cli.get("error") or "")}
 
+    import select
+
+    cmd = [str(cli.get("command") or "")] + [str(x) for x in (cli.get("args_prefix") or [])] + ["mcp", "--repo-path", str(BASE_DIR)]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(BASE_DIR),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=os.environ.copy(),
+        )
+    except Exception as exc:
+        return {"ok": False, "reason": "spawn_failed", "detail": str(exc)}
+
+    def _read_line(stream, deadline: float) -> str:
+        while time.time() < deadline:
+            ready, _, _ = select.select([stream], [], [], 0.2)
+            if ready:
+                line = stream.readline()
+                if line:
+                    return line.strip()
+            if proc.poll() is not None:
+                break
+        return ""
+
+    deadline = time.time() + max(1.0, timeout_sec)
+    try:
+        init_req = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "jarvis-manual-check", "version": "1.0"},
+            },
+        }
+        assert proc.stdin is not None and proc.stdout is not None
+        proc.stdin.write(json.dumps(init_req) + "\n")
+        proc.stdin.flush()
+        init_line = _read_line(proc.stdout, deadline)
+        if not init_line:
+            return {"ok": False, "reason": "initialize_timeout"}
+        init_payload = json.loads(init_line)
+        if init_payload.get("id") != 1 or "result" not in init_payload:
+            return {"ok": False, "reason": "initialize_invalid", "detail": init_line[:300]}
+
+        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}) + "\n")
+        proc.stdin.flush()
+        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}) + "\n")
+        proc.stdin.flush()
+        tools_line = _read_line(proc.stdout, deadline)
+        if not tools_line:
+            return {"ok": False, "reason": "tools_list_timeout"}
+        tools_payload = json.loads(tools_line)
+        tools = (((tools_payload.get("result") or {}).get("tools")) or [])
+        return {"ok": True, "tools": len(tools)}
+    except Exception as exc:
+        return {"ok": False, "reason": "probe_failed", "detail": str(exc)}
+    finally:
+        try:
+            proc.terminate()
+            proc.wait(timeout=2)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
 def _patch_text_file_with_replacements(
     path: Path,
@@ -7777,7 +9621,11 @@ def _patch_text_file_with_replacements(
     updated = original
     applied: list[dict[str, object]] = []
     for old, new in replacements:
-        if new in updated and old not in updated:
+        # Several hardening patches intentionally keep the original call after an
+        # injected `process.exit(1)` guard. In that shape `old in updated` remains
+        # true forever, so the previous check re-applied the same guard on every
+        # Jarvis startup. Treat the full replacement block as the idempotence key.
+        if new in updated:
             applied.append({"status": "already_hardened", "needle": old[:80]})
             continue
         if old not in updated:
@@ -8230,6 +10078,279 @@ def _resolve_ai_coders_context_exec(install_if_missing: bool = True) -> list[str
     return [_resolve_npx_bin(), "-y", "@ai-coders/context"]
 
 
+def _resolve_graphify_package_root() -> Path | None:
+    try:
+        import graphify
+    except Exception:
+        return None
+    try:
+        return Path(graphify.__file__).resolve().parent
+    except Exception:
+        return None
+
+
+def _patch_graphify_context_output(path: Path) -> dict:
+    if not path.exists():
+        return {"ok": False, "error": "file_not_found", "path": str(path)}
+    try:
+        original = path.read_text(encoding="utf-8")
+    except Exception as exc:
+        return {"ok": False, "error": "read_failed", "path": str(path), "detail": str(exc)}
+
+    updated, occurrences = re.subn(r"(?<!\.context/)graphify-out", GRAPHIFY_DEFAULT_REL, original)
+    updated = updated.replace(
+        'candidate.name == ".context/graphify-out"',
+        '(candidate.name == "graphify-out" and candidate.parent.name == ".context")',
+    )
+    if path.name == "watch.py":
+        updated, watch_occurrences = _patch_graphify_watch_large_update(updated)
+        occurrences += watch_occurrences
+    if path.name == "extract.py":
+        updated, extract_occurrences = _patch_graphify_extract_large_update(updated)
+        occurrences += extract_occurrences
+    changed = updated != original
+    if changed:
+        backup_path = Path(f"{path}.jarvis-orig")
+        try:
+            if not backup_path.exists():
+                backup_path.write_text(original, encoding="utf-8")
+            path.write_text(updated, encoding="utf-8")
+        except Exception as exc:
+            return {"ok": False, "error": "write_failed", "path": str(path), "detail": str(exc)}
+
+    return {
+        "ok": True,
+        "path": str(path),
+        "changed": changed,
+        "occurrences": occurrences,
+    }
+
+
+def _patch_graphify_watch_large_update(text: str) -> tuple[str, int]:
+    occurrences = 0
+    helper = '''
+
+
+def _fast_source_communities(G) -> dict[int, list[str]]:
+    """Group very large update graphs by top-level source path.
+
+    Full Leiden/Louvain clustering can sit for minutes after AST extraction reaches
+    100% on large monorepos. Code-only update should remain operational, so large
+    graphs use deterministic source buckets instead of interactive-quality clusters.
+    """
+    buckets: dict[str, list[str]] = {}
+    for node_id, data in G.nodes(data=True):
+        source = data.get("source_file") or "_semantic"
+        key = source.split("/", 1)[0] if "/" in source else source
+        buckets.setdefault(key, []).append(node_id)
+    ordered = sorted(buckets.values(), key=len, reverse=True)
+    return {cid: sorted(nodes) for cid, nodes in enumerate(ordered)}
+'''
+    if "_fast_source_communities" not in text and "\ndef _rebuild_code" in text:
+        text = text.replace("\ndef _rebuild_code", helper + "\ndef _rebuild_code", 1)
+        occurrences += 1
+
+    old = '''        G = build_from_json(result)
+        communities = cluster(G)
+        cohesion = score_all(G, communities)
+        gods = god_nodes(G)
+        surprises = surprising_connections(G, communities)
+        labels = {cid: "Community " + str(cid) for cid in communities}
+        questions = suggest_questions(G, communities, labels)
+'''
+    new = '''        print("[graphify watch] Building NetworkX graph...", flush=True)
+        G = build_from_json(result)
+        node_count = G.number_of_nodes()
+        edge_count = G.number_of_edges()
+        if node_count > 50_000:
+            print(
+                f"[graphify watch] Large graph ({node_count} nodes, {edge_count} edges) - "
+                "using fast source-path communities instead of full clustering.",
+                flush=True,
+            )
+            communities = _fast_source_communities(G)
+        else:
+            print(f"[graphify watch] Clustering {node_count} nodes...", flush=True)
+            communities = cluster(G)
+        print(f"[graphify watch] Scoring {len(communities)} communities...", flush=True)
+        cohesion = score_all(G, communities)
+        print("[graphify watch] Analyzing graph report sections...", flush=True)
+        gods = god_nodes(G)
+        surprises = surprising_connections(G, communities)
+        labels = {cid: "Community " + str(cid) for cid in communities}
+        questions = suggest_questions(G, communities, labels)
+'''
+    if old in text:
+        text = text.replace(old, new, 1)
+        occurrences += 1
+    return text, occurrences
+
+
+def _patch_graphify_extract_large_update(text: str) -> tuple[str, int]:
+    occurrences = 0
+    marker = '''    if total >= _PROGRESS_INTERVAL:
+        print(f"  AST extraction: {total}/{total} files (100%)", flush=True)
+
+    all_nodes: list[dict] = []
+'''
+    replacement = '''    if total >= _PROGRESS_INTERVAL:
+        print(f"  AST extraction: {total}/{total} files (100%)", flush=True)
+    if total >= _PROGRESS_INTERVAL:
+        print("  AST extraction: merging per-file results", flush=True)
+
+    all_nodes: list[dict] = []
+'''
+    if marker in text:
+        text = text.replace(marker, replacement, 1)
+        occurrences += 1
+
+    marker = '''    if id_remap:
+        for n in all_nodes:
+            if n.get("id") in id_remap:
+                n["id"] = id_remap[n["id"]]
+        for e in all_edges:
+            if e.get("source") in id_remap:
+                e["source"] = id_remap[e["source"]]
+            if e.get("target") in id_remap:
+                e["target"] = id_remap[e["target"]]
+
+    # Add cross-file class-level edges (Python only - uses Python parser internally)
+'''
+    replacement = '''    if id_remap:
+        for n in all_nodes:
+            if n.get("id") in id_remap:
+                n["id"] = id_remap[n["id"]]
+        for e in all_edges:
+            if e.get("source") in id_remap:
+                e["source"] = id_remap[e["source"]]
+            if e.get("target") in id_remap:
+                e["target"] = id_remap[e["target"]]
+
+    if total >= _PROGRESS_INTERVAL:
+        print("  AST extraction: resolving cross-file imports", flush=True)
+    # Add cross-file class-level edges (Python only - uses Python parser internally)
+'''
+    if marker in text:
+        text = text.replace(marker, replacement, 1)
+        occurrences += 1
+
+    old = '''    global_label_to_nid: dict[str, str] = {}
+    for n in all_nodes:
+        raw = n.get("label", "")
+        normalised = raw.strip("()").lstrip(".")
+        if normalised:
+            global_label_to_nid[normalised.lower()] = n["id"]
+
+    existing_pairs = {(e["source"], e["target"]) for e in all_edges}
+    for result in per_file:
+        for rc in result.get("raw_calls", []):
+            callee = rc.get("callee", "")
+            if not callee:
+                continue
+            tgt = global_label_to_nid.get(callee.lower())
+            caller = rc["caller_nid"]
+            if tgt and tgt != caller and (caller, tgt) not in existing_pairs:
+                existing_pairs.add((caller, tgt))
+                all_edges.append({
+                    "source": caller,
+                    "target": tgt,
+                    "relation": "calls",
+                    "confidence": "INFERRED",
+                    "confidence_score": 0.8,
+                    "source_file": rc.get("source_file", ""),
+                    "source_location": rc.get("source_location"),
+                    "weight": 1.0,
+                })
+'''
+    new = '''    raw_call_count = sum(len(result.get("raw_calls", [])) for result in per_file)
+    if total >= _PROGRESS_INTERVAL:
+        print(f"  AST extraction: resolving {raw_call_count} raw calls", flush=True)
+    if raw_call_count > 200_000:
+        print(
+            "  AST extraction: skipped global raw-call resolution for large corpus "
+            f"({raw_call_count} calls)",
+            flush=True,
+        )
+    else:
+        global_label_to_nid: dict[str, str] = {}
+        for n in all_nodes:
+            raw = n.get("label", "")
+            normalised = raw.strip("()").lstrip(".")
+            if normalised:
+                global_label_to_nid[normalised.lower()] = n["id"]
+
+        existing_pairs = {(e["source"], e["target"]) for e in all_edges}
+        for result in per_file:
+            for rc in result.get("raw_calls", []):
+                callee = rc.get("callee", "")
+                if not callee:
+                    continue
+                tgt = global_label_to_nid.get(callee.lower())
+                caller = rc["caller_nid"]
+                if tgt and tgt != caller and (caller, tgt) not in existing_pairs:
+                    existing_pairs.add((caller, tgt))
+                    all_edges.append({
+                        "source": caller,
+                        "target": tgt,
+                        "relation": "calls",
+                        "confidence": "INFERRED",
+                        "confidence_score": 0.8,
+                        "source_file": rc.get("source_file", ""),
+                        "source_location": rc.get("source_location"),
+                        "weight": 1.0,
+                    })
+'''
+    if old in text:
+        text = text.replace(old, new, 1)
+        occurrences += 1
+    return text, occurrences
+
+
+def _harden_graphify_global_install(apply_if_needed: bool = True) -> dict:
+    if not _env_is_true("JARVIS_GRAPHIFY_HARDEN", True):
+        return {"ok": True, "skipped": True, "reason": "disabled_by_env"}
+
+    pkg_root = _resolve_graphify_package_root()
+    if not pkg_root:
+        return {
+            "ok": False,
+            "error": "graphify_package_root_not_found",
+            "hint": "Instale com: python3 -m pip install graphifyy",
+        }
+
+    patch_files = sorted([*pkg_root.glob("*.py"), *pkg_root.glob("skill*.md")])
+    results: list[dict] = []
+    changed_files: list[str] = []
+    for target in patch_files:
+        if not target.exists():
+            continue
+        patched = (
+            {"ok": True, "path": str(target), "changed": False, "skipped": True}
+            if not apply_if_needed
+            else _patch_graphify_context_output(target)
+        )
+        results.append(patched)
+        if not patched.get("ok"):
+            return {
+                "ok": False,
+                "error": "graphify_hardening_failed",
+                "package_root": str(pkg_root),
+                "failed_patch": patched,
+                "results": results,
+            }
+        if patched.get("changed"):
+            changed_files.append(str(target))
+
+    return {
+        "ok": True,
+        "package_root": str(pkg_root),
+        "target": GRAPHIFY_DEFAULT_REL,
+        "changed": bool(changed_files),
+        "changed_files": changed_files,
+        "results": results,
+    }
+
+
 def _resolve_gsd_package_root(gsd_bin: str = "") -> Path | None:
     candidates = [
         (gsd_bin or "").strip(),
@@ -8274,8 +10395,8 @@ def _apply_gsd_direct_context_planning_patch(*, apply_if_needed: bool = True, gs
         }
 
     text_exts = {".md", ".cjs", ".js", ".json", ".txt", ".yaml", ".yml", ".bak"}
-    legacy_token = ".planning"
-    target_token = ".context/docs/planning_gsd"
+    legacy_tokens = [".planning", ".context/docs/planning_gsd"]
+    target_token = ".context/plans"
     changed_files = 0
     changed_occurrences = 0
     remaining_legacy_refs = 0
@@ -8291,14 +10412,16 @@ def _apply_gsd_direct_context_planning_patch(*, apply_if_needed: bool = True, gs
         except Exception:
             continue
 
-        count = content.count(legacy_token)
+        count = sum(content.count(token) for token in legacy_tokens)
         if count <= 0:
             continue
         remaining_legacy_refs += count
         if not apply_if_needed:
             continue
 
-        updated = content.replace(legacy_token, target_token)
+        updated = content
+        for token in legacy_tokens:
+            updated = updated.replace(token, target_token)
         if updated == content:
             continue
 
@@ -8320,7 +10443,7 @@ def _apply_gsd_direct_context_planning_patch(*, apply_if_needed: bool = True, gs
             content = p.read_text(encoding="utf-8")
         except Exception:
             continue
-        final_remaining += content.count(legacy_token)
+        final_remaining += sum(content.count(token) for token in legacy_tokens)
 
     ok = len(file_errors) == 0 and final_remaining == 0
     result = {
@@ -8381,7 +10504,7 @@ def _sync_ralph_global_templates_from_repo(*, apply_if_needed: bool = True, ralp
             "hint": "Instale com: npm install -g @iannuttall/ralph",
         }
 
-    src_root = BASE_DIR / ".agents" / "ralph"
+    src_root = BASE_DIR / RALPH_RUNTIME_REL / "templates"
     dst_root = root / ".agents" / "ralph"
     sync_targets = [
         "references",
@@ -8424,10 +10547,29 @@ def _sync_ralph_global_templates_from_repo(*, apply_if_needed: bool = True, ralp
         if not (src_root / rel).exists():
             missing_sources.append(rel)
     if missing_sources:
+        missing_on_global: list[str] = []
+        for rel in sync_targets:
+            if not (dst_root / rel).exists():
+                missing_on_global.append(rel)
+        if missing_on_global:
+            return {
+                "ok": False,
+                "error": "ralph_template_sources_missing",
+                "source_root": str(src_root),
+                "missing_sources": missing_sources,
+                "target_root": str(dst_root),
+                "missing_targets_on_global": missing_on_global,
+            }
         return {
-            "ok": False,
-            "error": "ralph_template_sources_missing",
+            "ok": True,
+            "package_root": str(root),
             "source_root": str(src_root),
+            "target_root": str(dst_root),
+            "synced_targets": [],
+            "copied_files": 0,
+            "apply_if_needed": apply_if_needed,
+            "skipped": True,
+            "reason": "local_templates_partial_using_global_templates",
             "missing_sources": missing_sources,
         }
 
@@ -8589,7 +10731,11 @@ def _apply_ralph_global_prd_path_patch(*, apply_if_needed: bool = True, ralph_bi
             "replacements": [
                 (
                     'DEFAULT_PRD_PATH=".agents/tasks/prd.json"',
+                    'DEFAULT_PRD_PATH=".context/workflow/prd.json"',
+                ),
+                (
                     'DEFAULT_PRD_PATH=".context/prd_ralph/prd.json"',
+                    'DEFAULT_PRD_PATH=".context/workflow/prd.json"',
                 )
             ],
         },
@@ -8598,11 +10744,19 @@ def _apply_ralph_global_prd_path_patch(*, apply_if_needed: bool = True, ralph_bi
             "replacements": [
                 (
                     'const tasksDir = path.join(baseDir, ".agents", "tasks");',
+                    'const tasksDir = path.join(baseDir, ".context", "workflow");',
+                ),
+                (
                     'const tasksDir = path.join(baseDir, ".context", "prd_ralph");',
+                    'const tasksDir = path.join(baseDir, ".context", "workflow");',
                 ),
                 (
                     'return path.join(baseDir, ".agents", "tasks");',
+                    'return path.join(baseDir, ".context", "workflow");',
+                ),
+                (
                     'return path.join(baseDir, ".context", "prd_ralph");',
+                    'return path.join(baseDir, ".context", "workflow");',
                 ),
             ],
         },
@@ -8883,16 +11037,21 @@ def _run_internal_smoke_test_step() -> dict:
         apply_if_needed=False,
         ralph_bin=str(ralph_global.get("ralph_bin", "")),
     )
+    graphify_patch = _harden_graphify_global_install(apply_if_needed=False)
     checks = {
         "ai_coders_context_global_installed": bool(ai_context_global.get("installed")),
         "gsd_global_installed": bool(gsd_global.get("installed")),
-        "gsd_planning_path_patched": bool(gsd_patch.get("ok"))
+        "gsd_plans_path_patched": bool(gsd_patch.get("ok"))
         and int(gsd_patch.get("remaining_legacy_refs_after", 1)) == 0,
         "ralph_global_installed": bool(ralph_global.get("installed")),
         "ralph_global_templates_ready": bool(ralph_templates.get("ok")),
         "ralph_template_resolution_patched": bool(ralph_patch.get("ok")),
         "ralph_prd_path_patched": bool(ralph_prd_patch.get("ok")),
+        "graphify_context_output_patched": bool(graphify_patch.get("ok")),
         ".context/docs": (BASE_DIR / ".context" / "docs").exists(),
+        ".context/plans": (BASE_DIR / ".context" / "plans").exists(),
+        ".context/workflow": (BASE_DIR / ".context" / "workflow").exists(),
+        ".context/graphify-out": (BASE_DIR / ".context" / "graphify-out").exists(),
     }
     missing = [k for k, ok in checks.items() if not ok]
     return {
@@ -8905,7 +11064,7 @@ def _run_internal_smoke_test_step() -> dict:
 
 def _run_internal_context_update_step() -> dict:
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    export_dir = BASE_DIR / ".ralph" / "exports"
+    export_dir = BASE_DIR / RALPH_RUNTIME_REL / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
     report_path = export_dir / f"us001_context_routine_report-{run_id}.md"
 
@@ -8965,7 +11124,7 @@ def _run_internal_context_update_step() -> dict:
 
 def _run_internal_quality_gates_step(label: str = "quality_gates") -> dict:
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    export_dir = BASE_DIR / ".ralph" / "exports"
+    export_dir = BASE_DIR / RALPH_RUNTIME_REL / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
     summary_path = export_dir / f"{label}_quality_gates_run-{run_id}.md"
     commands = []
@@ -9431,6 +11590,9 @@ def _setup_bidirectional_mcp_cli(py_bin: str) -> int:
     print("[3/3] Estado atual:")
     print("Gemini MCP list:")
     _run_cli_command(["gemini", "mcp", "list"], allow_failure=True)
+    ai_context_probe = _validate_ai_context_mcp_manually()
+    if ai_context_probe.get("ok"):
+        print(f"- ai-coders-context: protocolo MCP validado manualmente ({ai_context_probe.get('tools', 0)} tools)")
     print("\nCodex MCP list:")
     _run_cli_command(_codex_cli_cmd(["mcp", "list"]), allow_failure=True)
 
@@ -9522,15 +11684,15 @@ def _mcp_sync_clients_cli(
             }
         )
         if not gsd_ok:
-            print("❌ GSD global ausente ou patch de .context/docs/planning_gsd falhou.", file=sys.stderr)
+            print("❌ GSD global ausente ou patch de .context/plans falhou.", file=sys.stderr)
             failures += 1
         else:
             patch = ((gsd_setup.get("detail") or {}).get("patch") or {})
-            changed = int(patch.get("changed_occurrences", 0))
+            changed = int(patch.get("changed_occurrences") or 0)
             if changed > 0:
-                print(f"✅ GSD ajustado para .context/docs/planning_gsd ({changed} ocorrência(s) migrada(s)).")
+                print(f"✅ GSD ajustado para .context/plans ({changed} ocorrência(s) migrada(s)).")
             else:
-                print("✅ GSD já estava ajustado para .context/docs/planning_gsd.")
+                print("✅ GSD já estava ajustado para .context/plans.")
 
         ralph_setup = _run_internal_ralph_setup_step()
         ralph_ok = bool(ralph_setup.get("ok"))
@@ -9569,8 +11731,8 @@ def _mcp_sync_clients_cli(
                     print(f"   ↳ destino global: {target_root}")
             elif bool(sync_detail.get("skipped")):
                 reason = str(sync_detail.get("reason", "")).strip()
-                if reason == "local_templates_absent_using_global_templates":
-                    print("✅ Templates locais do Ralph ausentes; mantendo templates absorvidos no npm global.")
+                if reason in {"local_templates_absent_using_global_templates", "local_templates_partial_using_global_templates"}:
+                    print("✅ Templates locais do Ralph ausentes ou parciais; mantendo templates absorvidos no npm global.")
                     if target_root:
                         print(f"   ↳ destino global: {target_root}")
             patch_changed = int(patch_detail.get("changed_occurrences", 0) or 0)
@@ -9584,11 +11746,11 @@ def _mcp_sync_clients_cli(
             prd_patch_changed = int(prd_patch_detail.get("changed_occurrences", 0) or 0)
             if prd_patch_changed > 0:
                 print(
-                    "✅ Ralph global ajustado para PRD em cwd + .context/prd_ralph "
+                    "✅ Ralph global ajustado para PRD em cwd + .context/workflow "
                     f"({prd_patch_changed} ocorrência(s) migrada(s))."
                 )
             elif int(prd_patch_detail.get("already_patched_files", 0) or 0) > 0:
-                print("✅ Ralph global já estava usando PRD em cwd + .context/prd_ralph.")
+                print("✅ Ralph global já estava usando PRD em cwd + .context/workflow.")
 
         smoke = _run_internal_smoke_test_step()
         smoke_ok = bool(smoke.get("ok"))
@@ -9662,6 +11824,9 @@ def _mcp_sync_clients_cli(
     print("\nStatus final:")
     if include_gemini and shutil.which("gemini"):
         _run_cli_command(["gemini", "mcp", "list"], allow_failure=True)
+        ai_context_probe = _validate_ai_context_mcp_manually()
+        if ai_context_probe.get("ok"):
+            print(f"- ai-coders-context: protocolo MCP validado manualmente ({ai_context_probe.get('tools', 0)} tools)")
     if include_codex and shutil.which("codex"):
         _run_cli_command(_codex_cli_cmd(["mcp", "list"]), allow_failure=True)
     should_show_sudo_codex = (
@@ -9720,10 +11885,344 @@ _OPENCLAW_REMOTE_ACTION_SCRIPTS: dict[str, str] = {
     "sync-token": 'set -euo pipefail\nexport XDG_RUNTIME_DIR="/run/user/$(id -u)"\nexport DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"\ndetect_service() {\n  if systemctl --user list-unit-files --no-pager | grep -q \'^openclaw-gateway\\.service\'; then\n    echo "openclaw-gateway.service"\n  elif systemctl --user list-unit-files --no-pager | grep -q \'^clawdbot-gateway\\.service\'; then\n    echo "clawdbot-gateway.service"\n  else\n    return 1\n  fi\n}\nSERVICE_NAME="$(detect_service)"\nexport SERVICE_NAME\npython3 - <<\'PY\'\nimport json\nimport os\nimport pathlib\nimport re\n\nhome = pathlib.Path.home()\nservice_name = os.environ.get("SERVICE_NAME", "openclaw-gateway.service")\n\nbase = None\nfor candidate in (home / ".openclaw", home / ".clawdbot"):\n    if (candidate / "identity" / "device-auth.json").exists():\n        base = candidate\n        break\nif base is None:\n    raise SystemExit("device-auth.json ausente em ~/.openclaw ou ~/.clawdbot")\n\ndev = base / "identity" / "device-auth.json"\nraw = dev.read_text()\ndata = json.loads(raw)\n\ntoken = None\nfor key in ("token", "gatewayToken", "authToken", "deviceToken"):\n    value = data.get(key)\n    if isinstance(value, str) and value:\n        token = value\n        break\nif not token:\n    match = re.search(r"[a-f0-9]{64}", raw)\n    if match:\n        token = match.group(0)\nif not token:\n    raise SystemExit("token não encontrado em device-auth.json")\n\ncfg_candidates = [base / "openclaw.json", base / "clawdbot.json"]\ncfgp = next((p for p in cfg_candidates if p.exists()), cfg_candidates[0])\ncfg = {}\nif cfgp.exists():\n    try:\n        cfg = json.loads(cfgp.read_text())\n    except Exception:\n        cfg = {}\ngw = cfg.setdefault("gateway", {})\ngw.setdefault("auth", {})["token"] = token\ngw.setdefault("remote", {})["token"] = token\ncfgp.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))\n\noverride = home / ".config" / "systemd" / "user" / f"{service_name}.d" / "override.conf"\noverride.parent.mkdir(parents=True, exist_ok=True)\noverride.write_text(f"[Service]\\nEnvironment=OPENCLAW_GATEWAY_TOKEN={token}\\n")\n\nprint("tokens sincronizados")\nprint(f"config: {cfgp}")\nprint(f"override: {override}")\nPY\nsystemctl --user daemon-reload\nsystemctl --user restart "$SERVICE_NAME"\nsystemctl --user is-active "$SERVICE_NAME"\nif command -v openclaw >/dev/null 2>&1; then\n  timeout 20s openclaw gateway probe --timeout 10000 || true\nfi\nsystemctl --user status "$SERVICE_NAME" --no-pager -l | sed -n \'1,25p\'',
     "reset-token": 'set -euo pipefail\nexport XDG_RUNTIME_DIR="/run/user/$(id -u)"\nexport DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"\ndetect_service() {\n  if systemctl --user list-unit-files --no-pager | grep -q \'^openclaw-gateway\\.service\'; then\n    echo "openclaw-gateway.service"\n  elif systemctl --user list-unit-files --no-pager | grep -q \'^clawdbot-gateway\\.service\'; then\n    echo "clawdbot-gateway.service"\n  else\n    return 1\n  fi\n}\nSERVICE_NAME="$(detect_service)"\nexport SERVICE_NAME\npython3 - <<\'PY\'\nimport json\nimport os\nimport pathlib\nimport secrets\nimport shutil\n\nhome = pathlib.Path.home()\nservice_name = os.environ.get("SERVICE_NAME", "openclaw-gateway.service")\ntoken = secrets.token_hex(32)\n\nbase = None\nfor candidate in (home / ".openclaw", home / ".clawdbot"):\n    if candidate.exists():\n        base = candidate\n        break\nif base is None:\n    base = home / ".openclaw"\n    base.mkdir(parents=True, exist_ok=True)\n\ncfg_candidates = [base / "openclaw.json", base / "clawdbot.json"]\ncfgp = next((p for p in cfg_candidates if p.exists()), cfg_candidates[0])\ncfg = {}\nif cfgp.exists():\n    try:\n        cfg = json.loads(cfgp.read_text())\n    except Exception:\n        cfg = {}\ngw = cfg.setdefault("gateway", {})\ngw.setdefault("auth", {})["token"] = token\ngw.setdefault("remote", {})["token"] = token\ncfgp.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))\n\npaired = base / "devices" / "paired.json"\nif paired.exists():\n    try:\n        shutil.copy2(paired, paired.with_suffix(".bak"))\n        data = json.loads(paired.read_text())\n        if isinstance(data, dict):\n            data["token"] = token\n            paired.write_text(json.dumps(data, indent=2, ensure_ascii=False))\n    except Exception:\n        pass\n\noverride = home / ".config" / "systemd" / "user" / f"{service_name}.d" / "override.conf"\noverride.parent.mkdir(parents=True, exist_ok=True)\noverride.write_text(f"[Service]\\nEnvironment=OPENCLAW_GATEWAY_TOKEN={token}\\n")\n\nprint("novo token gerado e aplicado")\nprint(f"config: {cfgp}")\nprint(f"override: {override}")\nPY\nsystemctl --user daemon-reload\nsystemctl --user restart "$SERVICE_NAME"\nsystemctl --user is-active "$SERVICE_NAME"\nif command -v openclaw >/dev/null 2>&1; then\n  timeout 20s openclaw gateway probe --timeout 10000 || true\nfi\nsystemctl --user status "$SERVICE_NAME" --no-pager -l | sed -n \'1,25p\'',
     "fix-transcricao": 'set -euo pipefail\nexport XDG_RUNTIME_DIR="/run/user/$(id -u)"\nexport DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"\ndetect_service() {\n  if systemctl --user list-unit-files --no-pager | grep -q \'^openclaw-gateway\\.service\'; then\n    echo "openclaw-gateway.service"\n  elif systemctl --user list-unit-files --no-pager | grep -q \'^clawdbot-gateway\\.service\'; then\n    echo "clawdbot-gateway.service"\n  else\n    return 1\n  fi\n}\nSERVICE_NAME="$(detect_service)"\nLOCK="$HOME/.openclaw/agents/main/sessions/sessions.json.lock"\nSTATE="$HOME/.openclaw/workspace/state/transcricao_active.json"\n\necho "[1/5] Encerrando transcrição em loop (se houver)"\nif pgrep -f \'transcribe_batch.py|transcribe_one.py|transcribe_stream.py\' >/dev/null 2>&1; then\n  pkill -f \'transcribe_batch.py|transcribe_one.py|transcribe_stream.py\' || true\n  sleep 3\n  if pgrep -f \'transcribe_batch.py|transcribe_one.py|transcribe_stream.py\' >/dev/null 2>&1; then\n    pkill -9 -f \'transcribe_batch.py|transcribe_one.py|transcribe_stream.py\' || true\n  fi\n  echo "processos de transcrição encerrados"\nelse\n  echo "nenhum processo de transcrição ativo"\nfi\n\necho "[2/5] Limpando lock de sessão stale"\nif [ -f "$LOCK" ]; then\n  LOCK_PID="$(python3 - <<\'PY\'\nimport json, pathlib\np = pathlib.Path.home()/\'.openclaw\'/\'agents\'/\'main\'/\'sessions\'/\'sessions.json.lock\'\ntry:\n    d = json.loads(p.read_text())\n    print(d.get(\'pid\', \'\'))\nexcept Exception:\n    print(\'\')\nPY\n)"\n  if [ -n "$LOCK_PID" ] && ps -p "$LOCK_PID" >/dev/null 2>&1; then\n    echo "lock pertence a PID vivo ($LOCK_PID), mantendo arquivo"\n  else\n    BAK="$LOCK.bak.$(date +%Y%m%d%H%M%S)"\n    mv "$LOCK" "$BAK"\n    echo "lock stale movido para: $BAK"\n  fi\nelse\n  echo "sem lock para limpar"\nfi\n\necho "[3/5] Resetando estado de /transcricao"\nif [ -f "$STATE" ]; then\n  cp "$STATE" "$STATE.bak.$(date +%Y%m%d%H%M%S)"\nfi\npython3 - <<\'PY\'\nimport json\nimport pathlib\nfrom datetime import datetime, timezone\n\np = pathlib.Path.home()/\'.openclaw\'/\'workspace\'/\'state\'/\'transcricao_active.json\'\np.parent.mkdir(parents=True, exist_ok=True)\ndata = {\n    "active": False,\n    "resetAtUtc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),\n    "note": "reset automatico via jarvis.py openclaw-remote fix-transcricao",\n}\np.write_text(json.dumps(data, ensure_ascii=False, indent=2))\nprint(p)\nPY\ncat "$STATE"\n\necho "[4/5] Reiniciando serviço"\nsystemctl --user daemon-reload\nsystemctl --user restart "$SERVICE_NAME"\nsystemctl --user is-active "$SERVICE_NAME"\n\necho "[5/5] Pós-checagem"\npgrep -af \'transcribe_batch.py|openclaw-gateway\' || true\njournalctl --user -u "$SERVICE_NAME" -n 80 --no-pager | egrep -i \'hook|transcr|lock|failed|error|Listening for personal WhatsApp\' | tail -n 50 || true',
+    "doctor": r'''set -u
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+OPENCLAW_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
+JARVIS_PORT="${SERVER_PORT:-7860}"
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+detect_openclaw_service() {
+  if systemctl --user cat openclaw-gateway.service >/dev/null 2>&1; then
+    echo "openclaw-gateway.service"
+    return 0
+  fi
+  if systemctl --user cat clawdbot-gateway.service >/dev/null 2>&1; then
+    echo "clawdbot-gateway.service"
+    return 0
+  fi
+  return 1
+}
+
+pids_on_port() {
+  python3 - "$1" <<'PY'
+import re
+import subprocess
+import sys
+
+port = sys.argv[1]
+proc = subprocess.run(["ss", "-ltnp", f"sport = :{port}"], text=True, capture_output=True, check=False)
+pids = sorted(set(re.findall(r"pid=(\d+)", proc.stdout)))
+print(" ".join(pids))
+PY
+}
+
+pids_matching() {
+  python3 - "$1" <<'PY'
+import os
+import subprocess
+import sys
+
+needle = sys.argv[1]
+self_pid = os.getpid()
+proc = subprocess.run(["ps", "-eo", "pid=,args="], text=True, capture_output=True, check=False)
+matches = []
+for line in proc.stdout.splitlines():
+    parts = line.strip().split(maxsplit=1)
+    if len(parts) != 2:
+        continue
+    pid_s, args = parts
+    try:
+        pid = int(pid_s)
+    except ValueError:
+        continue
+    if pid == self_pid:
+        continue
+    if needle in args and "python3 -" not in args:
+        matches.append(str(pid))
+print(" ".join(sorted(set(matches))))
+PY
+}
+pids_by_comm() {
+  python3 - "$@" <<'PY'
+import subprocess
+import sys
+
+names = set(sys.argv[1:])
+proc = subprocess.run(["ps", "-eo", "pid=,comm="], text=True, capture_output=True, check=False)
+matches = []
+for line in proc.stdout.splitlines():
+    parts = line.strip().split(maxsplit=1)
+    if len(parts) == 2 and parts[1] in names:
+        matches.append(parts[0])
+print(" ".join(sorted(set(matches))))
+PY
 }
 
 
-def _openclaw_remote_cli(action: str, *, host: str, user: str, ssh_key: str, timeout_sec: int) -> int:
+kill_pids() {
+  seen=""
+  for pid in "$@"; do
+    [ -n "$pid" ] || continue
+    case " $seen " in *" $pid "*) continue;; esac
+    seen="$seen $pid"
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      echo "killing stale pid: $pid ($(ps -p "$pid" -o comm= 2>/dev/null || true))"
+      kill "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+  sleep 2
+  for pid in $seen; do
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      echo "force killing stale pid: $pid"
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+section "oracle identity"
+hostname
+id
+
+SERVICE_NAME="$(detect_openclaw_service || true)"
+if [ -z "$SERVICE_NAME" ]; then
+  echo "openclaw service not found: expected openclaw-gateway.service or clawdbot-gateway.service" >&2
+  exit 42
+fi
+echo "openclaw service: $SERVICE_NAME"
+
+section "before"
+systemctl --user show jarvis.service --property=ActiveState,SubState,NRestarts,MainPID,ExecMainStatus --no-pager 2>/dev/null || true
+systemctl --user show "$SERVICE_NAME" --property=ActiveState,SubState,NRestarts,MainPID,ExecMainStatus --no-pager || true
+ss -ltnp "sport = :$OPENCLAW_PORT" || true
+ss -ltnp "sport = :$JARVIS_PORT" || true
+pgrep -af 'openclaw|clawdbot|jarvis.py serve' || true
+
+section "stop supervised services"
+systemctl --user stop "$SERVICE_NAME" || true
+if systemctl --user cat jarvis.service >/dev/null 2>&1; then
+  systemctl --user stop jarvis.service || true
+fi
+if command -v openclaw >/dev/null 2>&1; then
+  timeout 10s openclaw gateway stop || true
+fi
+
+section "cleanup stale processes"
+OPENCLAW_PIDS="$(pids_on_port "$OPENCLAW_PORT") $(pids_by_comm openclaw openclaw-gateway) $(pids_matching openclaw-gateway) $(pids_matching 'openclaw gateway') $(pids_matching '/tmp/openclaw/openclaw-')"
+JARVIS_PIDS="$(pids_on_port "$JARVIS_PORT") $(pids_matching 'jarvis.py serve')"
+kill_pids $OPENCLAW_PIDS $JARVIS_PIDS
+
+section "restart oracle jarvis"
+if systemctl --user cat jarvis.service >/dev/null 2>&1; then
+  systemctl --user daemon-reload
+  systemctl --user start jarvis.service
+  systemctl --user is-active jarvis.service || true
+  systemctl --user status jarvis.service --no-pager -l --lines=18 || true
+fi
+
+section "restart openclaw"
+systemctl --user daemon-reload
+OPENCLAW_LISTENERS=""
+for attempt in 1 2; do
+  echo "openclaw start attempt: $attempt"
+  systemctl --user start "$SERVICE_NAME"
+  wait_i=0
+  while [ "$wait_i" -lt 120 ]; do
+    OPENCLAW_LISTENERS="$(pids_on_port "$OPENCLAW_PORT")"
+    OPENCLAW_MAINPID="$(systemctl --user show "$SERVICE_NAME" --property=MainPID --value 2>/dev/null || true)"
+    if [ -n "$OPENCLAW_LISTENERS" ]; then
+      case " $OPENCLAW_LISTENERS " in
+        *" $OPENCLAW_MAINPID "*) break 2;;
+        *) echo "port $OPENCLAW_PORT is held by $OPENCLAW_LISTENERS, but service MainPID is $OPENCLAW_MAINPID; cleaning"; break;;
+      esac
+    fi
+    sleep 1
+    wait_i=$((wait_i + 1))
+  done
+  echo "openclaw did not bind port $OPENCLAW_PORT on attempt $attempt; cleaning and retrying"
+  systemctl --user stop "$SERVICE_NAME" || true
+  OPENCLAW_PIDS="$(pids_on_port "$OPENCLAW_PORT") $(pids_by_comm openclaw openclaw-gateway) $(pids_matching openclaw-gateway) $(pids_matching 'openclaw gateway') $(pids_matching '/tmp/openclaw/openclaw-')"
+  kill_pids $OPENCLAW_PIDS
+done
+systemctl --user is-active "$SERVICE_NAME"
+systemctl --user status "$SERVICE_NAME" --no-pager -l --lines=24 || true
+OPENCLAW_LISTENERS="$(pids_on_port "$OPENCLAW_PORT")"
+if [ -z "$OPENCLAW_LISTENERS" ]; then
+  echo "openclaw service is active but no process is listening on port $OPENCLAW_PORT" >&2
+  exit 2
+fi
+OPENCLAW_MAINPID="$(systemctl --user show "$SERVICE_NAME" --property=MainPID --value 2>/dev/null || true)"
+case " $OPENCLAW_LISTENERS " in
+  *" $OPENCLAW_MAINPID "*) ;;
+  *)
+    echo "openclaw port $OPENCLAW_PORT is not owned by current service MainPID ($OPENCLAW_MAINPID); listeners: $OPENCLAW_LISTENERS" >&2
+    exit 4
+    ;;
+esac
+echo "openclaw port listeners: $OPENCLAW_LISTENERS"
+
+section "probe"
+if command -v openclaw >/dev/null 2>&1; then
+  timeout 20s openclaw gateway probe --timeout 10000 || echo "openclaw gateway probe failed or timed out"
+  timeout 20s openclaw channels status || echo "openclaw channels status failed or timed out"
+fi
+
+section "after"
+ss -ltnp "sport = :$OPENCLAW_PORT" || true
+ss -ltnp "sport = :$JARVIS_PORT" || true
+pgrep -af 'openclaw|clawdbot|jarvis.py serve' || true
+JARVIS_LISTENERS="$(pids_on_port "$JARVIS_PORT")"
+OPENCLAW_LISTENERS="$(pids_on_port "$OPENCLAW_PORT")"
+if [ -z "$JARVIS_LISTENERS" ]; then
+  echo "jarvis.service is active but no process is listening on port $JARVIS_PORT" >&2
+  exit 3
+fi
+if [ -z "$OPENCLAW_LISTENERS" ]; then
+  echo "openclaw service is active but no process is listening on port $OPENCLAW_PORT" >&2
+  exit 2
+fi
+systemctl --user is-active --quiet "$SERVICE_NAME"
+''' ,
+}
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _remote_jarvis_sha256(
+    *,
+    host: str,
+    user: str,
+    ssh_key: str,
+    timeout_sec: int,
+    remote_dir: str,
+    echo_cmd: bool = False,
+) -> str:
+    script = (
+        "set -euo pipefail\n"
+        f"REMOTE_JARVIS={shlex.quote(remote_dir.rstrip('/') + '/jarvis.py')}\n"
+        'if [ ! -f "$REMOTE_JARVIS" ]; then\n'
+        '  echo MISSING\n'
+        "else\n"
+        '  sha256sum "$REMOTE_JARVIS" | awk \'{print $1}\'\n'
+        "fi\n"
+    )
+    cmd = _openclaw_ssh_cmd(host=host, user=user, ssh_key=ssh_key, timeout_sec=timeout_sec, tty=False)
+    cmd += ["bash -s"]
+    cmd, env = _prepare_cli_runtime(cmd, None)
+    if echo_cmd:
+        print(f"$ {_format_shell_cmd(cmd)}")
+    proc = subprocess.run(cmd, input=script, text=True, capture_output=True, env=env, check=False)
+    if proc.stderr.strip():
+        print(proc.stderr.strip(), file=sys.stderr)
+    if proc.returncode != 0:
+        raise RuntimeError(f"falha ao calcular hash remoto do Jarvis na OCI (rc={proc.returncode})")
+    return (proc.stdout or "").strip().splitlines()[-1].strip() if proc.stdout.strip() else ""
+
+
+def _ensure_oracle_remote_jarvis_current(
+    *,
+    host: str,
+    user: str,
+    ssh_key: str,
+    timeout_sec: int,
+    sync_venv: bool,
+    restart_service: bool,
+) -> int:
+    configured_remote_dir = _resolve_oci_remote_project_dir(user)
+    remote_dir = _discover_oracle_remote_project_dir(
+        host=host,
+        user=user,
+        ssh_key=ssh_key,
+        timeout_sec=timeout_sec,
+        configured_remote_dir=configured_remote_dir,
+    )
+    local_jarvis = BASE_DIR / "jarvis.py"
+    if not local_jarvis.exists():
+        print(f"❌ jarvis.py local ausente em {local_jarvis}", file=sys.stderr)
+        return 1
+
+    local_hash = _sha256_file(local_jarvis)
+    try:
+        remote_hash = _remote_jarvis_sha256(
+            host=host,
+            user=user,
+            ssh_key=ssh_key,
+            timeout_sec=timeout_sec,
+            remote_dir=remote_dir,
+        )
+    except Exception as exc:
+        print(f"❌ Não foi possível verificar Jarvis remoto na OCI: {exc}", file=sys.stderr)
+        return 1
+
+    if remote_hash == local_hash:
+        print(f"✅ Jarvis Oracle alinhado com local ({local_hash[:12]}).")
+        return 0
+
+    if remote_hash == "MISSING":
+        print(f"⚠️ Jarvis remoto ausente em {remote_dir}. Sincronizando projeto para OCI...")
+    else:
+        remote_label = remote_hash[:12] if remote_hash else "desconhecido"
+        print(
+            f"⚠️ Jarvis Oracle divergente do local (local {local_hash[:12]} != remoto {remote_label}). "
+            "Substituindo por cópia local..."
+        )
+
+    rc = _sync_project_to_oracle_remote(
+        host=host,
+        user=user,
+        ssh_key=ssh_key,
+        timeout_sec=timeout_sec,
+        remote_dir=remote_dir,
+        sync_venv=sync_venv,
+    )
+    if rc != 0:
+        return rc
+
+    try:
+        synced_hash = _remote_jarvis_sha256(
+            host=host,
+            user=user,
+            ssh_key=ssh_key,
+            timeout_sec=timeout_sec,
+            remote_dir=remote_dir,
+        )
+    except Exception as exc:
+        print(f"❌ Não foi possível verificar Jarvis remoto após sync: {exc}", file=sys.stderr)
+        return 1
+
+    if synced_hash != local_hash:
+        print(
+            f"❌ Sync não substituiu o Jarvis remoto corretamente (local {local_hash[:12]} != remoto {synced_hash[:12]}).",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"✅ Jarvis Oracle atualizado para a cópia local ({local_hash[:12]}).")
+    if restart_service:
+        print("🔁 Reiniciando Jarvis remoto para carregar a cópia sincronizada...")
+        return _start_oracle_remote_jarvis(host=host, user=user, ssh_key=ssh_key, timeout_sec=timeout_sec)
+    return 0
+
+
+def _openclaw_remote_cli(
+    action: str,
+    *,
+    host: str,
+    user: str,
+    ssh_key: str,
+    timeout_sec: int,
+    sync_remote_jarvis: bool = True,
+    sync_venv: bool = False,
+) -> int:
     if (host or "").strip().lower() in {"localhost", "127.0.0.1", "::1"}:
         print("❌ openclaw-remote é exclusivo para OCI/mcp-instance. Host local não permitido.", file=sys.stderr)
         return 1
@@ -9731,6 +12230,18 @@ def _openclaw_remote_cli(action: str, *, host: str, user: str, ssh_key: str, tim
     if not script:
         print(f"❌ Ação inválida: {action}", file=sys.stderr)
         return 1
+
+    if sync_remote_jarvis:
+        rc = _ensure_oracle_remote_jarvis_current(
+            host=host,
+            user=user,
+            ssh_key=ssh_key,
+            timeout_sec=timeout_sec,
+            sync_venv=sync_venv,
+            restart_service=True,
+        )
+        if rc != 0:
+            return rc
 
     cmd = _openclaw_ssh_cmd(host=host, user=user, ssh_key=ssh_key, timeout_sec=timeout_sec, tty=False)
     cmd += ["bash -s"]
@@ -9817,6 +12328,61 @@ def _resolve_oci_remote_project_dir(user: str) -> str:
     return "/root/super_mcp_servers"
 
 
+def _discover_oracle_remote_project_dir(
+    *,
+    host: str,
+    user: str,
+    ssh_key: str,
+    timeout_sec: int,
+    configured_remote_dir: str,
+) -> str:
+    script = (
+        "set -u\n"
+        'export XDG_RUNTIME_DIR="/run/user/$(id -u)"\n'
+        'export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"\n'
+        f"export CONFIGURED_DIR={shlex.quote(configured_remote_dir)}\n"
+        'WD=""\n'
+        'if systemctl --user cat jarvis.service >/dev/null 2>&1; then\n'
+        '  WD="$(systemctl --user show jarvis.service --property=WorkingDirectory --value 2>/dev/null || true)"\n'
+        'fi\n'
+        'if [ -n "$WD" ] && [ -f "$WD/jarvis.py" ]; then\n'
+        '  echo "$WD"\n'
+        '  exit 0\n'
+        'fi\n'
+        'python3 - <<\'PY\'\n'
+        'import os\n'
+        'import pathlib\n'
+        'import re\n'
+        'import subprocess\n'
+        'configured = os.environ.get("CONFIGURED_DIR", "").strip()\n'
+        'proc = subprocess.run(["ps", "-eo", "args="], text=True, capture_output=True, check=False)\n'
+        'for line in proc.stdout.splitlines():\n'
+        '    match = re.search(r"(\\S*/jarvis\\.py)\\s+serve\\b", line)\n'
+        '    if match:\n'
+        '        path = pathlib.Path(match.group(1)).resolve().parent\n'
+        '        if (path / "jarvis.py").exists():\n'
+        '            print(path)\n'
+        '            raise SystemExit(0)\n'
+        'if configured and (pathlib.Path(configured) / "jarvis.py").exists():\n'
+        '    print(configured)\n'
+        '    raise SystemExit(0)\n'
+        'print(configured)\n'
+        'PY\n'
+    )
+    cmd = _openclaw_ssh_cmd(host=host, user=user, ssh_key=ssh_key, timeout_sec=timeout_sec, tty=False)
+    cmd += ["bash -s"]
+    cmd, env = _prepare_cli_runtime(cmd, None)
+    proc = subprocess.run(cmd, input=script, text=True, capture_output=True, env=env, check=False)
+    if proc.returncode != 0:
+        if proc.stderr.strip():
+            print(proc.stderr.strip(), file=sys.stderr)
+        return configured_remote_dir
+    discovered = (proc.stdout or "").strip().splitlines()[-1].strip() if proc.stdout.strip() else ""
+    if discovered and discovered != configured_remote_dir:
+        print(f"ℹ️ Usando diretório remoto ativo do jarvis.service: {discovered}")
+    return discovered or configured_remote_dir
+
+
 def _ssh_transport_cmd_for_rsync(*, ssh_key: str, timeout_sec: int) -> str:
     parts = ["ssh", "-o", f"ConnectTimeout={max(1, int(timeout_sec))}"]
     if ssh_key:
@@ -9872,6 +12438,9 @@ def _sync_project_to_oracle_remote(
         ".mypy_cache/",
         ".ralph/",
         ".agents/ralph/runtime/",
+        ".aligntrue/.backups/",
+        "graphify-out/",
+        ".graphify_*",
         ".context/",
         "state/",
         "chroma_db/",
@@ -10177,44 +12746,6 @@ def _install_oci_cli(installer_args: list[str]) -> int:
 
 
 
-def _debug_rag_google_cli(
-    api_key: str = "",
-    model_name: str = "models/text-embedding-004",
-    test_text: str = "Isso é um teste de conexão com o Gemini Embeddings",
-    verbose: bool = False,
-) -> int:
-    print("🔍 Iniciando diagnóstico do RAG (Google Mode)...")
-    resolved_key = (api_key or "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip()
-    if not resolved_key:
-        print("❌ GOOGLE_API_KEY não encontrada no ambiente.", file=sys.stderr)
-        return 1
-    preview = resolved_key[:5] + "..." if len(resolved_key) > 5 else "***"
-    print(f"🔑 Chave encontrada: {preview}")
-    if verbose:
-        print(f"ℹ️ Modelo: {model_name}")
-        print(f"ℹ️ Tamanho do texto de teste: {len(test_text)}")
-    try:
-        from chromadb.utils import embedding_functions
-
-        print("🚀 Tentando instanciar GoogleGenerativeAiEmbeddingFunction...")
-        ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
-            api_key=resolved_key,
-            model_name=model_name,
-        )
-        print("⚡ Gerando embedding de teste...")
-        vector = ef([test_text])
-        dimension = len(vector[0]) if vector and vector[0] else 0
-        print(f"✅ SUCESSO! Vetor gerado. Dimensão: {dimension}")
-        return 0
-    except Exception as e:
-        print(f"❌ FALHA NO GOOGLE EMBEDDINGS: {e}", file=sys.stderr)
-        if verbose:
-            import traceback
-
-            traceback.print_exc()
-        else:
-            print("ℹ️ Execute novamente com --verbose para stack trace completo.", file=sys.stderr)
-        return 1
 
 
 def _run_reclaim_ui_selftests(verbose: bool = False) -> tuple[int, int]:
@@ -10332,6 +12863,34 @@ def _run_reclaim_ui_selftests(verbose: bool = False) -> tuple[int, int]:
             _assert(result.get("status") == "error", "status deveria ser error")
             _assert(result.get("error", {}).get("code") == "window_not_found", "code esperado window_not_found")
             _assert(result.get("executor_returncode") == 22, "executor_returncode esperado 22")
+
+    @register("google_invalid_grant_message_is_actionable")
+    def _test_google_invalid_grant_message_is_actionable():
+        message = _google_auth_actionable_error("invalid_grant: Token has been expired or revoked.")
+        _assert("google-auth-refresh --force" in message, "mensagem deveria apontar google-auth-refresh --force")
+
+    @register("google_workspace_probe_reports_missing_token")
+    def _test_google_workspace_probe_reports_missing_token():
+        with tempfile.TemporaryDirectory(prefix="jarvis_google_test_") as tmp:
+            result = _google_workspace_token_probe(Path(tmp) / "missing-token.json")
+            _assert(result.get("ok") is False, "probe deveria falhar sem token")
+            _assert(result.get("code") == "token_missing", "code esperado token_missing")
+
+    @register("reclaim_profile_lock_detects_live_pid")
+    def _test_reclaim_profile_lock_detects_live_pid():
+        with tempfile.TemporaryDirectory(prefix="jarvis_reclaim_test_") as tmp:
+            profile = Path(tmp)
+            lock = profile / "SingletonLock"
+            lock.symlink_to(f"host-{os.getpid()}")
+            _assert(_reclaim_playwright_profile_in_use(profile), "perfil deveria estar em uso com pid vivo")
+
+    @register("reclaim_profile_lock_ignores_dead_pid")
+    def _test_reclaim_profile_lock_ignores_dead_pid():
+        with tempfile.TemporaryDirectory(prefix="jarvis_reclaim_test_") as tmp:
+            profile = Path(tmp)
+            lock = profile / "SingletonLock"
+            lock.symlink_to("host-99999999")
+            _assert(not _reclaim_playwright_profile_in_use(profile), "perfil com pid morto deveria ser ignorado")
 
     @register("executor_missing_script_returns_structured_error")
     def _test_executor_missing_script_returns_structured_error():
@@ -10506,14 +13065,169 @@ def _current_git_branch(repo_dir: Path | None = None) -> str:
     return (proc.stdout or "").strip()
 
 
+
+def _context_stack_expected_dirs(root: Path) -> dict[str, Path]:
+    context = root / ".context"
+    return {
+        "docs": context / "docs",
+        "plans": context / "plans",
+        "workflow": context / "workflow",
+        "graphify": context / "graphify-out",
+    }
+
+
+def _context_stack_legacy_paths(root: Path) -> dict[str, Path]:
+    return {
+        "legacy_docs_planning_gsd": root / ".context" / "docs" / "planning_gsd",
+        "legacy_prd_ralph": root / ".context" / "prd_ralph",
+        "legacy_ralph_runtime": root / ".context" / "ralph",
+        "legacy_dot_planning": root / ".planning",
+        "legacy_root_graphify_out": root / "graphify-out",
+        "legacy_agents_tasks": root / ".agents" / "tasks",
+        "legacy_agents_ralph_runtime": root / ".agents" / "ralph" / "runtime",
+    }
+
+
+def _context_stack_candidate_roots(roots: list[str], *, recursive: bool = False) -> list[Path]:
+    skip_dirs = {".git", "node_modules", ".venv", ".venv-super", "__pycache__", ".mypy_cache", ".ruff_cache"}
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(candidate: Path) -> None:
+        try:
+            resolved = candidate.resolve()
+        except Exception:
+            resolved = candidate
+        if resolved not in seen:
+            seen.add(resolved)
+            candidates.append(resolved)
+
+    for raw in roots or [str(BASE_DIR)]:
+        root = Path(str(raw).replace("file://", "")).expanduser()
+        if root.name == ".context":
+            add(root.parent)
+            continue
+        if not recursive:
+            add(root)
+            continue
+        for dirpath, dirnames, _filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+            current = Path(dirpath)
+            if (current / ".context").exists():
+                add(current)
+                if ".context" in dirnames:
+                    dirnames.remove(".context")
+    return candidates
+
+
+def _context_stack_layout_report(root: Path) -> dict:
+    expected = _context_stack_expected_dirs(root)
+    legacy = _context_stack_legacy_paths(root)
+    present_expected = {name: path.exists() for name, path in expected.items()}
+    present_legacy = {name: str(path) for name, path in legacy.items() if path.exists()}
+    missing_expected = [name for name, exists in present_expected.items() if not exists]
+    return {
+        "root": str(root),
+        "ok": not missing_expected and not present_legacy,
+        "expected": {name: str(path) for name, path in expected.items()},
+        "present_expected": present_expected,
+        "missing_expected": missing_expected,
+        "legacy_present": present_legacy,
+        "owners": {
+            "docs": "AI Coders Context",
+            "plans": "GSD",
+            "workflow": "Ralph",
+            "graphify-out": "Graphify",
+        },
+    }
+
+
+def _context_stack_check(roots: list[str], *, recursive: bool = False) -> dict:
+    candidates = _context_stack_candidate_roots(roots, recursive=recursive)
+    reports = [_context_stack_layout_report(root) for root in candidates]
+    return {
+        "ok": bool(reports) and all(bool(report.get("ok")) for report in reports),
+        "recursive": recursive,
+        "count": len(reports),
+        "reports": reports,
+    }
+
+
+def _safe_move_context_child(src: Path, dst: Path, archive_root: Path, moved: list[dict], skipped: list[dict]) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if not dst.exists():
+        shutil.move(str(src), str(dst))
+        moved.append({"from": str(src), "to": str(dst)})
+        return
+    try:
+        if src.is_file() and dst.is_file() and src.read_bytes() == dst.read_bytes():
+            src.unlink()
+            skipped.append({"path": str(src), "reason": "duplicate_existing_target"})
+            return
+    except Exception:
+        pass
+    archive_root.mkdir(parents=True, exist_ok=True)
+    archived = archive_root / src.name
+    counter = 1
+    while archived.exists():
+        archived = archive_root / f"{src.stem}-{counter}{src.suffix}"
+        counter += 1
+    shutil.move(str(src), str(archived))
+    moved.append({"from": str(src), "to": str(archived), "reason": "target_exists_archived"})
+
+
+def _merge_context_stack_layout(root: Path = BASE_DIR) -> dict:
+    context = root / ".context"
+    docs = context / "docs"
+    plans = context / "plans"
+    workflow = context / "workflow"
+    graphify = context / "graphify-out"
+    ensured: list[str] = []
+    for path in [docs, plans, workflow, graphify]:
+        path.mkdir(parents=True, exist_ok=True)
+        ensured.append(str(path))
+
+    moved: list[dict] = []
+    skipped: list[dict] = []
+    errors: list[str] = []
+    archive_root = workflow / "archive" / "legacy-context-stack"
+    migrations = [
+        (context / "prd_ralph", workflow, archive_root / "prd_ralph"),
+        (context / "ralph", workflow / "ralph", archive_root / "ralph"),
+    ]
+    for legacy_dir, target_dir, archive_dir in migrations:
+        if not legacy_dir.exists():
+            continue
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            for child in sorted(legacy_dir.iterdir(), key=lambda p: p.name):
+                _safe_move_context_child(child, target_dir / child.name, archive_dir, moved, skipped)
+            try:
+                legacy_dir.rmdir()
+            except OSError:
+                skipped.append({"path": str(legacy_dir), "reason": "legacy_dir_not_empty"})
+        except Exception as exc:
+            errors.append(f"{legacy_dir}: {exc}")
+
+    report = _context_stack_layout_report(root)
+    return {
+        "ok": not errors,
+        "ensured": ensured,
+        "moved": moved,
+        "skipped": skipped,
+        "errors": errors,
+        "layout": report,
+    }
+
+
 def _sync_project_context_entrypoints() -> dict:
     source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
     source_gemini_rules = BASE_DIR / "global_rule_sync" / "GEMINI.md"
     context_dirs = [
         BASE_DIR / ".context" / "docs",
-        BASE_DIR / ".context" / "docs" / "planning_gsd",
-        BASE_DIR / ".context" / "prd_ralph",
+        BASE_DIR / ".context" / "plans",
         BASE_DIR / ".context" / "workflow",
+        BASE_DIR / ".context" / "graphify-out",
     ]
 
     missing_sources = [str(p.relative_to(BASE_DIR)) for p in [source_rules, source_gemini_rules] if not p.exists()]
@@ -10701,7 +13415,7 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
         if codex_system_prompt.exists():
             content = _ensure_key_line(content, "model_instructions_file", json.dumps(str(codex_system_prompt)))
 
-        for server in ["jarvis", "taskmaster", "filesystem", "brave", "ai-coders-context", "memory", "gemini"]:
+        for server in ["jarvis", "taskmaster", "filesystem", "brave", "ai-coders-context", "memory", "gemini", "google-drive"]:
             # Remove server subtables first (ex.: [mcp_servers.jarvis.env])
             subtable_pattern = rf"\[mcp_servers\.{re.escape(server)}\.[^\]]+\][\s\S]*?(?=\n\[|\Z)"
             content = re.sub(subtable_pattern, "", content)
@@ -10714,9 +13428,6 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
         openai_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
         openai_base = os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
         google_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
-        rag_gem = os.environ.get("RAG_COLLECTION_NAME_GEMINI", "kdb_gemini")
-        rag_loc = os.environ.get("RAG_COLLECTION_NAME_LOCAL", "kdb_local")
-        rag_fb = os.environ.get("RAG_ALLOW_LOCAL_FALLBACK", "true")
         reclaim_ui_enable = os.environ.get("RECLAIM_UI_AUTOMATION_ENABLE", "false")
         reclaim_start_seq = os.environ.get("RECLAIM_UI_START_SEQUENCE", "Tab Return")
         reclaim_stop_seq = os.environ.get("RECLAIM_UI_STOP_SEQUENCE", "Escape")
@@ -10727,7 +13438,7 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
         reclaim_stop_click_y = os.environ.get("RECLAIM_UI_STOP_CLICK_Y", "")
         reclaim_restart_click_x = os.environ.get("RECLAIM_UI_RESTART_CLICK_X", "")
         reclaim_restart_click_y = os.environ.get("RECLAIM_UI_RESTART_CLICK_Y", "")
-        reclaim_automation_mode = os.environ.get("RECLAIM_UI_AUTOMATION_MODE", "elements_first")
+        reclaim_automation_mode = os.environ.get("RECLAIM_UI_AUTOMATION_MODE", "headless")
         reclaim_cdp_url = os.environ.get("RECLAIM_UI_CDP_URL", "http://127.0.0.1:9222")
         reclaim_elements_executor = os.environ.get(
             "RECLAIM_UI_ELEMENTS_EXECUTOR",
@@ -10755,12 +13466,23 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
             "FILESYSTEM_MCP_ENABLE": "false",
             "PLAYWRIGHT_MCP_ENABLE": "false",
             "BRAVE_MCP_ENABLE": "false",
+            "GOOGLE_CALENDAR_MCP_ENABLE": os.environ.get("GOOGLE_CALENDAR_MCP_ENABLE", "true"),
+            "GOOGLE_CALENDAR_MCP_BIN": os.environ.get("GOOGLE_CALENDAR_MCP_BIN", "npx"),
+            "GOOGLE_CALENDAR_MCP_PACKAGE": os.environ.get("GOOGLE_CALENDAR_MCP_PACKAGE", "mcp-google-calendar"),
+            "GOOGLE_CALENDAR_MCP_PORT": os.environ.get("GOOGLE_CALENDAR_MCP_PORT", "8954"),
+            "GOOGLE_CALENDAR_MCP_HOST": os.environ.get("GOOGLE_CALENDAR_MCP_HOST", "localhost"),
+            "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH": os.environ.get(
+                "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH",
+                os.environ.get("CREDENTIALS_PATH", str(BASE_DIR / "gcp-oauth.keys.json")),
+            ),
+            "GDRIVE_MCP_OAUTH_PATH": os.environ.get("GDRIVE_MCP_OAUTH_PATH", str(BASE_DIR / "gcp-oauth.keys.json")),
+            "GDRIVE_MCP_TOKEN_PATH": os.environ.get("GDRIVE_MCP_TOKEN_PATH", str(BASE_DIR / "token.json")),
+            "GDRIVE_MCP_SCOPES": os.environ.get("GDRIVE_MCP_SCOPES", "https://www.googleapis.com/auth/drive"),
+            "GOOGLE_DRIVE_MCP_ENABLE": os.environ.get("GOOGLE_DRIVE_MCP_ENABLE", "true"),
+            "JARVIS_STDIO_SKIP_CHILD_MCP": os.environ.get("JARVIS_STDIO_SKIP_CHILD_MCP", "true"),
             "OPENAI_API_KEY": openai_key,
             "OPENAI_BASE_URL": openai_base,
             "GOOGLE_API_KEY": google_key,
-            "RAG_COLLECTION_NAME_GEMINI": rag_gem,
-            "RAG_COLLECTION_NAME_LOCAL": rag_loc,
-            "RAG_ALLOW_LOCAL_FALLBACK": rag_fb,
             "RECLAIM_UI_AUTOMATION_ENABLE": reclaim_ui_enable,
             "RECLAIM_UI_START_SEQUENCE": reclaim_start_seq,
             "RECLAIM_UI_STOP_SEQUENCE": reclaim_stop_seq,
@@ -10890,9 +13612,10 @@ startup_timeout_sec = 300.0
         openai_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
         openai_base = os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
         google_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
-        rag_gem = os.environ.get("RAG_COLLECTION_NAME_GEMINI", "kdb_gemini")
-        rag_loc = os.environ.get("RAG_COLLECTION_NAME_LOCAL", "kdb_local")
-        rag_fb = os.environ.get("RAG_ALLOW_LOCAL_FALLBACK", "true")
+        gemini_transport = (os.environ.get("JARVIS_GEMINI_TRANSPORT", "http") or "http").strip().lower()
+        if gemini_transport not in {"stdio", "sse", "http"}:
+            gemini_transport = "http"
+        gemini_http_url = (os.environ.get("JARVIS_GEMINI_HTTP_URL", "http://127.0.0.1:7860/mcp") or "").strip()
         reclaim_ui_enable = os.environ.get("RECLAIM_UI_AUTOMATION_ENABLE", "false")
         reclaim_start_seq = os.environ.get("RECLAIM_UI_START_SEQUENCE", "Tab Return")
         reclaim_stop_seq = os.environ.get("RECLAIM_UI_STOP_SEQUENCE", "Escape")
@@ -10903,12 +13626,9 @@ startup_timeout_sec = 300.0
         reclaim_stop_click_y = os.environ.get("RECLAIM_UI_STOP_CLICK_Y", "")
         reclaim_restart_click_x = os.environ.get("RECLAIM_UI_RESTART_CLICK_X", "")
         reclaim_restart_click_y = os.environ.get("RECLAIM_UI_RESTART_CLICK_Y", "")
-        reclaim_automation_mode = os.environ.get("RECLAIM_UI_AUTOMATION_MODE", "elements_first")
+        reclaim_automation_mode = os.environ.get("RECLAIM_UI_AUTOMATION_MODE", "headless")
         reclaim_cdp_url = os.environ.get("RECLAIM_UI_CDP_URL", "http://127.0.0.1:9222")
-        reclaim_elements_executor = os.environ.get(
-            "RECLAIM_UI_ELEMENTS_EXECUTOR",
-            "",
-        )
+        reclaim_elements_executor = os.environ.get("RECLAIM_UI_ELEMENTS_EXECUTOR", "")
         reclaim_elements_node = os.environ.get("RECLAIM_UI_ELEMENTS_NODE", "node")
         reclaim_playwright_module = os.environ.get("RECLAIM_UI_PLAYWRIGHT_MODULE", "")
         reclaim_assist_open_browser = os.environ.get("RECLAIM_UI_ASSIST_OPEN_BROWSER", "false")
@@ -10931,12 +13651,23 @@ startup_timeout_sec = 300.0
             "FILESYSTEM_MCP_ENABLE": "false",
             "PLAYWRIGHT_MCP_ENABLE": "false",
             "BRAVE_MCP_ENABLE": "false",
+            "GOOGLE_CALENDAR_MCP_ENABLE": os.environ.get("GOOGLE_CALENDAR_MCP_ENABLE", "true"),
+            "GOOGLE_CALENDAR_MCP_BIN": os.environ.get("GOOGLE_CALENDAR_MCP_BIN", "npx"),
+            "GOOGLE_CALENDAR_MCP_PACKAGE": os.environ.get("GOOGLE_CALENDAR_MCP_PACKAGE", "mcp-google-calendar"),
+            "GOOGLE_CALENDAR_MCP_PORT": os.environ.get("GOOGLE_CALENDAR_MCP_PORT", "8954"),
+            "GOOGLE_CALENDAR_MCP_HOST": os.environ.get("GOOGLE_CALENDAR_MCP_HOST", "localhost"),
+            "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH": os.environ.get(
+                "GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH",
+                os.environ.get("CREDENTIALS_PATH", str(BASE_DIR / "gcp-oauth.keys.json")),
+            ),
+            "GDRIVE_MCP_OAUTH_PATH": os.environ.get("GDRIVE_MCP_OAUTH_PATH", str(BASE_DIR / "gcp-oauth.keys.json")),
+            "GDRIVE_MCP_TOKEN_PATH": os.environ.get("GDRIVE_MCP_TOKEN_PATH", str(BASE_DIR / "token.json")),
+            "GDRIVE_MCP_SCOPES": os.environ.get("GDRIVE_MCP_SCOPES", "https://www.googleapis.com/auth/drive"),
+            "GOOGLE_DRIVE_MCP_ENABLE": os.environ.get("GOOGLE_DRIVE_MCP_ENABLE", "true"),
+            "JARVIS_STDIO_SKIP_CHILD_MCP": os.environ.get("JARVIS_STDIO_SKIP_CHILD_MCP", "true"),
             "OPENAI_API_KEY": openai_key,
             "OPENAI_BASE_URL": openai_base,
             "GOOGLE_API_KEY": google_key,
-            "RAG_COLLECTION_NAME_GEMINI": rag_gem,
-            "RAG_COLLECTION_NAME_LOCAL": rag_loc,
-            "RAG_ALLOW_LOCAL_FALLBACK": rag_fb,
             "RECLAIM_UI_AUTOMATION_ENABLE": reclaim_ui_enable,
             "RECLAIM_UI_START_SEQUENCE": reclaim_start_seq,
             "RECLAIM_UI_STOP_SEQUENCE": reclaim_stop_seq,
@@ -10959,13 +13690,23 @@ startup_timeout_sec = 300.0
             "RECLAIM_UI_DBUS_SESSION_BUS_ADDRESS": reclaim_dbus,
         }
 
-        data["mcpServers"] = {
-            "jarvis": {
+        jarvis_server: dict[str, object]
+        if gemini_transport in {"http", "sse"}:
+            jarvis_server = {
+                "url": gemini_http_url,
+                "type": gemini_transport,
+                "timeout": 300000,
+            }
+        else:
+            jarvis_server = {
                 "command": python_path,
                 "args": [str(jarvis_py), "serve"],
                 "env": jarvis_env,
                 "timeout": 300000,
-            },
+            }
+
+        data["mcpServers"] = {
+            "jarvis": jarvis_server,
             "ai-coders-context": {
                 "command": ai_context_command,
                 "args": list(ai_context_args_prefix) + ["mcp", "--repo-path", str(BASE_DIR)],
@@ -10983,8 +13724,8 @@ startup_timeout_sec = 300.0
             "GEMINI.md",
             "README.md",
             ".context/docs/README.md",
-            ".context/docs/planning_gsd/STATE.md",
-            ".context/prd_ralph/README.md",
+            ".context/plans/STATE.md",
+            ".context/workflow/README.md",
             ".context/workflow/status.yaml",
         ]
 
@@ -11025,6 +13766,7 @@ startup_timeout_sec = 300.0
         omp_rules_dir.mkdir(parents=True, exist_ok=True)
 
         prompt_source: Path | None = None
+
         for candidate in [omp_system_prompt, codex_system_prompt, gemini_system_prompt]:
             if candidate.exists():
                 prompt_source = candidate
@@ -11145,16 +13887,20 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         "mcp-status",
         help="Mostra um diagnóstico rápido dos MCPs configurados e ferramentas registradas.",
     )
-    mcp_status.add_argument(
-        "--no-write",
-        action="store_true",
-        help="Não grava o relatório em mcp_status.txt (no diretório atual).",
+    sub.add_parser(
+        "context-stack-harden",
+        help="Reaplica as restrições Jarvis para AI Coders Context, GSD e Ralph.",
     )
-    mcp_status.add_argument(
-        "--json",
-        action="store_true",
-        help="Emite JSON (útil pra automação).",
+    context_check = sub.add_parser(
+        "context-stack-check",
+        help="Verifica o layout .context/docs, .context/plans, .context/workflow e .context/graphify-out.",
     )
+    context_check.add_argument("roots", nargs="*", default=[str(BASE_DIR)], help="Pastas raiz ou file:// para verificar.")
+    context_check.add_argument("--recursive", action="store_true", help="Procura subdiretórios que contenham .context.")
+    google_auth = sub.add_parser("google-auth-refresh", help="Renova OAuth Google Workspace usado por Tasks, Calendar e Drive.")
+    google_auth.add_argument("--force", action="store_true", help="Renomeia token.json atual e força novo consentimento OAuth.")
+
+
 
     sync = sub.add_parser("mcp-sync-clients", help="Sincroniza jarvis entre codex, codex sudo, gemini e Oh My Pi.")
     sync.add_argument("--py-bin", default=os.environ.get("PY_BIN", str(BASE_DIR / ".venv-super" / "bin" / "python3")))
@@ -11170,41 +13916,18 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     bridge.add_argument("--py-bin", default=os.environ.get("PY_BIN", str(BASE_DIR / ".venv-super" / "bin" / "python3")))
 
     openclaw = sub.add_parser("openclaw-remote", help="Executa ações remotas de manutenção do OpenClaw na OCI.")
-    openclaw.add_argument("action", nargs="?", default="status", choices=["status", "restart", "sync-token", "reset-token", "fix-transcricao"])
+    openclaw.add_argument("action", nargs="?", default="status", choices=["status", "restart", "sync-token", "reset-token", "fix-transcricao", "doctor"])
     openclaw.add_argument("--host", default=os.environ.get("OPENCLAW_REMOTE_HOST", "mcp-instance"))
     openclaw.add_argument("--user", default=os.environ.get("OPENCLAW_REMOTE_USER", "ubuntu"))
     openclaw.add_argument("--ssh-key", default=os.environ.get("OPENCLAW_REMOTE_SSH_KEY", ""))
     openclaw.add_argument("--ssh-timeout", type=int, default=int(os.environ.get("OPENCLAW_SSH_TIMEOUT", "20")))
+    openclaw.add_argument("--no-sync", action="store_true", help="Não compara/substitui o Jarvis da OCI antes da ação.")
+    openclaw.add_argument("--sync-venv", action="store_true", help="Também sincroniza .venv-super ao atualizar o Jarvis da OCI.")
 
     oci = sub.add_parser("install-oci", help="Instala o OCI CLI usando o instalador oficial.")
     oci.add_argument("installer_args", nargs=argparse.REMAINDER, help="Argumentos repassados para o instalador OCI. Use '--' antes dos argumentos.")
 
-    auth_google = sub.add_parser("auth-google", help="Autentica/reautoriza token Google para escopos de Tasks/Calendar ou Drive.")
-    auth_google.add_argument(
-        "--scope",
-        default="tasks",
-        help="Escopos de autenticação (separados por vírgula). Exemplos: 'tasks', 'calendar', 'tasks,calendar', 'drive'.",
-    )
-    auth_google.add_argument("--client-secret", default="")
-    auth_google.add_argument("--token-path", default=str(BASE_DIR / "token.json"))
-    auth_google.add_argument("--host", default="127.0.0.1")
-    auth_google.add_argument(
-        "--port",
-        type=int,
-        default=None,
-        help="Porta callback OAuth (padrão por escopo: tasks=18797, drive=0).",
-    )
-    auth_google.add_argument(
-        "--open-browser",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Força abrir ou não abrir navegador no login OAuth.",
-    )
 
-    graph = sub.add_parser("graph-login", help="Executa login device-flow no Microsoft Graph.")
-    graph.add_argument("--client-id", default=os.environ.get("GRAPH_CLIENT_ID", ""))
-    graph.add_argument("--authority", default=os.environ.get("GRAPH_AUTHORITY", "https://login.microsoftonline.com/consumers"))
-    graph.add_argument("--cache-path", default=os.environ.get("GRAPH_CACHE_PATH", "~/.graph_token_cache.bin"))
 
     venv = sub.add_parser("install-super-venv", help="Monta/atualiza .venv-super e super_requirements.txt.")
     venv.add_argument("--python-bin", default=os.environ.get("PYTHON_BIN", sys.executable or "python3"))
@@ -11217,12 +13940,6 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     gbridge = sub.add_parser("gemini-bridge", help="Executa bridge MCP do Gemini em modo stdio.")
     gbridge.add_argument("--selftest", action="store_true")
 
-    rag_debug = sub.add_parser("debug-rag-google", help="Diagnostica integração do RAG com Google Embeddings.")
-    rag_debug.add_argument("--api-key", default="")
-    rag_debug.add_argument("--model", default="models/text-embedding-004")
-    rag_debug.add_argument("--text", default="Isso é um teste de conexão com o Gemini Embeddings")
-
-    rag_debug.add_argument("--verbose", action="store_true", help="Exibe stack trace e detalhes adicionais no diagnóstico.")
     reclaim_test = sub.add_parser("test-reclaim-ui", help="Executa self-test interno das rotinas Reclaim UI.")
     reclaim_test.add_argument("--verbose", action="store_true")
 
@@ -11251,8 +13968,8 @@ def _normalize_legacy_service_args(argv: list[str]) -> list[str]:
 def _mcp_status_payload() -> dict:
     """Gera payload de diagnóstico de MCPs.
 
-    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
-    e (quando aplicável) do que está montado/registrado no runtime.
+    Observação: faz chamadas leves de validação apenas quando isso evita falso "ok",
+    por exemplo no OAuth do Google Tasks.
     """
 
     def _has_key(val: str) -> bool:
@@ -11260,102 +13977,353 @@ def _mcp_status_payload() -> dict:
 
     items: list[dict] = []
 
+    playwright_reasons = []
+    if not PLAYWRIGHT_MCP_ENABLE:
+        playwright_reasons.append("PLAYWRIGHT_MCP_ENABLE=false")
+    elif not shutil.which(PLAYWRIGHT_MCP_BIN):
+        playwright_reasons.append("npx/Node ausente")
     items.append(
         {
             "name": "Playwright MCP",
             "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
-            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
-            "reason": "npx/Node ausente ou desativado"
-            if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN))
-            else "",
+            "ok": bool(PLAYWRIGHT_MCP_ENABLE and not playwright_reasons),
+            "reason": _with_fix(_join_reasons(playwright_reasons), _install_fix_hint("Node.js/npx") if PLAYWRIGHT_MCP_ENABLE else "ative com PLAYWRIGHT_MCP_ENABLE=true se quiser usar"),
         }
     )
+
+    brave_reasons = []
+    if not BRAVE_MCP_ENABLE:
+        brave_reasons.append("BRAVE_MCP_ENABLE=false")
+    else:
+        if not _has_key(BRAVE_API_KEY):
+            brave_reasons.append("falta BRAVE_API_KEY")
+        if not shutil.which(BRAVE_MCP_BIN):
+            brave_reasons.append("npx ausente")
     items.append(
         {
             "name": "Brave MCP",
             "enabled": bool(BRAVE_MCP_ENABLE),
-            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
-            "reason": "falta BRAVE_API_KEY ou npx"
-            if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN))
-            else "",
+            "ok": bool(BRAVE_MCP_ENABLE and not brave_reasons),
+            "reason": _with_fix(_join_reasons(brave_reasons), f"{_env_fix_hint('BRAVE_API_KEY')} e ative BRAVE_MCP_ENABLE=true" if BRAVE_MCP_ENABLE and not _has_key(BRAVE_API_KEY) else _install_fix_hint("Node.js/npx") if BRAVE_MCP_ENABLE else "ative com BRAVE_MCP_ENABLE=true se quiser usar"),
         }
     )
+
+    chart_reasons = []
+    if not CHART_MCP_ENABLE:
+        chart_reasons.append("CHART_MCP_ENABLE=false")
+    elif not shutil.which(CHART_MCP_BIN):
+        chart_reasons.append("npx ausente")
     items.append(
         {
             "name": "Chart MCP",
             "enabled": bool(CHART_MCP_ENABLE),
-            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
-            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
+            "ok": bool(CHART_MCP_ENABLE and not chart_reasons),
+            "reason": _with_fix(_join_reasons(chart_reasons), _install_fix_hint("Node.js/npx") if CHART_MCP_ENABLE else "ative com CHART_MCP_ENABLE=true se quiser usar"),
         }
     )
+
+    zotero_reasons = []
+    if not ZOTERO_MCP_ENABLE:
+        zotero_reasons.append("ZOTERO_MCP_ENABLE=false")
+    else:
+        if not _has_key(ZOTERO_API_KEY):
+            zotero_reasons.append("falta ZOTERO_API_KEY")
+        if not _has_key(ZOTERO_USER_ID):
+            zotero_reasons.append("falta ZOTERO_USER_ID")
+        if not shutil.which(ZOTERO_MCP_BIN):
+            zotero_reasons.append("npx ausente")
     items.append(
         {
             "name": "Zotero MCP",
             "enabled": bool(ZOTERO_MCP_ENABLE),
-            "ok": bool(
-                ZOTERO_MCP_ENABLE
-                and _has_key(ZOTERO_API_KEY)
-                and _has_key(ZOTERO_USER_ID)
-                and shutil.which(ZOTERO_MCP_BIN)
+            "ok": bool(ZOTERO_MCP_ENABLE and not zotero_reasons),
+            "reason": _with_fix(_join_reasons(zotero_reasons), f"{_env_fix_hint('ZOTERO_API_KEY')} e {_env_fix_hint('ZOTERO_USER_ID')}"),
+        }
+    )
+
+    google_calendar_enabled = _truthy_env_value(os.environ.get("GOOGLE_CALENDAR_MCP_ENABLE", "true"))
+    google_calendar_mcp_credentials = Path(GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH).expanduser()
+    google_calendar_reasons = []
+    if not google_calendar_enabled:
+        google_calendar_reasons.append("GOOGLE_CALENDAR_MCP_ENABLE=false")
+    else:
+        if not shutil.which(GOOGLE_CALENDAR_MCP_BIN):
+            google_calendar_reasons.append("npx/Node ausente")
+        if not google_calendar_mcp_credentials.exists():
+            google_calendar_reasons.append("credenciais ausentes")
+        elif not _google_calendar_mcp_token_exists(google_calendar_mcp_credentials):
+            google_calendar_reasons.append("token ausente")
+        elif _missing_google_token_scopes(BASE_DIR / "token.json", _GOOGLE_CALENDAR_SCOPES):
+            google_calendar_reasons.append("token sem escopo Google Calendar")
+    items.append(
+        {
+            "name": "Google Calendar MCP",
+            "enabled": google_calendar_enabled,
+            "ok": bool(google_calendar_enabled and not google_calendar_reasons),
+            "reason": _with_fix(_join_reasons(google_calendar_reasons), _google_credentials_fix_hint(google_calendar_mcp_credentials) if "credenciais ausentes" in google_calendar_reasons else _google_token_fix_hint()),
+        }
+    )
+
+    google_drive_token = Path(GOOGLE_DRIVE_MCP_TOKEN_PATH).expanduser()
+    google_drive_oauth = Path(GOOGLE_DRIVE_MCP_OAUTH_PATH).expanduser()
+    google_drive_reasons = []
+    google_drive_enabled = _truthy_env_value(os.environ.get("GOOGLE_DRIVE_MCP_ENABLE", "true"))
+    if not google_drive_enabled:
+        google_drive_reasons.append("GOOGLE_DRIVE_MCP_ENABLE=false")
+    else:
+        if not shutil.which("npm"):
+            google_drive_reasons.append("npm/Node ausente")
+        if not google_drive_oauth.exists():
+            google_drive_reasons.append("credenciais ausentes")
+        if not google_drive_token.exists():
+            google_drive_reasons.append("token ausente")
+        elif _missing_google_token_scopes(google_drive_token, _GOOGLE_DRIVE_SCOPES):
+            google_drive_reasons.append("token sem escopo Google Drive")
+    items.append(
+        {
+            "name": "Google Drive MCP",
+            "enabled": google_drive_enabled,
+            "ok": bool(google_drive_enabled and not google_drive_reasons),
+            "reason": _with_fix(_join_reasons(google_drive_reasons), _google_credentials_fix_hint(google_drive_oauth) if "credenciais ausentes" in google_drive_reasons else _google_token_fix_hint()),
+        }
+    )
+
+    google_tasks_enabled = _truthy_env_value(os.environ.get("GOOGLE_TASKS_MCP_ENABLE", "true"))
+    google_tasks_token = BASE_DIR / "token.json"
+    google_tasks_reasons = []
+    google_tasks_probe = {"ok": False, "detail": ""}
+    if not google_tasks_enabled:
+        google_tasks_reasons.append("GOOGLE_TASKS_MCP_ENABLE=false")
+    else:
+        if not _module_available("google.oauth2.credentials") or not _module_available("googleapiclient.discovery"):
+            google_tasks_reasons.append("dependências google-auth/google-api-python-client ausentes")
+        else:
+            google_tasks_probe = _google_workspace_token_probe(google_tasks_token)
+            if not google_tasks_probe.get("ok"):
+                google_tasks_reasons.append(str(google_tasks_probe.get("detail") or google_tasks_probe.get("code") or "token Google Tasks inválido"))
+    items.append(
+        {
+            "name": "Google Tasks MCP",
+            "enabled": google_tasks_enabled,
+            "ok": bool(google_tasks_enabled and not google_tasks_reasons),
+            "reason": _with_fix(_join_reasons(google_tasks_reasons), _google_token_fix_hint()),
+        }
+    )
+
+    gupy_enabled = _truthy_env_value(os.environ.get("GUPY_MCP_ENABLE", "true"))
+    gupy_reasons = []
+    if not gupy_enabled:
+        gupy_reasons.append("GUPY_MCP_ENABLE=false")
+    else:
+        if not _has_key(GUPY_API_TOKEN):
+            gupy_reasons.append("falta GUPY_API_TOKEN")
+        if not _module_available("httpx"):
+            gupy_reasons.append("dependência httpx ausente")
+    items.append(
+        {
+            "name": "Gupy MCP",
+            "enabled": gupy_enabled,
+            "ok": bool(gupy_enabled and not gupy_reasons),
+            "reason": _with_fix(_join_reasons(gupy_reasons), _env_fix_hint("GUPY_API_TOKEN")),
+        }
+    )
+
+    graph_env_access_token = _has_key(os.environ.get("MSGRAPH_ACCESS_TOKEN", "")) or _has_key(os.environ.get("GRAPH_ACCESS_TOKEN", ""))
+    graph_token_file = MSGRAPH_TOKEN_PATH.exists()
+    onedrive_enabled = _truthy_env_value(os.environ.get("ONEDRIVE_MCP_ENABLE", "true"))
+    onedrive_reasons = []
+    if not onedrive_enabled:
+        onedrive_reasons.append("ONEDRIVE_MCP_ENABLE=false")
+    else:
+        if not _module_available("httpx"):
+            onedrive_reasons.append("dependência httpx ausente")
+        if not graph_env_access_token and not _has_key(MSGRAPH_CLIENT_ID):
+            onedrive_reasons.append("falta MSGRAPH_CLIENT_ID/GRAPH_CLIENT_ID")
+        if not graph_env_access_token and not graph_token_file:
+            onedrive_reasons.append("token OneDrive ausente")
+    items.append(
+        {
+            "name": "OneDrive MCP",
+            "enabled": onedrive_enabled,
+            "ok": bool(onedrive_enabled and not onedrive_reasons),
+            "reason": _with_fix(_join_reasons(onedrive_reasons), f"{_env_fix_hint('MSGRAPH_CLIENT_ID')} e rode onedrive_auth_start/onedrive_auth_poll"),
+        }
+    )
+
+    reclaim_enabled = _truthy_env_value(os.environ.get("RECLAIM_UI_AUTOMATION_ENABLE", "false"))
+    reclaim_session_state = _reclaim_session_state_snapshot() if reclaim_enabled else "disabled"
+    reclaim_reasons = []
+    if not reclaim_enabled:
+        reclaim_reasons.append("RECLAIM_UI_AUTOMATION_ENABLE=false")
+    else:
+        if reclaim_session_state != "valid":
+            reclaim_reasons.append(f"sessão Reclaim {reclaim_session_state}")
+        if not _reclaim_executor_available():
+            reclaim_reasons.append("executor Reclaim indisponível")
+    items.append(
+        {
+            "name": "Reclaim MCP",
+            "enabled": reclaim_enabled,
+            "ok": bool(reclaim_enabled and not reclaim_reasons),
+            "reason": _with_fix(_join_reasons(reclaim_reasons), "ative RECLAIM_UI_AUTOMATION_ENABLE=true e rode reclaim_session_bootstrap"),
+        }
+    )
+
+    reclaim_official_enabled = _truthy_env_value(os.environ.get("RECLAIM_OFFICIAL_MCP_ENABLE", "false"))
+    reclaim_official_reasons = []
+    if not reclaim_official_enabled:
+        reclaim_official_reasons.append("RECLAIM_OFFICIAL_MCP_ENABLE=false")
+    elif not RECLAIM_OFFICIAL_MCP_URL.startswith(("https://", "http://")):
+        reclaim_official_reasons.append("RECLAIM_OFFICIAL_MCP_URL inválida")
+    items.append(
+        {
+            "name": "Reclaim Official MCP",
+            "enabled": reclaim_official_enabled,
+            "ok": bool(reclaim_official_enabled and not reclaim_official_reasons),
+            "reason": _with_fix(
+                _join_reasons(reclaim_official_reasons),
+                f"configure RECLAIM_OFFICIAL_MCP_ENABLE=true e conecte {RECLAIM_OFFICIAL_MCP_URL}",
             ),
-            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx"
-            if not (
-                ZOTERO_MCP_ENABLE
-                and _has_key(ZOTERO_API_KEY)
-                and _has_key(ZOTERO_USER_ID)
-                and shutil.which(ZOTERO_MCP_BIN)
-            )
-            else "",
+        }
+    )
+
+    speedgrapher_enabled = _truthy_env_value(os.environ.get("SPEEDGRAPHER_ENABLE", "true"))
+    speedgrapher_reasons = []
+    if not speedgrapher_enabled:
+        speedgrapher_reasons.append("SPEEDGRAPHER_ENABLE=false")
+    elif "speedgrapher_fog_index" not in _registered_tool_names():
+        speedgrapher_reasons.append("tool speedgrapher_fog_index não registrada")
+    items.append(
+        {
+            "name": "Speedgrapher MCP",
+            "enabled": speedgrapher_enabled,
+            "ok": bool(speedgrapher_enabled and not speedgrapher_reasons),
+            "reason": _with_fix(_join_reasons(speedgrapher_reasons), "ative SPEEDGRAPHER_ENABLE=true"),
+        }
+    )
+
+    mermaid_enabled = _truthy_env_value(os.environ.get("MERMAID_ENABLE", "true"))
+    mermaid_reasons = []
+    if not mermaid_enabled:
+        mermaid_reasons.append("MERMAID_ENABLE=false")
+    elif not _module_available("httpx") and not (shutil.which("mmdc") or shutil.which("npx")):
+        mermaid_reasons.append("httpx e mmdc/npx ausentes")
+    items.append(
+        {
+            "name": "Mermaid MCP",
+            "enabled": mermaid_enabled,
+            "ok": bool(mermaid_enabled and not mermaid_reasons),
+            "reason": _with_fix(_join_reasons(mermaid_reasons), "ative MERMAID_ENABLE=true ou instale httpx/mmdc"),
+        }
+    )
+
+    workflow_enabled = _truthy_env_value(os.environ.get("PROJECT_WORKFLOW_STACK_ENABLE", "true"))
+    workflow_tools = _registered_tool_names()
+    ai_context_status = _ensure_ai_coders_context_global_installed(install_if_missing=False)
+    gsd_status = _ensure_gsd_global_installed(install_if_missing=False)
+    ralph_status = _ensure_ralph_global_installed(install_if_missing=False)
+    workflow_reasons = []
+    if not workflow_enabled:
+        workflow_reasons.append("PROJECT_WORKFLOW_STACK_ENABLE=false")
+    else:
+        if "workflow_stack" not in workflow_tools or "workflow_master_prompt_get" not in workflow_tools:
+            workflow_reasons.append("tools workflow não registradas")
+        if not (BASE_DIR / ".context" / "docs").exists():
+            workflow_reasons.append(".context/docs ausente")
+        if not (BASE_DIR / ".context" / "workflow").exists():
+            workflow_reasons.append(".context/workflow ausente")
+    items.append(
+        {
+            "name": "Project workflow stack",
+            "enabled": workflow_enabled,
+            "ok": bool(workflow_enabled and not workflow_reasons),
+            "reason": _with_fix(_join_reasons(workflow_reasons), "rode python jarvis.py mcp-status após context_refresh se faltar .context"),
+        }
+    )
+
+    ai_context_enabled = _truthy_env_value(os.environ.get("AI_CODERS_CONTEXT_MCP_ENABLE", "true"))
+    ai_context_reasons = []
+    if not ai_context_enabled:
+        ai_context_reasons.append("AI_CODERS_CONTEXT_MCP_ENABLE=false")
+    elif not ai_context_status.get("installed"):
+        ai_context_reasons.append(str(ai_context_status.get("error") or "ai-coders-context não instalado"))
+    items.append(
+        {
+            "name": "AI Coders Context MCP",
+            "enabled": ai_context_enabled,
+            "ok": bool(ai_context_enabled and not ai_context_reasons),
+            "reason": _join_reasons(ai_context_reasons),
+        }
+    )
+
+    gsd_enabled = _truthy_env_value(os.environ.get("GSD_MCP_ENABLE", "true"))
+    gsd_reasons = []
+    if not gsd_enabled:
+        gsd_reasons.append("GSD_MCP_ENABLE=false")
+    elif not gsd_status.get("installed"):
+        gsd_reasons.append(str(gsd_status.get("error") or "gsd não instalado"))
+    items.append(
+        {
+            "name": "GSD MCP",
+            "enabled": gsd_enabled,
+            "ok": bool(gsd_enabled and not gsd_reasons),
+            "reason": _join_reasons(gsd_reasons),
+        }
+    )
+
+    ralph_enabled = _truthy_env_value(os.environ.get("RALPH_MCP_ENABLE", "true"))
+    ralph_reasons = []
+    if not ralph_enabled:
+        ralph_reasons.append("RALPH_MCP_ENABLE=false")
+    elif not ralph_status.get("installed"):
+        ralph_reasons.append(str(ralph_status.get("error") or "ralph não instalado"))
+    items.append(
+        {
+            "name": "Ralph MCP",
+            "enabled": ralph_enabled,
+            "ok": bool(ralph_enabled and not ralph_reasons),
+            "reason": _join_reasons(ralph_reasons),
         }
     )
 
     firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
+    firecrawl_enabled = _truthy_env_value(os.environ.get("FIRECRAWL_ENABLE", "false"))
+    firecrawl_reasons = []
+    if not firecrawl_enabled:
+        firecrawl_reasons.append("FIRECRAWL_ENABLE=false")
+    else:
+        if not _has_key(firecrawl_key):
+            firecrawl_reasons.append("falta FIRECRAWL_API_KEY")
+        if not shutil.which("npx"):
+            firecrawl_reasons.append("npx ausente")
     items.append(
         {
             "name": "Firecrawl MCP",
-            "enabled": bool(FIRECRAWL_ENABLE),
-            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
-            "reason": "falta FIRECRAWL_API_KEY ou npx"
-            if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx"))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Fireflies MCP",
-            "enabled": bool(FIREFLIES_MCP_ENABLE),
-            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
-            "reason": "falta FIREFLIES_API_KEY ou npx"
-            if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Sequential MCP",
-            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
-            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
-            "reason": "npx ausente ou desativado"
-            if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "OpenRouter (tool)",
-            "enabled": True,
-            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
-            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY"
-            if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY))
-            else "",
+            "enabled": firecrawl_enabled,
+            "ok": bool(firecrawl_enabled and not firecrawl_reasons),
+            "reason": _with_fix(_join_reasons(firecrawl_reasons), f"{_env_fix_hint('FIRECRAWL_API_KEY')} e ative FIRECRAWL_ENABLE=true" if firecrawl_enabled and not _has_key(firecrawl_key) else _install_fix_hint("Node.js/npx") if firecrawl_enabled else "ative com FIRECRAWL_ENABLE=true se quiser usar"),
         }
     )
 
-    tools: list[str] = []
-    try:
-        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
-    except Exception:
-        tools = []
+    fireflies_enabled = _truthy_env_value(os.environ.get("FIREFLIES_MCP_ENABLE", "false"))
+    fireflies_reasons = []
+    if not fireflies_enabled:
+        fireflies_reasons.append("FIREFLIES_MCP_ENABLE=false")
+    else:
+        if not _has_key(FIREFLIES_API_KEY):
+            fireflies_reasons.append("falta FIREFLIES_API_KEY")
+        if not shutil.which(FIREFLIES_MCP_BIN):
+            fireflies_reasons.append("npx ausente")
+    items.append(
+        {
+            "name": "Fireflies MCP",
+            "enabled": fireflies_enabled,
+            "ok": bool(fireflies_enabled and not fireflies_reasons),
+            "reason": _with_fix(_join_reasons(fireflies_reasons), f"{_env_fix_hint('FIREFLIES_API_KEY')} e ative FIREFLIES_MCP_ENABLE=true" if fireflies_enabled and not _has_key(FIREFLIES_API_KEY) else _install_fix_hint("Node.js/npx") if fireflies_enabled else "ative com FIREFLIES_MCP_ENABLE=true se quiser usar"),
+        }
+    )
+
+    tools = _registered_tool_names()
 
     payload = {
         "ok": True,
@@ -11370,24 +14338,12 @@ def _mcp_status_payload() -> dict:
     return payload
 
 
-def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
-    payload = _mcp_status_payload()
-
-    if write:
-        try:
-            write_mcp_status_report()
-        except Exception as exc:
-            payload["ok"] = False
-            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
-
-    if as_json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return 0 if payload.get("ok") else 1
-
+def _mcp_status_text_lines(payload: dict, *, include_report_notice: bool = True) -> list[str]:
+    auth_actions = payload.get("authActions") or []
     lines: list[str] = []
     lines.append("mcp status")
     lines.append("")
-    for item in payload.get("items", []):
+    for item in sorted(payload.get("items", []), key=_mcp_status_sort_key):
         name = item.get("name", "")
         ok = bool(item.get("ok"))
         enabled = bool(item.get("enabled"))
@@ -11400,15 +14356,371 @@ def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
         else:
             lines.append(f"- {name}: {status}")
 
-    tools = payload.get("registeredTools") or []
+    if auth_actions:
+        lines.append("")
+        lines.append("autenticação automática")
+        for action in auth_actions:
+            target = action.get("target", "")
+            detail = action.get("detail", "")
+            status = "ok" if action.get("ok") else "info"
+            if action.get("attempted") and not action.get("ok"):
+                status = "falha"
+            lines.append(f"- {target}: {status} ({detail})")
+
+    available_tools, unavailable_tools = _mcp_status_tool_lists(payload)
     lines.append("")
-    lines.append(f"ferramentas registradas: {len(tools)}")
-    for t in tools:
+    lines.append(f"ferramentas disponíveis: {len(available_tools)}")
+    for t in available_tools:
+        lines.append(f"- {t}")
+    lines.append("")
+    lines.append(f"ferramentas indisponíveis: {len(unavailable_tools)}")
+    for t in unavailable_tools:
         lines.append(f"- {t}")
 
-    if write:
+    if include_report_notice:
         lines.append("")
         lines.append("relatório também gravado em mcp_status.txt")
+    return lines
+
+_MCP_TUI_CONFIG = {
+    "Playwright MCP": {"enable": "PLAYWRIGHT_MCP_ENABLE", "fields": []},
+    "Brave MCP": {"enable": "BRAVE_MCP_ENABLE", "fields": ["BRAVE_API_KEY"]},
+    "Chart MCP": {"enable": "CHART_MCP_ENABLE", "fields": []},
+    "Zotero MCP": {"enable": "ZOTERO_MCP_ENABLE", "fields": ["ZOTERO_API_KEY", "ZOTERO_USER_ID"]},
+    "Google Calendar MCP": {"enable": "GOOGLE_CALENDAR_MCP_ENABLE", "fields": ["GOOGLE_CALENDAR_MCP_CREDENTIALS_PATH"], "oauth": True},
+    "Google Drive MCP": {"enable": "GOOGLE_DRIVE_MCP_ENABLE", "fields": ["GDRIVE_MCP_OAUTH_PATH", "GDRIVE_MCP_TOKEN_PATH", "GDRIVE_MCP_SCOPES"], "oauth": True},
+    "Google Tasks MCP": {"enable": "GOOGLE_TASKS_MCP_ENABLE", "fields": [], "oauth": True},
+    "Gupy MCP": {"enable": "GUPY_MCP_ENABLE", "fields": ["GUPY_API_TOKEN"]},
+    "OneDrive MCP": {"enable": "ONEDRIVE_MCP_ENABLE", "fields": ["MSGRAPH_CLIENT_ID", "GRAPH_CLIENT_ID"], "repair": "onedrive"},
+    "Reclaim MCP": {"enable": "RECLAIM_UI_AUTOMATION_ENABLE", "fields": [], "repair": "reclaim"},
+    "Reclaim Official MCP": {"enable": "RECLAIM_OFFICIAL_MCP_ENABLE", "fields": [], "repair": "reclaim_official"},
+    "Speedgrapher MCP": {"enable": "SPEEDGRAPHER_ENABLE", "fields": []},
+    "Mermaid MCP": {"enable": "MERMAID_ENABLE", "fields": ["MERMAID_LINK_ONLY"]},
+    "Firecrawl MCP": {"enable": "FIRECRAWL_ENABLE", "fields": ["FIRECRAWL_API_KEY"]},
+    "Fireflies MCP": {"enable": "FIREFLIES_MCP_ENABLE", "fields": ["FIREFLIES_API_KEY"]},
+    "Project workflow stack": {"enable": "PROJECT_WORKFLOW_STACK_ENABLE", "fields": []},
+    "AI Coders Context MCP": {"enable": "AI_CODERS_CONTEXT_MCP_ENABLE", "fields": []},
+    "GSD MCP": {"enable": "GSD_MCP_ENABLE", "fields": []},
+    "Ralph MCP": {"enable": "RALPH_MCP_ENABLE", "fields": []},
+}
+
+def _mcp_tui_item_status(item: dict) -> str:
+    if bool(item.get("enabled")) and not bool(item.get("ok")):
+        return "falha"
+    if not bool(item.get("enabled")):
+        return "off"
+    return "ok"
+
+
+def _mcp_status_prompt_text(prompt: str, *, default: str = "", secret: bool = False) -> str | None:
+    import getpass
+
+    shown_default = " [atual definido]" if default and secret else (f" [{default}]" if default else "")
+    full_prompt = f"{prompt}{shown_default}: "
+    try:
+        if secret:
+            value = getpass.getpass(full_prompt)
+        else:
+            value = input(full_prompt)
+    except (EOFError, KeyboardInterrupt):
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _mcp_status_run_repair(cfg: dict) -> str | None:
+    repair = str(cfg.get("repair") or "").strip().lower()
+    if repair == "reclaim":
+        try:
+            session_data = get_session_status(
+                path=RECLAIM_UI_SESSION_FILE,
+                session_ttl_sec=RECLAIM_UI_SESSION_TTL_SEC,
+            )
+            state = str(session_data.get("state") or "not_bootstrapped")
+            if state in {"pending_manual_login", "blocked_captcha", "expired"}:
+                raw = _reclaim_session_bootstrap_impl(
+                    manual_login_confirmed=True,
+                    captcha_resolved=True,
+                    open_browser=False,
+                )
+                payload = json.loads(raw)
+                result = str(payload.get("result") or "unknown")
+                next_step = str(payload.get("next_step") or "")
+                return f"Reclaim confirmação: {result}. {next_step}".strip()
+
+            raw = _reclaim_session_bootstrap_impl(
+                manual_login_confirmed=False,
+                captcha_resolved=True,
+                open_browser=True,
+            )
+            payload = json.loads(raw)
+            result = str(payload.get("result") or "unknown")
+            next_step = str(payload.get("next_step") or "")
+            return f"Reclaim bootstrap: {result}. {next_step}".strip()
+        except Exception as exc:
+            return f"Falha ao iniciar bootstrap do Reclaim: {exc}"
+    if repair == "onedrive":
+        try:
+            payload = _onedrive_auth_start_impl()
+            target = str(payload.get("verification_uri_complete") or payload.get("verification_uri") or "").strip()
+            if target:
+                try:
+                    webbrowser.open(target)
+                except Exception:
+                    pass
+            user_code = str(payload.get("user_code") or "").strip()
+            uri = str(payload.get("verification_uri") or "").strip()
+            message = str(payload.get("message") or "").strip()
+            if message:
+                return f"OneDrive auth iniciada. {message}"
+            details = []
+            if uri:
+                details.append(f"Abra {uri}")
+            if user_code:
+                details.append(f"use o código {user_code}")
+            details.append("depois rode onedrive_auth_poll")
+            return "OneDrive auth iniciada. " + "; ".join(details)
+        except Exception as exc:
+            return f"Falha ao iniciar auth do OneDrive: {exc}"
+    if repair == "reclaim_official":
+        try:
+            _persist_config_value("RECLAIM_OFFICIAL_MCP_ENABLE", "true")
+            _persist_config_value("RECLAIM_OFFICIAL_MCP_URL", "https://mcp.reclaim.ai")
+            _persist_config_value("RECLAIM_OFFICIAL_MCP_PREFIX", "reclaim2")
+            return (
+                "Reclaim Official MCP configurado automaticamente: "
+                "RECLAIM_OFFICIAL_MCP_ENABLE=true, "
+                "RECLAIM_OFFICIAL_MCP_URL=https://mcp.reclaim.ai, "
+                "RECLAIM_OFFICIAL_MCP_PREFIX=reclaim2. "
+                "Reinicie o Jarvis; a autenticação OAuth do Reclaim acontece no cliente MCP compatível."
+            )
+        except Exception as exc:
+            return f"Falha ao configurar Reclaim Official MCP: {exc}"
+    return None
+
+
+def _mcp_status_define_config(item: dict) -> str:
+    name = str(item.get("name", ""))
+    cfg = _MCP_TUI_CONFIG.get(name, {})
+    fields = list(cfg.get("fields") or [])
+    updated = False
+    for field in fields:
+        current = os.environ.get(field, "")
+        secret = any(tok in field for tok in ("KEY", "TOKEN", "SECRET"))
+        value = _mcp_status_prompt_text(f"Valor para {field}", secret=secret, default=current)
+        if value is not None:
+            _persist_config_value(field, value)
+            updated = True
+
+    if cfg.get("oauth"):
+        action = _run_google_workspace_oauth()
+        prefix = "configuração salva em env.sh. " if updated else ""
+        return prefix + f"{action.get('target')}: {action.get('detail')}"
+
+    repair_message = _mcp_status_run_repair(cfg)
+    if repair_message:
+        prefix = "configuração salva em env.sh. " if updated else ""
+        return prefix + repair_message
+
+    if updated:
+        return "configuração salva em env.sh"
+    if fields:
+        return "nenhuma alteração aplicada"
+    return "sem campo de configuração para este MCP"
+
+
+def _mcp_status_toggle(item: dict) -> str:
+    name = str(item.get("name", ""))
+    cfg = _MCP_TUI_CONFIG.get(name, {})
+    key = cfg.get("enable")
+    if not key:
+        return "este MCP não tem toggle de enable"
+    current = _truthy_env_value(os.environ.get(str(key), "true" if item.get("enabled") else "false"))
+    new_value = "false" if current else "true"
+    _persist_config_value(str(key), new_value)
+    return f"{key}={new_value} salvo em env.sh"
+
+
+def _mcp_status_pty_ui() -> int:
+    try:
+        from prompt_toolkit.application import Application
+        from prompt_toolkit.key_binding import KeyBindings
+        from prompt_toolkit.layout import Layout, Window
+        from prompt_toolkit.layout.controls import FormattedTextControl
+        from prompt_toolkit.styles import Style
+    except Exception:
+        return 1
+
+    selected = 0
+    message = "↑/↓ navega, espaço ativa/desativa, enter configura, t ferramentas, r atualiza, q sai"
+    view = "mcps"
+
+    while True:
+        payload = _mcp_status_payload()
+        payload["authActions"] = []
+        try:
+            write_mcp_status_report(payload, announce=False)
+        except Exception:
+            pass
+        items = sorted(payload.get("items", []), key=_mcp_status_sort_key)
+        available_tools, unavailable_tools = _mcp_status_tool_lists(payload)
+        tool_entries = (
+            [("section", f"disponíveis ({len(available_tools)})")]
+            + _mcp_group_tools(available_tools)
+            + [("section", f"indisponíveis ({len(unavailable_tools)})")]
+            + _mcp_group_tools(unavailable_tools)
+        )
+        current_entries = items if view == "mcps" else tool_entries
+        if not current_entries:
+            return 1
+        selected = max(0, min(selected, len(current_entries) - 1))
+        state = {"selected": selected, "action": "quit", "view": view}
+
+        def _build_fragments():
+            width, height = shutil.get_terminal_size((120, 40))
+            visible_rows = max(5, height - 7)
+            start = max(0, min(state["selected"] - visible_rows // 2, max(0, len(current_entries) - visible_rows)))
+            visible = current_entries[start:start + visible_rows]
+            header = "MCPs" if state["view"] == "mcps" else "Ferramentas"
+            fragments = [
+                ("class:title", f"Jarvis MCP status · {header}\n"),
+                ("class:help", "↑/↓ navega, espaço ativa/desativa, enter configura, t ferramentas, r atualiza, q sai\n\n"),
+            ]
+            if state["view"] == "mcps":
+                for offset, item in enumerate(visible):
+                    idx = start + offset
+                    status = _mcp_tui_item_status(item)
+                    cfg = _MCP_TUI_CONFIG.get(str(item.get("name", "")), {})
+                    toggle = "[x]" if bool(item.get("enabled")) else "[ ]"
+                    if not cfg.get("enable"):
+                        toggle = "[-]"
+                    prefix = ">" if idx == state["selected"] else " "
+                    style = "class:selected" if idx == state["selected"] else ""
+                    line = f"{prefix} {toggle} {status:5} {item.get('name', '')}"
+                    fragments.append((style, line[: max(1, width - 1)] + "\n"))
+                fragments.append(("", "\n"))
+                reason = str(items[state["selected"]].get("reason") or "")
+                fragments.append(("class:detail", reason[: max(1, width - 1)] + "\n"))
+            else:
+                for offset, entry in enumerate(visible):
+                    idx = start + offset
+                    kind, value = entry
+                    if kind == "section":
+                        fragments.append(("class:section", value[: max(1, width - 1)] + "\n"))
+                        continue
+                    if kind == "group":
+                        fragments.append(("class:group", f"  {value}"[: max(1, width - 1)] + "\n"))
+                        continue
+                    prefix = ">" if idx == state["selected"] else " "
+                    style = "class:selected" if idx == state["selected"] else ""
+                    line = f"{prefix}   {value}"
+                    fragments.append((style, line[: max(1, width - 1)] + "\n"))
+                fragments.append(("", "\n"))
+                current = current_entries[state["selected"]]
+                detail = _mcp_tool_description(current[1], current[0])
+                fragments.append(("class:detail", detail[: max(1, width - 1)] + "\n"))
+            fragments.append(("class:message", message[: max(1, width - 1)]))
+            return fragments
+
+        kb = KeyBindings()
+
+        @kb.add("up")
+        def _(event):
+            state["selected"] = max(0, state["selected"] - 1)
+            event.app.invalidate()
+
+        @kb.add("down")
+        def _(event):
+            state["selected"] = min(len(current_entries) - 1, state["selected"] + 1)
+            event.app.invalidate()
+        @kb.add("space")
+        def _(event):
+            state["action"] = "toggle"
+            event.app.exit()
+
+        @kb.add("enter")
+        def _(event):
+            state["action"] = "configure"
+            event.app.exit()
+
+        @kb.add("t")
+        @kb.add("T")
+        def _(event):
+            state["action"] = "toggle_view"
+            event.app.exit()
+
+        @kb.add("r")
+        @kb.add("R")
+        def _(event):
+            state["action"] = "refresh"
+            event.app.exit()
+
+        @kb.add("q")
+        @kb.add("Q")
+        def _(event):
+            state["action"] = "quit"
+            event.app.exit()
+
+        app = Application(
+            layout=Layout(Window(content=FormattedTextControl(_build_fragments), always_hide_cursor=True)),
+            key_bindings=kb,
+            full_screen=True,
+            mouse_support=False,
+            style=Style.from_dict(
+                {
+                    "title": "bold",
+                    "help": "ansibrightblack",
+                    "selected": "reverse",
+                    "detail": "",
+                    "message": "ansibrightblack",
+                    "section": "bold ansibrightblue",
+                    "group": "ansicyan",
+                }
+            ),
+        )
+        app.run()
+
+        selected = int(state["selected"])
+        action = str(state["action"])
+        if action == "quit":
+            return 0
+        if action == "toggle_view":
+            view = "tools" if view == "mcps" else "mcps"
+            selected = 0
+            message = "alternado"
+            continue
+        if view == "tools":
+            message = "na visão de ferramentas não há toggle nem configuração"
+            continue
+        if action == "toggle":
+            message = _mcp_status_toggle(items[selected])
+        elif action == "configure":
+            message = _mcp_status_define_config(items[selected])
+        else:
+            message = "atualizado"
+
+
+def _mcp_status_cli() -> int:
+    auth_actions = _run_mcp_status_auto_auth()
+    payload = _mcp_status_payload()
+    payload["authActions"] = auth_actions
+    interactive = sys.stdin.isatty() and sys.stdout.isatty()
+
+    try:
+        write_mcp_status_report(payload, announce=not interactive)
+    except Exception as exc:
+        payload["ok"] = False
+        payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
+
+    lines = _mcp_status_text_lines(payload)
+    if interactive:
+        try:
+            ui_rc = _mcp_status_pty_ui()
+            if ui_rc == 0:
+                return 0 if payload.get("ok") else 1
+            print("⚠️ UI PTY do mcp-status falhou. Caindo para saída texto.", file=sys.stderr)
+        except Exception as exc:
+            print(f"⚠️ UI PTY do mcp-status falhou: {exc}. Caindo para saída texto.", file=sys.stderr)
 
     print("\n".join(lines))
     return 0 if payload.get("ok") else 1
@@ -11418,6 +14730,9 @@ def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
 def main(argv: list[str] | None = None) -> int:
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     raw_argv = _normalize_legacy_service_args(raw_argv)
+
+    if raw_argv and raw_argv[0] == "__auth_google_workspace_internal":
+        return _auth_google_cli(scope="all", token_path=str(BASE_DIR / "token.json"), open_browser=True)
 
     if not raw_argv:
         return _service_start(
@@ -11460,7 +14775,29 @@ def main(argv: list[str] | None = None) -> int:
         return _service_logs(Path(args.log_file), args.lines)
 
     if args.command == "mcp-status":
-        return _mcp_status_cli(write=not bool(getattr(args, "no_write", False)), as_json=bool(getattr(args, "json", False)))
+        return _mcp_status_cli()
+    if args.command == "context-stack-harden":
+        results = {
+            "ai_coders_context": _ensure_ai_coders_context_global_installed(install_if_missing=True),
+            "gsd": _run_internal_gsd_setup_step(),
+            "ralph": _run_internal_ralph_setup_step(),
+            "graphify": _harden_graphify_global_install(apply_if_needed=True),
+            "layout": _merge_context_stack_layout(BASE_DIR),
+            "smoke": _run_internal_smoke_test_step(),
+        }
+        ok = all(bool(item.get("ok")) for item in results.values())
+        print(json.dumps({"ok": ok, "results": results}, ensure_ascii=False, indent=2))
+        return 0 if ok else 1
+    if args.command == "context-stack-check":
+        result = _context_stack_check(list(args.roots), recursive=bool(args.recursive))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "google-auth-refresh":
+        action = _run_google_workspace_oauth(force=bool(args.force))
+        print(f"{action.get('target')}: {action.get('detail')}")
+        return 0 if action.get("ok") else 1
+
+
 
     if args.command == "mcp-sync-clients":
         return _mcp_sync_clients_cli(
@@ -11484,27 +14821,13 @@ def main(argv: list[str] | None = None) -> int:
             user=args.user,
             ssh_key=args.ssh_key,
             timeout_sec=args.ssh_timeout,
+            sync_remote_jarvis=not args.no_sync,
+            sync_venv=bool(args.sync_venv),
         )
 
     if args.command == "install-oci":
         return _install_oci_cli(args.installer_args)
 
-    if args.command == "auth-google":
-        return _auth_google_cli(
-            scope=args.scope,
-            client_secret=args.client_secret,
-            token_path=args.token_path,
-            host=args.host,
-            port=args.port,
-            open_browser=args.open_browser,
-        )
-
-    if args.command == "graph-login":
-        return _graph_login_cli(
-            client_id=args.client_id,
-            authority=args.authority,
-            cache_path=args.cache_path,
-        )
 
     if args.command == "install-super-venv":
         return _install_super_venv_cli(
@@ -11522,15 +14845,6 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(payload, ensure_ascii=False))
             return 0 if payload.get("ok") else 1
         return _run_gemini_bridge_server()
-
-    if args.command == "debug-rag-google":
-        return _debug_rag_google_cli(
-            api_key=args.api_key,
-            model_name=args.model,
-            test_text=args.text,
-            verbose=bool(args.verbose),
-        )
-
     if args.command == "test-reclaim-ui":
         return _test_reclaim_ui_cli(verbose=args.verbose)
 
@@ -11543,320 +14857,9 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-# --- comandos auxiliares de diagnóstico (definidos após o main para evitar poluir import) ---
-
-def _mcp_status_payload() -> dict:
-    """Gera payload de diagnóstico de MCPs.
-
-    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
-    e (quando aplicável) do que está montado/registrado no runtime.
-    """
-
-    def _has_key(val: str) -> bool:
-        return bool(val and str(val).strip())
-
-    items: list[dict] = []
-
-    items.append(
-        {
-            "name": "Playwright MCP",
-            "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
-            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
-            "reason": "npx/Node ausente ou desativado"
-            if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Brave MCP",
-            "enabled": bool(BRAVE_MCP_ENABLE),
-            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
-            "reason": "falta BRAVE_API_KEY ou npx"
-            if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Chart MCP",
-            "enabled": bool(CHART_MCP_ENABLE),
-            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
-            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Zotero MCP",
-            "enabled": bool(ZOTERO_MCP_ENABLE),
-            "ok": bool(
-                ZOTERO_MCP_ENABLE
-                and _has_key(ZOTERO_API_KEY)
-                and _has_key(ZOTERO_USER_ID)
-                and shutil.which(ZOTERO_MCP_BIN)
-            ),
-            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx"
-            if not (
-                ZOTERO_MCP_ENABLE
-                and _has_key(ZOTERO_API_KEY)
-                and _has_key(ZOTERO_USER_ID)
-                and shutil.which(ZOTERO_MCP_BIN)
-            )
-            else "",
-        }
-    )
-
-    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
-    items.append(
-        {
-            "name": "Firecrawl MCP",
-            "enabled": bool(FIRECRAWL_ENABLE),
-            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
-            "reason": "falta FIRECRAWL_API_KEY ou npx"
-            if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx"))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Fireflies MCP",
-            "enabled": bool(FIREFLIES_MCP_ENABLE),
-            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
-            "reason": "falta FIREFLIES_API_KEY ou npx"
-            if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Sequential MCP",
-            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
-            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
-            "reason": "npx ausente ou desativado"
-            if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN))
-            else "",
-        }
-    )
-    items.append(
-        {
-            "name": "OpenRouter (tool)",
-            "enabled": True,
-            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
-            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY"
-            if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY))
-            else "",
-        }
-    )
-
-    tools: list[str] = []
-    try:
-        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
-    except Exception:
-        tools = []
-
-    payload = {
-        "ok": True,
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "items": items,
-        "registeredTools": tools,
-    }
-
-    if any(i.get("enabled") and not i.get("ok") for i in items):
-        payload["ok"] = False
-
-    return payload
 
 
-def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
-    payload = _mcp_status_payload()
-
-    if write:
-        try:
-            write_mcp_status_report()
-        except Exception as exc:
-            payload["ok"] = False
-            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
-
-    if as_json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return 0 if payload.get("ok") else 1
-
-    lines: list[str] = []
-    lines.append("mcp status")
-    lines.append("")
-    for item in payload.get("items", []):
-        name = item.get("name", "")
-        ok = bool(item.get("ok"))
-        enabled = bool(item.get("enabled"))
-        reason = (item.get("reason") or "").strip()
-        status = "ok" if ok else "falha"
-        if not enabled:
-            status = "desativado"
-        if (not ok) and reason:
-            lines.append(f"- {name}: {status} ({reason})")
-        else:
-            lines.append(f"- {name}: {status}")
-
-    tools = payload.get("registeredTools") or []
-    lines.append("")
-    lines.append(f"ferramentas registradas: {len(tools)}")
-    for t in tools:
-        lines.append(f"- {t}")
-
-    if write:
-        lines.append("")
-        lines.append("relatório também gravado em mcp_status.txt")
-
-    print("\n".join(lines))
-    return 0 if payload.get("ok") else 1
-
-
-def _mcp_status_payload() -> dict:
-    """Gera payload de diagnóstico de MCPs.
-
-    Observação: isso não faz network calls. É um snapshot do que está configurável via env,
-    e (quando aplicável) do que está montado/registrado no runtime.
-    """
-    def _has_key(val: str) -> bool:
-        return bool(val and str(val).strip())
-
-    items: list[dict] = []
-
-    # Node-based MCPs
-    items.append(
-        {
-            "name": "Playwright MCP",
-            "enabled": bool(PLAYWRIGHT_MCP_ENABLE),
-            "ok": bool(PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)),
-            "reason": "npx/Node ausente ou desativado" if not (PLAYWRIGHT_MCP_ENABLE and shutil.which(PLAYWRIGHT_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Brave MCP",
-            "enabled": bool(BRAVE_MCP_ENABLE),
-            "ok": bool(BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)),
-            "reason": "falta BRAVE_API_KEY ou npx" if not (BRAVE_MCP_ENABLE and _has_key(BRAVE_API_KEY) and shutil.which(BRAVE_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Chart MCP",
-            "enabled": bool(CHART_MCP_ENABLE),
-            "ok": bool(CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)),
-            "reason": "npx ausente ou desativado" if not (CHART_MCP_ENABLE and shutil.which(CHART_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Zotero MCP",
-            "enabled": bool(ZOTERO_MCP_ENABLE),
-            "ok": bool(ZOTERO_MCP_ENABLE and _has_key(ZOTERO_API_KEY) and _has_key(ZOTERO_USER_ID) and shutil.which(ZOTERO_MCP_BIN)),
-            "reason": "faltam ZOTERO_API_KEY/ZOTERO_USER_ID ou npx" if not (ZOTERO_MCP_ENABLE and _has_key(ZOTERO_API_KEY) and _has_key(ZOTERO_USER_ID) and shutil.which(ZOTERO_MCP_BIN)) else "",
-        }
-    )
-
-    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "")
-    items.append(
-        {
-            "name": "Firecrawl MCP",
-            "enabled": bool(FIRECRAWL_ENABLE),
-            "ok": bool(FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")),
-            "reason": "falta FIRECRAWL_API_KEY ou npx" if not (FIRECRAWL_ENABLE and _has_key(firecrawl_key) and shutil.which("npx")) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Fireflies MCP",
-            "enabled": bool(FIREFLIES_MCP_ENABLE),
-            "ok": bool(FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)),
-            "reason": "falta FIREFLIES_API_KEY ou npx" if not (FIREFLIES_MCP_ENABLE and _has_key(FIREFLIES_API_KEY) and shutil.which(FIREFLIES_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "Sequential MCP",
-            "enabled": bool(SEQUENTIAL_MCP_ENABLE),
-            "ok": bool(SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)),
-            "reason": "npx ausente ou desativado" if not (SEQUENTIAL_MCP_ENABLE and shutil.which(SEQUENTIAL_MCP_BIN)) else "",
-        }
-    )
-    items.append(
-        {
-            "name": "OpenRouter (tool)",
-            "enabled": True,
-            "ok": bool(_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)),
-            "reason": "falta OPENROUTER_API_KEY/OPENAI_API_KEY" if not (_has_key(OPENROUTER_API_KEY) or _has_key(OPENAI_API_KEY)) else "",
-        }
-    )
-
-    # Snapshot de ferramentas registradas no runtime (quando existirem)
-    tools: list[str] = []
-    try:
-        tools = sorted([t.name for t in getattr(mcp, "tools", [])])
-    except Exception:
-        tools = []
-
-    payload = {
-        "ok": True,
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "items": items,
-        "registeredTools": tools,
-    }
-
-    # se algo crítico estiver explicitamente enabled mas não ok, marca ok=false
-    if any(i.get("enabled") and not i.get("ok") for i in items):
-        payload["ok"] = False
-
-    return payload
-
-
-def _mcp_status_cli(write: bool = False, as_json: bool = False) -> int:
-    payload = _mcp_status_payload()
-
-    if write:
-        try:
-            write_mcp_status_report()
-        except Exception as exc:
-            payload["ok"] = False
-            payload.setdefault("errors", []).append(f"falha ao escrever mcp_status.txt: {exc}")
-
-    if as_json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return 0 if payload.get("ok") else 1
-
-    # saída humana
-    lines: list[str] = []
-    lines.append("mcp status")
-    lines.append("")
-    for item in payload.get("items", []):
-        name = item.get("name", "")
-        ok = bool(item.get("ok"))
-        enabled = bool(item.get("enabled"))
-        reason = (item.get("reason") or "").strip()
-        status = "ok" if ok else "falha"
-        if not enabled:
-            status = "desativado"
-        if (not ok) and reason:
-            lines.append(f"- {name}: {status} ({reason})")
-        else:
-            lines.append(f"- {name}: {status}")
-
-    tools = payload.get("registeredTools") or []
-    lines.append("")
-    lines.append(f"ferramentas registradas: {len(tools)}")
-    for t in tools:
-        lines.append(f"- {t}")
-
-    if write:
-        lines.append("")
-        lines.append("relatório também gravado em mcp_status.txt")
-
-    print("\n".join(lines))
-    return 0 if payload.get("ok") else 1
-
-
-@mcp.tool()
+@_mcp_tool_when_env("GUPY_MCP_ENABLE", "true")
 def gupy_v1_set_recruiter(job_id: int, recruiter_email: str) -> str:
     """Define o recrutador de uma vaga via API v1 (PATCH recruiterEmail).
 
@@ -11936,7 +14939,7 @@ def _gupy_pick_recruiter_by_title(
     return (recruiter_larissa or "").strip()
 
 
-@mcp.tool()
+@_mcp_tool_when_env("GUPY_MCP_ENABLE", "true")
 def gupy_v1_apply_recruiter_rules(
     status_list: str = "published,approved,waiting_approval",
     recruiter_andre: str = "andre.orrico@lmmobilidade.com.br",

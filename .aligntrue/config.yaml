@@ -6,8 +6,8 @@ exporters:
   - agents
   - gemini-cli
   - gemini
+  - gemini-config
 sync:
   content_mode: inline
-
 export:
   output_dir: global_rule_sync

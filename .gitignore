@@ -47,6 +47,8 @@ token.json
 # runtime artifacts
 .jarvis-ready
 .ralph/
+.context/workflow/ralph/
+.context/workflow/archive/
 .super_server.pid
 mcp_status.txt
 server.log
@@ -57,8 +59,10 @@ google_auth_httplib2-*.dist-info/
 
 # START AlignTrue Generated Files
 .aligntrue/.backups/
+.gemini/settings.json
 AGENTS.md
 GEMINI.md
+global_rule_sync/.gemini/settings.json
 global_rule_sync/AGENTS.md
 global_rule_sync/GEMINI.md
 # END AlignTrue Generated Files

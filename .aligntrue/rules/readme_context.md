@@ -11,6 +11,6 @@ O README.md do projeto deve ser tratado como fonte de contexto obrigatoria, no m
 
 ## Regras por agente
 
-- Se estiver rodando no Codex: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
-- Se estiver rodando no Gemini: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
+- Se estiver rodando no Codex: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/plans/STATE.md` e `.context/workflow/README.md`.
+- Se estiver rodando no Gemini: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/plans/STATE.md` e `.context/workflow/README.md`.
 - GEMINI.md e CLAUDE.md sao arquivos de compatibilidade quando AGENTS.md nao estiver disponivel.

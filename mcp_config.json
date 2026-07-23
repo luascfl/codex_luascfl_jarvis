@@ -11,7 +11,12 @@
         "OPENAI_API_KEY": "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",
         "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
         "RESEARCH_PROVIDER": "openai",
-        "PERPLEXITY_API_KEY": "dummy-bypass"
+        "PERPLEXITY_API_KEY": "dummy-bypass",
+        "GOOGLE_DRIVE_MCP_ENABLE": "true",
+        "JARVIS_STDIO_SKIP_CHILD_MCP": "true",
+        "GDRIVE_MCP_OAUTH_PATH": "/home/lucas/Downloads/codex_luascfl_jarvis/gcp-oauth.keys.json",
+        "GDRIVE_MCP_TOKEN_PATH": "/home/lucas/Downloads/codex_luascfl_jarvis/token.json",
+        "GDRIVE_MCP_SCOPES": "https://www.googleapis.com/auth/drive"
       }
     }
   }

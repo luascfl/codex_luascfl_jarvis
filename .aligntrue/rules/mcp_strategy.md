@@ -16,8 +16,8 @@ Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas 
 
 ### 1. Contexto: Planejamento & Execução
 **Gatilho:** "o que fazer agora", "planeje a fase", "executar story".
-* **Planejamento macro:** GSD em `.context/docs/planning_gsd/`.
-* **Execução incremental:** Ralph com PRD ativo em `.context/prd_ralph/prd.json`.
+* **Planejamento macro:** GSD em `.context/plans/`.
+* **Execução incremental:** Ralph com PRD ativo em `.context/workflow/prd.json`.
 * **Tarefas pessoais/calendário:** `jarvis:gtasks_*` e `jarvis:gcal_*`.
 
 ### 2. Contexto: Memória & Conhecimento
@@ -40,5 +40,5 @@ Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas 
 ## ⚠️ Restrições
 
 1. Operar no modo restrito: `gsd + ralph + ai-coders-context`.
-2. Contexto único: `.context/docs` + `README.md` + `.context/docs/planning_gsd/STATE.md` + `.context/prd_ralph/README.md`.
+2. Contexto único: `.context/docs` + `README.md` + `.context/plans/STATE.md` + `.context/workflow/README.md`.
 3. Fechamento de ciclo obrigatório: evidências técnicas e atualização de contexto.

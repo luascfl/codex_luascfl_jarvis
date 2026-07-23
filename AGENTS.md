@@ -23,57 +23,9 @@ O README.md do projeto deve ser tratado como fonte de contexto obrigatoria, no m
 
 ## Regras por agente
 
-- Se estiver rodando no Codex: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
-- Se estiver rodando no Gemini: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/docs/planning_gsd/STATE.md` e `.context/prd_ralph/README.md`.
+- Se estiver rodando no Codex: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/plans/STATE.md` e `.context/workflow/README.md`.
+- Se estiver rodando no Gemini: leia AGENTS.md primeiro, depois README.md, `.context/docs/README.md`, `.context/plans/STATE.md` e `.context/workflow/README.md`.
 - GEMINI.md e CLAUDE.md sao arquivos de compatibilidade quando AGENTS.md nao estiver disponivel.
-
-
-<!-- aligntrue:rule prompts_catalog.md -->
-
-## Prompts Catalog
-
-# 📜 Catálogo de Prompts & Skills (AGCAO)
-
-Este documento descreve os prompts especializados disponíveis no ecossistema (Gemini, Codex, etc.) e como criar novos.
-
-## 🧠 Brainstorm & Criatividade
-**Comando:** `/brainstorm` (Gemini) ou `/prompts:brainstorm` (Codex)
-**Objetivo:** Transformar uma ideia vaga em um conceito sólido através de um loop iterativo.
-**Mecânica:** 1 Pergunta + 1 Sugestão por turno.
-**Quando usar:** Início de projetos, bloqueio criativo.
-
----
-
-## 🏗️ Gestão de Projetos (AI Coders Context + GSD + Ralph + Gemini)
-**Comando:** `/projeto` (Gemini) ou `/prompts:projeto` (Codex)
-**Objetivo:** Operar como orquestrador de execução com contexto eficiente, baixo risco de bug e rastreabilidade.
-**Mecânica:** Classifica se o projeto está novo, parcial ou operacional. Se faltarem entrypoints canônicos, roda bootstrap de contexto via workflow. Se faltar `.context/prd_ralph/prd.json`, faz bootstrap automático de PRD via skill `prd` no Codex. Se faltar `.context/docs/planning_gsd/PROJECT.md`, faz bootstrap de planejamento GSD. Depois planeja milestones, escolhe 1 story por ciclo no Ralph e prepara prompt fechado para o Gemini executor.
-**Quando usar:** Início de projeto, retomada de contexto e definição do próximo ciclo de execução.
-
----
-
-
-
-## ✅ Verificação de Confiança
-**Comando:** `/prompts:confidence-check`
-**Objetivo:** Validar soluções críticas antes do deploy.
-
----
-
-## ⚙️ Guia Técnico: Criando Novos Prompts
-
-O sistema AGCAO sincroniza prompts automaticamente.
-
-1.  **Crie o arquivo:** Salve um arquivo Markdown em `prompts/<nome>.md`.
-2.  **Adicione Metadados:** O arquivo deve começar com o frontmatter YAML:
-    ```markdown
-    ---
-    description: "Descrição curta do que o prompt faz"
-    ---
-    # Título do Prompt
-    ...instruções...
-    ```
-3.  **Sincronize:** Rode `python3 jarvis.py mcp-sync-clients`.
 
 
 <!-- aligntrue:rule project_context_refresh.md -->
@@ -91,8 +43,8 @@ Quando o usuario pedir para regenerar ou atualizar o contexto no nivel do projet
 - use `jarvis.workflow_stack` com `action="context_refresh"` como entrada preferencial quando a tool estiver disponivel
 - essa rotina do workflow deve garantir no projeto:
   - existencia de `.context/docs`
-  - existencia de `.context/docs/planning_gsd`
-  - existencia de `.context/prd_ralph`
+  - existencia de `.context/plans`
+  - existencia de `.context/workflow`
   - existencia de `.context/workflow`
   - sincronizacao de `AGENTS.md`
   - sincronizacao de `GEMINI.md`
@@ -137,8 +89,8 @@ Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas 
 
 ### 1. Contexto: Planejamento & Execução
 **Gatilho:** "o que fazer agora", "planeje a fase", "executar story".
-* **Planejamento macro:** GSD em `.context/docs/planning_gsd/`.
-* **Execução incremental:** Ralph com PRD ativo em `.context/prd_ralph/prd.json`.
+* **Planejamento macro:** GSD em `.context/plans/`.
+* **Execução incremental:** Ralph com PRD ativo em `.context/workflow/prd.json`.
 * **Tarefas pessoais/calendário:** `jarvis:gtasks_*` e `jarvis:gcal_*`.
 
 ### 2. Contexto: Memória & Conhecimento
@@ -161,7 +113,7 @@ Este documento instrui o Agente sobre como orquestrar as ferramentas MCP ativas 
 ## ⚠️ Restrições
 
 1. Operar no modo restrito: `gsd + ralph + ai-coders-context`.
-2. Contexto único: `.context/docs` + `README.md` + `.context/docs/planning_gsd/STATE.md` + `.context/prd_ralph/README.md`.
+2. Contexto único: `.context/docs` + `README.md` + `.context/plans/STATE.md` + `.context/workflow/README.md`.
 3. Fechamento de ciclo obrigatório: evidências técnicas e atualização de contexto.
 
 
@@ -307,6 +259,183 @@ ln -s /home/lucas/Downloads/codex_luascfl/AGENTS.md /home/lucas/Downloads/codex_
 ```
 
 
+<!-- aligntrue:rule browser_profile.md -->
+
+## Browser Profile
+
+Força o uso do perfil persistente via serviço CDP para a tool xd://browser
+
+# Browser Profile Rule
+
+Always applied. For files: `**/*`.
+
+Quando um agente precisar usar a tool `xd://browser` para automação logada (autenticada), é **OBRIGATÓRIO** usar a arquitetura de Chrome Persistente via porta CDP, para garantir que os cookies e o Session Storage não sejam perdidos por overrides do motor do Puppeteer.
+
+**Passo 1: Inicie o Chrome como serviço via `hub` (se já não estiver rodando)**
+Use a ferramenta `hub` para iniciar o navegador no fundo.
+```json
+{
+  "op": "start",
+  "name": "chrome_automation",
+  "application": "/usr/bin/google-chrome",
+  "args": [
+    "--remote-debugging-port=9222",
+    "--user-data-dir=/home/lucas/.omp/chrome-persistent-profile"
+  ],
+  "ready": { "port": 9222, "timeout": 15 }
+}
+```
+
+**Passo 2: Conecte a tool `xd://browser` ao serviço**
+Sempre inclua `cdp_url` na chamada da tool e NUNCA passe `args` diretamente.
+```json
+{
+  "action": "open",
+  "url": "https://www.perplexity.ai/",
+  "app": {
+    "cdp_url": "http://127.0.0.1:9222"
+  }
+}
+```
+
+**Regras de Autenticação e Segurança da Sessão:**
+1. Se o site alvo (ex: Perplexity) exigir login e estiver deslogado ao abrir, pause o agente e peça para o usuário fazer o login manualmente na tela. Como a arquitetura agora é verdadeiramente persistente, isso só será necessário na primeira vez.
+2. **NUNCA** feche o navegador à força (ex: comando `killall` ou usando `{"action": "close", "kill": true}`). Matar o processo apaga o Session Storage de SPAs modernos, derrubando o login do usuário.
+3. Não utilize o `/tmp/` para perfis a menos que seja solicitado um ambiente 100% anônimo.
+
+
+<!-- aligntrue:rule agenda_reclaim_tasks.md -->
+
+## Agenda Reclaim Tasks
+
+# Politica de agenda, Reclaim e Google Tasks
+
+Regra global para operar MCPs de planejamento de dia, Reclaim, Google Tasks e Google Calendar.
+
+Always applied. For files: `**/*`.
+
+# Politica de agenda, Reclaim e Google Tasks
+
+Use estas regras quando o usuario pedir planejamento do dia, captura de tarefas, revisao GTD, operacoes no Reclaim, Google Tasks ou Google Calendar.
+
+## Modelo mental
+
+- `Minhas tarefas` no Google Tasks e inbox manual de captura pelo celular, sem parametros e sem sincronizacao direta com agenda ou Reclaim por decisao operacional sua.
+- A integracao do Reclaim 2.0 com Google Tasks acontece no nivel da conta Google, nao de uma lista especifica. Considere que, no seu caso, as listas selecionadas no Reclaim acabam sendo todas.
+- A lista do Reclaim no nosso fluxo continua existindo como convencao operacional: e a lista comprometida para execucao e a principal fonte de tarefas que devem entrar na agenda.
+- Google Calendar deve ser afetado pelo Reclaim, nao por edicao direta de eventos, salvo quando o usuario pedir explicitamente uma operacao de calendario.
+- Se uma tarefa do Google Tasks/Reclaim aparece sem due date visivel, trate como sincronizada internamente pelo Reclaim para hoje. Nao corrija manualmente apenas por ausencia de due date.
+- Revise a lista operacional Reclaim e `Minhas tarefas` juntos para aplicar boas praticas de GTD: proximo passo claro, bloqueios visiveis, contexto atualizado e duracao plausivel.
+
+## Planejamento do dia
+
+- Quando o usuario disser "planeje meu dia", gere apenas simulacao com `plan_day_from_tasks` e leia as duas fontes, Reclaim e `Minhas tarefas`.
+- Inclua tarefas atrasadas na simulacao para validacao do usuario.
+- Separe visualmente tarefas prontas para executar, tarefas ambiguas, tarefas atrasadas e tarefas que precisam de update na descricao.
+- Sugira ajustes de GTD quando fizer sentido: reescrever descricao, quebrar tarefa grande, corrigir duracao, adicionar bloqueio ou registrar contexto.
+- Quando nao couber tudo no dia, use uma mistura GTD: proximo passo claro primeiro, depois due date, prioridade, desbloqueio e energia/contexto.
+- Horario normal: 08:00 a 22:30.
+- Se o usuario disser "vou madrugar" ou equivalente, planeje a partir do horario atual, sem esperar o proximo bloco diurno.
+- O calendario e o Reclaim consideram pomodoro de 45 min de foco e 15 min de intervalo. Considere esse intervalo no planejamento sem necessariamente criar uma tarefa explicita para ele.
+
+- A simulacao deve considerar tarefas Reclaim ja alocadas no Google Calendar como parte do plano existente, nao apenas como blocos ocupados. Liste esses eventos como plano Reclaim atual, preservando horario, titulo, locked/unlocked e origem quando visivel.
+- A resposta nao deve ser apenas tabela. Questione o plano Reclaim com uma narrativa curta e pratica: diga o que faz sentido executar primeiro, o que parece pesado para o horario, o que e tarefa rapida que pode destravar energia, e qual troca concreta voce faria.
+- Use criterio humano alem do horario: facilidade, energia provavel, contexto, custo de troca, urgencia, tarefa domestica curta, pendencia emocional e sequencia logica. Exemplo: se `Tirar roupas do varal` e simples e evita esquecimento, pode vir antes de uma tarefa cognitiva pesada.
+- Ao propor mudancas, diferencie claramente: plano Reclaim ja existente no calendario, novos encaixes sugeridos e tarefas Reclaim sem espaco.
+- Nao recomende ocupar um slot livre ignorando que outras tarefas Reclaim ja estao planejadas mais tarde no Calendar. Use o plano existente como base e sugira rearranjo apenas quando houver motivo GTD claro.
+
+- Ao planejar o dia, se faltar contexto para decidir entre tarefas, destravar ambiguidade ou atualizar descricao, faca perguntas objetivas antes de propor um plano fechado. Pergunte apenas o que muda a decisao: bloqueio, proximo passo, energia/contexto, prioridade real, prazo ou criterio de conclusao. Se a simulacao ainda for util mesmo com lacunas, apresente como rascunho e destaque as perguntas que precisam de resposta.
+## Aplicacao do plano
+
+- Quando o usuario disser "aplica o plano", "coloca na agenda" ou equivalente, use `plan_day_apply`, sem nova confirmacao, mas nunca crie eventos diretamente no Google Calendar para tarefas Reclaim. O fluxo correto e Google Tasks -> Reclaim -> Calendar.
+- No final de toda aplicação, faça verificação da aplicação real na agenda lendo a agenda efetiva pelo Reclaim oficial ou Calendar. A resposta deve diferenciar claramente: plano solicitado, ações enviadas ao fluxo Google Tasks -> Reclaim -> Calendar e estado realmente observado na agenda. Nunca declare que o plano foi aplicado se os blocos não aparecerem ou não tiverem sido rearranjados na agenda.
+- Se a agenda observada ficar em desacordo com o plano validado, não edite o Calendar diretamente. Primeiro identifique as tarefas Reclaim responsáveis pelo conflito, duplicata, bloco fora do limite ou contexto errado; depois apague e recrie essas tarefas no Reclaim via Google Tasks com parâmetros corretos e notas GTD atualizadas. Recrie apenas tarefas com equivalência clara; se a tarefa estiver ambígua, pergunte antes.
+- Depois de aplicar o plano, sempre verifique eventos locked com `gcal_find_locked_events`.
+- Evento com titulo iniciado por `🔒` e locked real no Reclaim. Se esse locked ficar disruptivo depois de `plan_day_apply`, desbloqueie via `reclaim_event_unlock` para permitir o rearranjo do Reclaim.
+- Se houver conflito percebido entre Calendar e tarefa planejada, sugira rearranjo. O Reclaim normalmente ja considera o Calendar para evitar sobreposicao.
+- Se houver conflito entre GTD e comando explicito do usuario, aponte o conflito e siga o comando do usuario.
+
+## Captura e criacao de tarefas
+
+- Quando o usuario pedir para adicionar uma tarefa, crie na lista operacional Reclaim, nao em `Minhas tarefas`.
+- Ao criar tarefa na lista operacional Reclaim, inclua parametros obrigatorios no titulo: contexto, duracao, prioridade, tipo e due date.
+- Tipo padrao: `work`.
+- Prioridade padrao: `P2` quando nao houver sinal melhor.
+- Contexto e duracao devem ser inferidos pela tarefa. Pergunte quando a inferencia for fraca.
+- Tarefa sem data pode usar o padrao do Reclaim, que sincroniza internamente para hoje, mas nao invente data quando isso mudar a intencao do usuario.
+- Para varias tarefas em texto livre, crie todas na lista operacional Reclaim com `gtasks_smart_sync_add_reclaim`.
+- Se a tarefa for ambigua, pergunte antes de criar.
+- As notas da tarefa devem sempre conter estrutura, preenchendo o que existir e deixando claro o que falta:
+
+```md
+Bloqueios:
+- ...
+
+Updates:
+- ...
+
+Contexto:
+- ...
+
+Plano de acao:
+- ...
+```
+
+- A categoria/contexto da tarefa nunca deve ser `[Reclaim]`. Use contexto real inferido, como `[OrganizeJR]`, `[Psicologia]`, `[Curriculo]`, `[Afazeres]`, `[Comercial]` ou outro contexto adequado.
+
+## Duracao, pomodoro e split
+
+- Duracao minima padrao: 15 min.
+- Pode usar duracoes de 15, 30, 45 min ou multiplos maiores conforme a tarefa.
+- Tarefas maiores devem ser pensadas em blocos de 45 min com intervalo de 15 min.
+- Quando uma tarefa parecer grande demais, prefira sugerir quebra em tarefas menores ou usar o parametro de split do Reclaim quando disponivel.
+
+## Revisao e atualizacao GTD
+
+- Quando o usuario trouxer contexto novo durante a revisao, atualize automaticamente a descricao da tarefa quando houver ferramenta disponivel.
+- Se nao houver ferramenta para editar descricao/notas existentes, gere o texto pronto para colar ou recrie a tarefa apenas quando isso for seguro.
+- Para tarefas ambiguas em `Minhas tarefas`, pode inferir e promover para Reclaim quando o proximo passo parecer claro.
+- Em duplicata entre `Minhas tarefas` e Reclaim, o Reclaim vence.
+- Pode completar ou deletar tarefas do Google Tasks quando forem claramente duplicadas ou concluidas. Use criterio conservador: nunca delete tarefa ambigua.
+- Pode corrigir prioridade errada automaticamente com `reclaim_task_set_priority`.
+
+## Rotinas semanais
+
+- Para rotinas semanais, use `gtasks_create_weekly_series` apenas depois de perguntar ate quando criar a serie.
+- Explique que a ferramenta cria tarefas individuais por semana, porque esse fluxo nao depende de recorrencia nativa do Reclaim a partir de Google Tasks.
+
+## Acoes do Reclaim
+
+- Use `reclaim_next_task` quando o usuario perguntar "o que faco agora", depois de planejar o dia ou depois de concluir uma tarefa.
+- Quando o usuario disser "terminei X", pode concluir direto com `reclaim_task_done`.
+- Quando o usuario disser "comecar X agora", use `reclaim_task_start`.
+- `reclaim_task_restart` e apenas para reiniciar tarefa.
+- Quando o usuario disser "parar tarefa atual", pode usar `reclaim_task_stop`.
+- Use `reclaim_task_snooze` quando o usuario explicitar que concluiu algo agora, mas precisa revisitar o problema ou tarefa depois de um periodo.
+- Para desbloqueio, primeiro tente `reclaim_event_unlock`; se `Unlock` nao aparecer, prefira snooze com preset claro e validacao visual. Considere que, em alguns menus do Reclaim, a opcao disponivel pode aparecer como `Reschedule` em vez de `Snooze`; nesse caso, nao execute automaticamente salvo quando a opcao e o resultado final forem confirmados visualmente. Nao use snooze nem reschedule com data/hora customizada como workaround de unlock sem validar antes, porque o Reclaim pode reinterpretar fuso e empurrar a tarefa para outro dia/horario. Depois verifique a agenda antes de tentar unlock novamente.
+- Use `reclaim_task_up_next` para colocar uma tarefa simples ou importante como proxima execucao, preservando a intencao de fazer logo.
+- Use `reclaim_event_unlock` para desbloquear via evento no calendario quando a tarefa estiver bloqueada ou locked no Reclaim. Evento com `🔒` no inicio do titulo e locked real. Nao confunda com edicao direta de tarefa.
+- Se a tarefa ainda nao apareceu no DOM do Reclaim por sincronizacao pendente, aguarde a sincronizacao em vez de tentar acionar ferramentas do Reclaim sobre algo invisivel na UI.
+
+
+## Autenticacao e sessao
+
+- Se Google Tasks, Calendar ou Drive retornarem `invalid_grant`, use `python3 jarvis.py google-auth-refresh --force` para renovar o OAuth unico.
+- `mcp-status` deve validar Google Tasks com chamada real, nao apenas por presenca de token ou escopos.
+- Reclaim usa sessao de UI em perfil Playwright. Se a janela visivel de login estiver aberta sem CDP, feche antes de acionar automacao headless.
+- Se Reclaim cair em login ou captcha durante automacao, rode `reclaim_session_bootstrap(open_browser=true)`, conclua login/captcha e confirme com `manual_login_confirmed=true`.
+
+## Frases gatilho
+
+- "planeje meu dia" significa simular com `plan_day_from_tasks`, sem aplicar.
+- "aplica o plano" ou "coloca na agenda" significa aplicar via `plan_day_apply` e depois verificar locked events.
+- "o que faco agora?" significa consultar `reclaim_next_task`.
+- "terminei X" significa concluir X no Reclaim.
+- "comecar X agora" significa iniciar X com `reclaim_task_start`.
+- "parar tarefa atual" significa parar com `reclaim_task_stop`.
+- "toda terca fazer X" significa perguntar ate quando criar a serie antes de usar `gtasks_create_weekly_series`.
+
+
 <!-- aligntrue:rule AGENTS.md -->
 
 ## Agents
@@ -450,4 +579,7 @@ comandos:
   instalação_skills_codex: "$skill-installer <nome-da-skill>"
   criação_skills_codex: "$skill-creator"
   verificação_mcp: "/mcp"
+## AI Context References
+- Documentation index: `.context/docs/README.md`
+- Agent playbooks: `.context/agents/README.md`
 
