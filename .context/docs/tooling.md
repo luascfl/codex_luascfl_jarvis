@@ -105,11 +105,12 @@ python3 jarvis.py context-stack-check .
 python3 jarvis.py workflow-stack --help
 python3 jarvis.py mcp-status
 python3 jarvis.py mcp-sync-clients
+python3 jarvis.py sync-agent-assets
 ```
 
-## Sincronização de prompts e skills
+## Sincronização de agent assets
 
-`python3 jarvis.py mcp-sync-clients` lê as fontes versionadas abaixo e sincroniza os clientes globais:
+`python3 jarvis.py sync-agent-assets` lê as fontes versionadas abaixo e sincroniza os clientes globais. `mcp-sync-clients` fica restrito à configuração MCP e ao bridge Codex/Gemini:
 
 | Fonte no repositório | Destino sincronizado |
 |---|---|

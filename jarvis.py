@@ -13292,6 +13292,261 @@ def _sync_project_context_entrypoints() -> dict:
     }
 
 
+def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
+    if quiet:
+        import contextlib
+        import io
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            return _sync_agent_assets_core(target_home=target_home, quiet=False)
+
+    source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
+    source_gemini_rules = BASE_DIR / "global_rule_sync" / "GEMINI.md"
+    if not source_rules.exists():
+        print(f"❌ AGENTS consolidado não encontrado em {source_rules}. Rode 'aligntrue sync'.", file=sys.stderr)
+        return 1
+
+    codex_system_prompt = _resolve_system_prompt_file("codex_system.md")
+    gemini_system_prompt = _resolve_system_prompt_file("gemini_system.md")
+    omp_system_prompt = _resolve_system_prompt_file("omp_system.md")
+
+    explicit_target_home = (target_home or "").strip()
+    env_target_home = os.environ.get("AGCAO_USER_HOME", "").strip()
+    homes: list[Path] = []
+    if explicit_target_home:
+        homes.append(Path(explicit_target_home).expanduser())
+    else:
+        homes.append(Path.home())
+        if env_target_home:
+            homes.append(Path(env_target_home).expanduser())
+
+    dedup_homes: list[Path] = []
+    for home in homes:
+        if home not in dedup_homes:
+            dedup_homes.append(home)
+    homes = dedup_homes
+
+    def _write_or_update(path: Path, content: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+    def _ensure_key_line(content: str, key: str, value_expr: str) -> str:
+        line = f"{key} = {value_expr}"
+        pattern = re.compile(rf"^\s*{re.escape(key)}\s*=.*$", re.MULTILINE)
+        if pattern.search(content):
+            return pattern.sub(line, content)
+        lines = content.splitlines()
+        idx = len(lines)
+        for i, existing in enumerate(lines):
+            if existing.strip().startswith("["):
+                idx = i
+                break
+        new_lines = lines[:idx]
+        if new_lines and new_lines[-1].strip() != "":
+            new_lines.append("")
+        new_lines.append(line)
+        if idx < len(lines) and lines[idx].strip() != "":
+            new_lines.append("")
+        new_lines.extend(lines[idx:])
+        out = "\n".join(new_lines)
+        if out and not out.endswith("\n"):
+            out += "\n"
+        return out
+
+    def _copy_named_files(source_dir: Path, target_dir: Path, *, suffixes: set[str], label: str) -> int:
+        if not source_dir.exists():
+            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
+            return 0
+        target_dir.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for source in sorted(source_dir.iterdir()):
+            if not source.is_file() or source.name.startswith("."):
+                continue
+            if suffixes and source.suffix.lower() not in suffixes:
+                continue
+            try:
+                _write_or_update(target_dir / source.name, source.read_text(encoding="utf-8"))
+                copied += 1
+            except Exception as exc:
+                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
+        return copied
+
+    def _sync_prompts(home: Path) -> tuple[int, int, int, int]:
+        source_root = BASE_DIR / "prompts_sync"
+        copied_codex = _copy_named_files(
+            source_root / "codex",
+            home / ".codex" / "prompts",
+            suffixes={".md"},
+            label="Prompts Codex",
+        )
+        copied_gemini = _copy_named_files(
+            source_root / "gemini",
+            home / ".gemini" / "commands",
+            suffixes={".toml"},
+            label="Prompts Gemini",
+        )
+
+        omp_source_dir = source_root / "omp"
+        omp_prompts_dir = home / ".omp" / "agent" / "prompts"
+        omp_commands_dir = home / ".omp" / "agent" / "commands"
+        copied_omp_prompts = 0
+        copied_omp_commands = 0
+        if not omp_source_dir.exists():
+            print(f"⚠️ Prompts OMP: origem não encontrada em {omp_source_dir}")
+        else:
+            omp_prompts_dir.mkdir(parents=True, exist_ok=True)
+            omp_commands_dir.mkdir(parents=True, exist_ok=True)
+            for source in sorted(omp_source_dir.iterdir()):
+                if not source.is_file() or source.name.startswith(".") or source.suffix.lower() != ".md":
+                    continue
+                try:
+                    prompt_content = source.read_text(encoding="utf-8")
+                except Exception as exc:
+                    print(f"⚠️ Prompts OMP: falha ao ler {source}: {exc}")
+                    continue
+
+                prompt_name = source.stem
+                legacy_prompt_alias = omp_prompts_dir / f"prompts:{prompt_name}.md"
+                if legacy_prompt_alias.exists() or legacy_prompt_alias.is_symlink():
+                    try:
+                        legacy_prompt_alias.unlink()
+                    except Exception as exc:
+                        print(f"⚠️ Prompts OMP: falha ao remover alias legado {legacy_prompt_alias}: {exc}")
+
+                legacy_command_target = omp_commands_dir / source.name
+                if legacy_command_target.exists() or legacy_command_target.is_symlink():
+                    try:
+                        legacy_command_target.unlink()
+                    except Exception as exc:
+                        print(f"⚠️ Prompts OMP: falha ao remover comando legado {legacy_command_target}: {exc}")
+
+                _write_or_update(omp_prompts_dir / source.name, prompt_content)
+                copied_omp_prompts += 1
+                _write_or_update(omp_commands_dir / f"prompts:{prompt_name}.md", prompt_content)
+                copied_omp_commands += 1
+
+        print(
+            "✅ Prompts sincronizados "
+            f"(Codex: {copied_codex}, Gemini commands: {copied_gemini}, "
+            f"OMP prompts: {copied_omp_prompts}, OMP commands: {copied_omp_commands})"
+        )
+        return copied_codex, copied_gemini, copied_omp_prompts, copied_omp_commands
+
+    def _copy_skill_collection(source_dir: Path, target_root: Path, *, label: str) -> int:
+        if not source_dir.exists():
+            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
+            return 0
+        target_root.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for source in sorted(source_dir.iterdir()):
+            if not source.is_dir() or source.name.startswith("."):
+                continue
+            if not (source / "SKILL.md").exists():
+                continue
+            target = target_root / source.name
+            if target.exists() and not target.is_dir():
+                print(f"⚠️ {label}: destino não é diretório, pulando {target}")
+                continue
+            try:
+                shutil.copytree(
+                    source,
+                    target,
+                    dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__", ".git", ".DS_Store"),
+                )
+                copied += 1
+            except Exception as exc:
+                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
+        return copied
+
+    def _sync_skills(home: Path) -> tuple[int, int, int, int]:
+        source_root = BASE_DIR / "skills_sync"
+        copied_codex = _copy_skill_collection(source_root / "codex", home / ".codex" / "skills", label="Skills Codex")
+        copied_gemini = _copy_skill_collection(source_root / "gemini", home / ".gemini" / "skills", label="Skills Gemini")
+        copied_omp = _copy_skill_collection(
+            source_root / "omp" / "skills",
+            home / ".omp" / "agent" / "skills",
+            label="Skills OMP",
+        )
+        copied_omp_managed = _copy_skill_collection(
+            source_root / "omp" / "managed-skills",
+            home / ".omp" / "agent" / "managed-skills",
+            label="Managed skills OMP",
+        )
+        print(
+            "✅ Skills sincronizadas "
+            f"(Codex: {copied_codex}, Gemini: {copied_gemini}, "
+            f"OMP: {copied_omp}, OMP managed: {copied_omp_managed})"
+        )
+        return copied_codex, copied_gemini, copied_omp, copied_omp_managed
+
+    def _ensure_symlink(link: Path, target: Path, *, label: str) -> None:
+        link.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if link.exists() or link.is_symlink():
+                if link.is_dir() and not link.is_symlink():
+                    print(f"⚠️ {label} não atualizado (destino é diretório): {link}")
+                    return
+                link.unlink(missing_ok=True)
+        except Exception:
+            pass
+        try:
+            os.symlink(str(target), str(link))
+            print(f"✅ Link criado: {link} -> {target}")
+        except FileExistsError:
+            pass
+        except Exception as exc:
+            print(f"⚠️ Não foi possível criar link {link}: {exc}")
+
+    def _sync_global_rules(home: Path) -> None:
+        gemini_rule_source = source_gemini_rules if source_gemini_rules.exists() else source_rules
+        links = [
+            (home / ".codex" / "AGENTS.md", source_rules, "Codex AGENTS"),
+            (home / ".gemini" / "GEMINI.md", gemini_rule_source, "Gemini GEMINI"),
+            (home / ".omp" / "agent" / "AGENTS.md", source_rules, "OMP AGENTS"),
+            (home / ".omp" / "agent" / "rules" / source_rules.name, source_rules, "OMP rule"),
+        ]
+        for link, target, label in links:
+            _ensure_symlink(link, target, label=label)
+        print("✅ Global rules sincronizadas.")
+
+    def _sync_system_prompts(home: Path) -> None:
+        if codex_system_prompt.exists():
+            config_path = home / ".codex" / "config.toml"
+            content = config_path.read_text(encoding="utf-8", errors="ignore") if config_path.exists() else ""
+            content = _ensure_key_line(content, "model_instructions_file", json.dumps(str(codex_system_prompt)))
+            _write_or_update(config_path, content)
+            print(f"✅ Codex system prompt apontado em {config_path}")
+
+        if gemini_system_prompt.exists():
+            bashrc = home / ".bashrc"
+            line = f'export GEMINI_SYSTEM_MD="{gemini_system_prompt}"'
+            content = bashrc.read_text(encoding="utf-8", errors="ignore") if bashrc.exists() else ""
+            lines = [ln for ln in content.splitlines() if not ln.startswith("export GEMINI_SYSTEM_MD=")]
+            lines.append(line)
+            _write_or_update(bashrc, "\n".join(lines).rstrip() + "\n")
+            print(f"✅ Gemini system prompt apontado em {bashrc}")
+
+        prompt_source: Path | None = None
+        for candidate in [omp_system_prompt, codex_system_prompt, gemini_system_prompt, source_rules]:
+            if candidate.exists():
+                prompt_source = candidate
+                break
+        if prompt_source is not None:
+            omp_system_path = home / ".omp" / "agent" / "APPEND_SYSTEM.md"
+            _write_or_update(omp_system_path, prompt_source.read_text(encoding="utf-8", errors="ignore"))
+            print(f"✅ Oh My Pi APPEND_SYSTEM.md atualizado em {omp_system_path}")
+
+    for home in homes:
+        _sync_global_rules(home)
+        _sync_system_prompts(home)
+        _sync_prompts(home)
+        _sync_skills(home)
+
+    print("✅ sync-agent-assets concluído.")
+    return 0
+
+
 def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool = False) -> int:
     if quiet:
         import contextlib
@@ -13301,7 +13556,7 @@ def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool
             return _sync_mcp_core(target_home=target_home, include_sudo=include_sudo, quiet=False)
 
     # Importante: contexto de projeto fica no workflow (`workflow_stack(action="context_refresh")`).
-    # Aqui sincronizamos apenas clientes, prompts e configuração global dos agentes CLI.
+    # Agent assets ficam em `sync-agent-assets`; aqui sincronizamos apenas configuração MCP/bridge.
 
     source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
     if not source_rules.exists():
@@ -13901,12 +14156,6 @@ startup_timeout_sec = 300.0
     for h in homes:
         _update_gemini_settings(h)
         _update_codex_config(h)
-        _sync_prompts(h)
-        _sync_skills(h)
-        _create_links(h)
-        _sync_omp_context(h)
-
-    _generate_gemini_system_md()
 
     should_sync_sudo = include_sudo and os.geteuid() != 0 and not explicit_target_home
     if should_sync_sudo:
@@ -13974,6 +14223,14 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     google_auth = sub.add_parser("google-auth-refresh", help="Renova OAuth Google Workspace usado por Tasks, Calendar e Drive.")
     google_auth.add_argument("--force", action="store_true", help="Renomeia token.json atual e força novo consentimento OAuth.")
 
+
+
+    assets_sync = sub.add_parser(
+        "sync-agent-assets",
+        help="Sincroniza prompts, system prompts, global rules e skills para os clientes.",
+    )
+    assets_sync.add_argument("--target-home", default="", help=argparse.SUPPRESS)
+    assets_sync.add_argument("--quiet", action="store_true", help=argparse.SUPPRESS)
 
 
     sync = sub.add_parser("mcp-sync-clients", help="Sincroniza jarvis entre codex, codex sudo, gemini e Oh My Pi.")
@@ -14871,6 +15128,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{action.get('target')}: {action.get('detail')}")
         return 0 if action.get("ok") else 1
 
+
+
+    if args.command == "sync-agent-assets":
+        return _sync_agent_assets_core(
+            target_home=getattr(args, "target_home", ""),
+            quiet=bool(getattr(args, "quiet", False)),
+        )
 
 
     if args.command == "mcp-sync-clients":

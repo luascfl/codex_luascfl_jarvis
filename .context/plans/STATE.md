@@ -13,15 +13,17 @@ Verificação executada no Jarvis local:
 
 ```bash
 .venv-super/bin/python3 -m py_compile jarvis.py
-python3 jarvis.py mcp-sync-clients --target-home /home/lucas/Downloads/codex_luascfl_jarvis/.sync-test-home --no-sudo --skip-bridge --no-gemini
+python3 jarvis.py sync-agent-assets --target-home /home/lucas/Downloads/codex_luascfl_jarvis/.sync-assets-test
+python3 jarvis.py mcp-sync-clients --target-home /home/lucas/Downloads/codex_luascfl_jarvis/.sync-mcp-test --no-sudo --skip-bridge --no-gemini --quiet-core
 graphify update .
 ```
 
 Resultado observado:
 
 - `jarvis.py` compila sem erro.
-- Prompts sincronizam por cliente: Codex em `prompts_sync/codex`, Gemini em `prompts_sync/gemini`, Oh My Pi em `prompts_sync/omp`.
-- `skills_sync` sincroniza skills de Codex, Gemini, Oh My Pi e managed skills do Oh My Pi.
+- `sync-agent-assets` sincroniza prompts por cliente: Codex em `prompts_sync/codex`, Gemini em `prompts_sync/gemini`, Oh My Pi em `prompts_sync/omp`.
+- `sync-agent-assets` sincroniza `skills_sync` para Codex, Gemini, Oh My Pi e managed skills do Oh My Pi.
+- `mcp-sync-clients` não copia prompts ou skills no sandbox testado.
 - Graphify atualizou `.context/graphify-out`.
 
 ## Próxima ação operacional
@@ -34,9 +36,10 @@ npm install -g @ai-coders/context get-shit-done-cc @iannuttall/ralph
 python3 jarvis.py context-stack-harden && python3 jarvis.py context-stack-check .
 ```
 
-Depois, se os clientes MCP precisarem receber os artefatos atualizados:
+Depois, se os clientes precisarem receber artefatos de agente ou configuração MCP:
 
 ```bash
+python3 jarvis.py sync-agent-assets
 python3 jarvis.py mcp-sync-clients
 ```
 
