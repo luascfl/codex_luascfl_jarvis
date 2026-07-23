@@ -64,6 +64,7 @@ python3 jarvis.py context-stack-check .
 - Se recomendar `goal`, `/loop`, `/vibe`, `orchestrat` + `e`, `workflow` + `z`, `prewalk` ou `omp --max-time`, inclua o comando ou prompt exato para o usuário copiar.
 - Não combine `goal` com `/loop` como padrão; para melhoria contínua com tempo fechado, recomende limite externo da sessão, por exemplo `omp --max-time=30m`, junto com um `/goal set ...` objetivo e verificável.
 - Se o usuário já ativou um modo ou pediu um comando explícito, respeite isso e explique só o ajuste necessário.
+- **Evite loops de sugestão:** ao final da execução de um modo (seja ele qual for), **não sugira novamente o mesmo modo com o mesmo prompt**, a não ser que a execução anterior tenha falhado, retornado erro, entrado em loop, demorado muito além do necessário ou finalizado sem progresso visível. Se a tarefa fluiu bem, passe para a próxima etapa em modo normal ou aguarde instrução, em vez de cuspir o mesmo prompt de modo repetidamente.
 
 ### Templates padrão para goal e loop
 - **Goal padrão compatível com Graphify + AI Coders Context + GSD + Ralph:**
