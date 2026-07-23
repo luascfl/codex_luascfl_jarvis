@@ -12,22 +12,32 @@
 Verificação executada no Jarvis local:
 
 ```bash
-python3 jarvis.py context-stack-harden
+.venv-super/bin/python3 -m py_compile jarvis.py
+python3 jarvis.py mcp-sync-clients --target-home /home/lucas/Downloads/codex_luascfl_jarvis/.sync-test-home --no-sudo --skip-bridge --no-gemini
+graphify update .
 ```
 
-Resultado esperado:
+Resultado observado:
 
-- AI Coders Context instalado e endurecido.
-- GSD instalado e com path `.context/plans` aplicado.
-- Ralph instalado, templates prontos e PRD apontando para `.context/workflow/prd.json`.
-- Graphify endurecido para usar `.context/graphify-out`.
+- `jarvis.py` compila sem erro.
+- Prompts sincronizam por cliente: Codex em `prompts_sync/codex`, Gemini em `prompts_sync/gemini`, Oh My Pi em `prompts_sync/omp`.
+- `skills_sync` sincroniza skills de Codex, Gemini, Oh My Pi e managed skills do Oh My Pi.
+- Graphify atualizou `.context/graphify-out`.
 
 ## Próxima ação operacional
 
-Quando houver atualização de dependências globais do contexto, rodar:
+Quando houver atualização de dependências globais do contexto, reinstalar apenas os pacotes canônicos e reaplicar o hardening:
 
 ```bash
-python3 jarvis.py context-stack-harden && python3 jarvis.py mcp-sync-clients
+npm uninstall -g @wiggumdev/ralph @ralph-orchestrator/ralph-cli ralph-wiggum-cli rlph-cli
+npm install -g @ai-coders/context get-shit-done-cc @iannuttall/ralph
+python3 jarvis.py context-stack-harden && python3 jarvis.py context-stack-check .
+```
+
+Depois, se os clientes MCP precisarem receber os artefatos atualizados:
+
+```bash
+python3 jarvis.py mcp-sync-clients
 ```
 
 ## Riscos conhecidos

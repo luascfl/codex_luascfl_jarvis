@@ -13531,71 +13531,144 @@ startup_timeout_sec = 300.0
         _write_or_update(config_path, content)
         print(f"✅ Codex config atualizado em {config_path}")
 
-    def _sync_codex_prompts(home: Path) -> None:
-        source_prompts_dir = BASE_DIR / "prompts_sync"
+    def _copy_named_files(source_dir: Path, target_dir: Path, *, suffixes: set[str], label: str) -> int:
+        if not source_dir.exists():
+            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
+            return 0
+        target_dir.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for source in sorted(source_dir.iterdir()):
+            if not source.is_file() or source.name.startswith("."):
+                continue
+            if suffixes and source.suffix.lower() not in suffixes:
+                continue
+            try:
+                _write_or_update(target_dir / source.name, source.read_text(encoding="utf-8"))
+                copied += 1
+            except Exception as exc:
+                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
+        return copied
+
+    def _sync_prompts(home: Path) -> None:
+        source_root = BASE_DIR / "prompts_sync"
+        codex_source_dir = source_root / "codex"
+        gemini_source_dir = source_root / "gemini"
+        omp_source_dir = source_root / "omp"
+
         codex_prompts_dir = home / ".codex" / "prompts"
+        gemini_commands_dir = home / ".gemini" / "commands"
         omp_agent_dir = home / ".omp" / "agent"
         omp_prompts_dir = omp_agent_dir / "prompts"
         omp_commands_dir = omp_agent_dir / "commands"
 
-        codex_prompts_dir.mkdir(parents=True, exist_ok=True)
-        omp_prompts_dir.mkdir(parents=True, exist_ok=True)
-        omp_commands_dir.mkdir(parents=True, exist_ok=True)
+        copied_codex = _copy_named_files(
+            codex_source_dir,
+            codex_prompts_dir,
+            suffixes={".md"},
+            label="Prompts Codex",
+        )
+        copied_gemini = _copy_named_files(
+            gemini_source_dir,
+            gemini_commands_dir,
+            suffixes={".toml"},
+            label="Prompts Gemini",
+        )
 
-        if not source_prompts_dir.exists():
-            print(f"⚠️ prompts_sync não encontrado em {source_prompts_dir}")
-            return
-
-        copied_codex = 0
         copied_omp_prompts = 0
         copied_omp_commands = 0
-
-        for source in sorted(source_prompts_dir.glob("*.md")):
-            if source.name.startswith("."):
-                continue
-
-            try:
-                prompt_content = source.read_text(encoding="utf-8")
-            except Exception as exc:
-                print(f"⚠️ Falha ao ler prompt {source}: {exc}")
-                continue
-
-            prompt_name = source.stem
-            codex_targets = [codex_prompts_dir / source.name]
-            omp_prompt_targets = [
-                omp_prompts_dir / source.name,
-                omp_prompts_dir / f"prompts:{prompt_name}.md",
-            ]
-            legacy_omp_command_target = omp_commands_dir / source.name
-            if legacy_omp_command_target.exists():
+        if not omp_source_dir.exists():
+            print(f"⚠️ Prompts OMP: origem não encontrada em {omp_source_dir}")
+        else:
+            omp_prompts_dir.mkdir(parents=True, exist_ok=True)
+            omp_commands_dir.mkdir(parents=True, exist_ok=True)
+            for source in sorted(omp_source_dir.iterdir()):
+                if not source.is_file() or source.name.startswith(".") or source.suffix.lower() != ".md":
+                    continue
                 try:
-                    legacy_omp_command_target.unlink()
+                    prompt_content = source.read_text(encoding="utf-8")
                 except Exception as exc:
-                    print(f"⚠️ Falha ao remover comando legado {legacy_omp_command_target}: {exc}")
+                    print(f"⚠️ Prompts OMP: falha ao ler {source}: {exc}")
+                    continue
 
-            omp_command_targets = [
-                omp_commands_dir / f"prompts:{prompt_name}.md",
-            ]
+                prompt_name = source.stem
+                legacy_prompt_alias = omp_prompts_dir / f"prompts:{prompt_name}.md"
+                if legacy_prompt_alias.exists() or legacy_prompt_alias.is_symlink():
+                    try:
+                        legacy_prompt_alias.unlink()
+                    except Exception as exc:
+                        print(f"⚠️ Prompts OMP: falha ao remover alias legado {legacy_prompt_alias}: {exc}")
 
-            for target in codex_targets:
-                _write_or_update(target, prompt_content)
-                copied_codex += 1
+                legacy_command_target = omp_commands_dir / source.name
+                if legacy_command_target.exists() or legacy_command_target.is_symlink():
+                    try:
+                        legacy_command_target.unlink()
+                    except Exception as exc:
+                        print(f"⚠️ Prompts OMP: falha ao remover comando legado {legacy_command_target}: {exc}")
 
-            for target in omp_prompt_targets:
-                _write_or_update(target, prompt_content)
+                _write_or_update(omp_prompts_dir / source.name, prompt_content)
                 copied_omp_prompts += 1
-
-            for target in omp_command_targets:
-                _write_or_update(target, prompt_content)
+                _write_or_update(omp_commands_dir / f"prompts:{prompt_name}.md", prompt_content)
                 copied_omp_commands += 1
-
-        if copied_codex == 0:
-            print(f"⚠️ Nenhum prompt .md encontrado em {source_prompts_dir}")
-            return
 
         print(
             "✅ Prompts sincronizados "
-            f"(Codex: {copied_codex}, OMP prompts: {copied_omp_prompts}, OMP commands: {copied_omp_commands})"
+            f"(Codex: {copied_codex}, Gemini commands: {copied_gemini}, "
+            f"OMP prompts: {copied_omp_prompts}, OMP commands: {copied_omp_commands})"
+        )
+
+    def _copy_skill_collection(source_dir: Path, target_root: Path, *, label: str) -> int:
+        if not source_dir.exists():
+            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
+            return 0
+        target_root.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for source in sorted(source_dir.iterdir()):
+            if not source.is_dir() or source.name.startswith("."):
+                continue
+            if not (source / "SKILL.md").exists():
+                continue
+            target = target_root / source.name
+            if target.exists() and not target.is_dir():
+                print(f"⚠️ {label}: destino não é diretório, pulando {target}")
+                continue
+            try:
+                shutil.copytree(
+                    source,
+                    target,
+                    dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__", ".git", ".DS_Store"),
+                )
+                copied += 1
+            except Exception as exc:
+                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
+        return copied
+
+    def _sync_skills(home: Path) -> None:
+        source_root = BASE_DIR / "skills_sync"
+        copied_codex = _copy_skill_collection(
+            source_root / "codex",
+            home / ".codex" / "skills",
+            label="Skills Codex",
+        )
+        copied_gemini = _copy_skill_collection(
+            source_root / "gemini",
+            home / ".gemini" / "skills",
+            label="Skills Gemini",
+        )
+        copied_omp = _copy_skill_collection(
+            source_root / "omp" / "skills",
+            home / ".omp" / "agent" / "skills",
+            label="Skills OMP",
+        )
+        copied_omp_managed = _copy_skill_collection(
+            source_root / "omp" / "managed-skills",
+            home / ".omp" / "agent" / "managed-skills",
+            label="Managed skills OMP",
+        )
+        print(
+            "✅ Skills sincronizadas "
+            f"(Codex: {copied_codex}, Gemini: {copied_gemini}, "
+            f"OMP: {copied_omp}, OMP managed: {copied_omp_managed})"
         )
 
     def _update_gemini_settings(home: Path) -> None:
@@ -13828,7 +13901,8 @@ startup_timeout_sec = 300.0
     for h in homes:
         _update_gemini_settings(h)
         _update_codex_config(h)
-        _sync_codex_prompts(h)
+        _sync_prompts(h)
+        _sync_skills(h)
         _create_links(h)
         _sync_omp_context(h)
 
