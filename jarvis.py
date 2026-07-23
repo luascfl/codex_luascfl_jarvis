@@ -11062,37 +11062,38 @@ def _run_internal_smoke_test_step() -> dict:
     }
 
 
-def _run_internal_context_update_step() -> dict:
+def _run_internal_context_update_step(target_dir: Path | None = None) -> dict:
+    work_dir = target_dir or Path.cwd()
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    export_dir = BASE_DIR / RALPH_RUNTIME_REL / "exports"
+    export_dir = work_dir / RALPH_RUNTIME_REL / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
     report_path = export_dir / f"us001_context_routine_report-{run_id}.md"
 
     init_out = Path(tempfile.mkdtemp(prefix=f"ai-context-init-{run_id}-"))
     steps: list[dict] = []
     try:
-        project_entrypoints = _sync_project_context_entrypoints()
+        project_entrypoints = _sync_project_context_entrypoints(target_dir=work_dir)
         steps.append({"name": "project_context_entrypoints", **project_entrypoints})
         if not project_entrypoints.get("ok"):
             return {"ok": False, "returncode": project_entrypoints.get("returncode", 1), "steps": steps}
 
         ai_context_exec = _resolve_ai_coders_context_exec(install_if_missing=True)
         init_cmd = [*ai_context_exec, "init", ".", "docs", "-o", str(init_out)]
-        steps.append({"name": "init", **_run_capture_command(init_cmd, cwd=BASE_DIR, timeout_sec=900)})
+        steps.append({"name": "init", **_run_capture_command(init_cmd, cwd=work_dir, timeout_sec=900)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
 
         docs_src = init_out / "docs"
-        docs_dst = BASE_DIR / ".context" / "docs"
+        docs_dst = work_dir / ".context" / "docs"
         docs_dst.mkdir(parents=True, exist_ok=True)
         if docs_src.exists():
             shutil.rmtree(docs_dst, ignore_errors=True)
             shutil.copytree(docs_src, docs_dst)
         removed_dirs: list[str] = []
-        for unsupported_dir in [BASE_DIR / ".context" / "agents", BASE_DIR / ".context" / "skills"]:
+        for unsupported_dir in [work_dir / ".context" / "agents", work_dir / ".context" / "skills"]:
             if unsupported_dir.exists():
                 shutil.rmtree(unsupported_dir, ignore_errors=True)
-                removed_dirs.append(str(unsupported_dir.relative_to(BASE_DIR)))
+                removed_dirs.append(str(unsupported_dir.relative_to(work_dir)))
         steps.append(
             {
                 "name": "sync_context_dirs",
@@ -11108,40 +11109,50 @@ def _run_internal_context_update_step() -> dict:
         fill_cmd = [*ai_context_exec, "fill", ".", "-o", "./.context", "-p", "openai", "-m", "openai/gpt-4o-mini"]
         if os.environ.get("OPENAI_BASE_URL", "").strip():
             fill_cmd += ["--base-url", os.environ["OPENAI_BASE_URL"]]
-        steps.append({"name": "fill", **_run_capture_command(fill_cmd, cwd=BASE_DIR, timeout_sec=1200)})
+        steps.append({"name": "fill", **_run_capture_command(fill_cmd, cwd=work_dir, timeout_sec=1200)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
 
         report_cmd = [*ai_context_exec, "report", ".", "-f", "markdown", "-o", str(report_path)]
-        steps.append({"name": "report", **_run_capture_command(report_cmd, cwd=BASE_DIR, timeout_sec=600)})
+        steps.append({"name": "report", **_run_capture_command(report_cmd, cwd=work_dir, timeout_sec=600)})
         if not steps[-1].get("ok"):
             return {"ok": False, "returncode": steps[-1].get("returncode", 1), "steps": steps}
+
+        graphify_bin = shutil.which("graphify")
+        if graphify_bin:
+            graphify_cmd = [graphify_bin, "update", "."]
+            steps.append({"name": "graphify_update", **_run_capture_command(graphify_cmd, cwd=work_dir, timeout_sec=1800)})
+            if not steps[-1].get("ok"):
+                print("⚠️ Graphify update falhou ou foi cancelado, prosseguindo mesmo assim.", file=sys.stderr)
 
         return {"ok": True, "returncode": 0, "steps": steps, "report_path": str(report_path)}
     finally:
         shutil.rmtree(init_out, ignore_errors=True)
 
 
-def _run_internal_quality_gates_step(label: str = "quality_gates") -> dict:
+def _run_internal_quality_gates_step(target_dir: Path | None = None, label: str = "quality_gates") -> dict:
+    work_dir = target_dir or Path.cwd()
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    export_dir = BASE_DIR / RALPH_RUNTIME_REL / "exports"
+    export_dir = work_dir / RALPH_RUNTIME_REL / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
     summary_path = export_dir / f"{label}_quality_gates_run-{run_id}.md"
     commands = []
-    py_target = "super_server_v6.py" if (BASE_DIR / "super_server_v6.py").exists() else "jarvis.py"
-    commands.append(("py_compile", ["python3", "-m", "py_compile", py_target], 180))
-    if py_target == "super_server_v6.py":
-        commands.append(("service_help", ["python3", "super_server_v6.py", "service", "--help"], 180))
-    else:
-        commands.append(("service_help", ["python3", "jarvis.py", "--help"], 180))
-    commands.append(("smoke", ["python3", "-c", "import jarvis, json; r=jarvis._run_internal_smoke_test_step(); print(json.dumps(r, ensure_ascii=False)); raise SystemExit(0 if r.get('ok') else 1)"], 120))
+    py_target = "super_server_v6.py" if (work_dir / "super_server_v6.py").exists() else ("jarvis.py" if (work_dir / "jarvis.py").exists() else None)
+    if py_target:
+        commands.append(("py_compile", ["python3", "-m", "py_compile", py_target], 180))
+        if py_target == "super_server_v6.py":
+            commands.append(("service_help", ["python3", "super_server_v6.py", "service", "--help"], 180))
+        else:
+            commands.append(("service_help", ["python3", "jarvis.py", "--help"], 180))
+        # Smoke test requires jarvis to be present
+        commands.append(("smoke", ["python3", "-c", "import jarvis, json; r=jarvis._run_internal_smoke_test_step(); print(json.dumps(r, ensure_ascii=False)); raise SystemExit(0 if r.get('ok') else 1)"], 120))
     commands.append(("codex_mcp_list", ["codex", "mcp", "list"], 120))
     commands.append(("gemini_mcp_list", ["env", "CI=1", "gemini", "mcp", "list"], int(os.environ.get("GEMINI_MCP_TIMEOUT", "60"))))
 
     results: list[dict] = []
     overall_ok = True
     for name, cmd, timeout_sec in commands:
-        step = _run_capture_command(cmd, cwd=BASE_DIR, timeout_sec=timeout_sec)
+        step = _run_capture_command(cmd, cwd=work_dir, timeout_sec=timeout_sec)
         step["name"] = name
         results.append(step)
         overall_ok = overall_ok and bool(step.get("ok"))
@@ -11284,7 +11295,7 @@ def workflow_stack(
     results: dict = {"action": op, "ok": True, "workspace": str(workspace), "steps": []}
 
     if op in {"context_refresh", "cycle"}:
-        step = _run_internal_context_update_step()
+        step = _run_internal_context_update_step(target_dir=Path.cwd())
         results["steps"].append({"name": "context_refresh", **step})
         results["ok"] = results["ok"] and bool(step.get("ok"))
         if op == "context_refresh":
@@ -11302,7 +11313,7 @@ def workflow_stack(
 
     if op == "cycle" and run_quality_gates:
         label = (story_label or ((results["steps"][-1].get("next_story") or {}).get("id") if results["steps"] else "") or "cycle").strip()
-        step = _run_internal_quality_gates_step(label=label)
+        step = _run_internal_quality_gates_step(target_dir=Path.cwd(), label=label)
         results["steps"].append({"name": "quality_gates", "label": label, **step})
         results["ok"] = results["ok"] and bool(step.get("ok"))
 
@@ -13220,14 +13231,15 @@ def _merge_context_stack_layout(root: Path = BASE_DIR) -> dict:
     }
 
 
-def _sync_project_context_entrypoints() -> dict:
+def _sync_project_context_entrypoints(target_dir: Path | None = None) -> dict:
+    work_dir = target_dir or Path.cwd()
     source_rules = BASE_DIR / "global_rule_sync" / "AGENTS.md"
     source_gemini_rules = BASE_DIR / "global_rule_sync" / "GEMINI.md"
     context_dirs = [
-        BASE_DIR / ".context" / "docs",
-        BASE_DIR / ".context" / "plans",
-        BASE_DIR / ".context" / "workflow",
-        BASE_DIR / ".context" / "graphify-out",
+        work_dir / ".context" / "docs",
+        work_dir / ".context" / "plans",
+        work_dir / ".context" / "workflow",
+        work_dir / ".context" / "graphify-out",
     ]
 
     missing_sources = [str(p.relative_to(BASE_DIR)) for p in [source_rules, source_gemini_rules] if not p.exists()]
@@ -13243,15 +13255,15 @@ def _sync_project_context_entrypoints() -> dict:
     for d in context_dirs:
         d.mkdir(parents=True, exist_ok=True)
         try:
-            ensured_dirs.append(str(d.relative_to(BASE_DIR)))
+            ensured_dirs.append(str(d.relative_to(work_dir)))
         except Exception:
             ensured_dirs.append(str(d))
 
     synced_files: list[str] = []
     try:
-        (BASE_DIR / "AGENTS.md").write_text(source_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+        (work_dir / "AGENTS.md").write_text(source_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
         synced_files.append("AGENTS.md")
-        (BASE_DIR / "GEMINI.md").write_text(source_gemini_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+        (work_dir / "GEMINI.md").write_text(source_gemini_rules.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
         synced_files.append("GEMINI.md")
     except Exception as exc:
         return {
@@ -13263,9 +13275,9 @@ def _sync_project_context_entrypoints() -> dict:
             "synced_files": synced_files,
         }
 
-    remote_url = _project_origin_remote_url(BASE_DIR)
+    remote_url = _project_origin_remote_url(work_dir)
     github_remote = "github.com" in remote_url.lower()
-    readme_path = BASE_DIR / "README.md"
+    readme_path = work_dir / "README.md"
     readme_exists = readme_path.exists() or readme_path.is_symlink()
     readme_recommended = github_remote and not readme_exists
 
