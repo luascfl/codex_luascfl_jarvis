@@ -13723,42 +13723,6 @@ def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
             print(f"❌ Conflito: {conflict}")
         return counts, deleted_rels
 
-    def _generate_omp_prompt_commands(home: Path, source_root: Path, deleted_rels: list[str]) -> int:
-        prompts_dir = home / ".omp" / "agent" / "prompts"
-        commands_dir = home / ".omp" / "agent" / "commands"
-        source_items = _scan_files(source_root, {".md"})
-        generated = 0
-        cleanup_names = set(deleted_rels)
-        cleanup_names.update(source_items)
-        commands_dir.mkdir(parents=True, exist_ok=True)
-        for rel in sorted(cleanup_names):
-            prompt_name = Path(rel).stem
-            legacy_prompt_alias = prompts_dir / f"prompts:{prompt_name}.md"
-            if legacy_prompt_alias.exists() or legacy_prompt_alias.is_symlink():
-                _delete_path(legacy_prompt_alias, prompts_dir, label="Prompts OMP")
-            legacy_command_target = commands_dir / rel
-            if legacy_command_target.exists() or legacy_command_target.is_symlink():
-                _delete_path(legacy_command_target, commands_dir, label="Prompts OMP")
-            if rel in deleted_rels and rel not in source_items:
-                generated_command = commands_dir / f"prompts:{prompt_name}.md"
-                if generated_command.exists() or generated_command.is_symlink():
-                    _delete_path(generated_command, commands_dir, label="Prompts OMP")
-        for rel, entry in sorted(source_items.items()):
-            source_path = entry.get("path")
-            if not isinstance(source_path, Path):
-                continue
-            command_path = commands_dir / f"prompts:{source_path.stem}.md"
-            try:
-                content = source_path.read_text(encoding="utf-8")
-                current = command_path.read_text(encoding="utf-8", errors="ignore") if command_path.exists() else None
-                if current != content:
-                    _write_or_update(command_path, content)
-                generated += 1
-            except Exception as exc:
-                print(f"⚠️ Prompts OMP: falha ao gerar comando {command_path}: {exc}")
-        print(f"✅ Prompts OMP: comandos gerados={generated}")
-        return generated
-
     def _sync_prompts(home: Path, state: dict, home_key: str) -> dict[str, int]:
         source_root = BASE_DIR / "prompts_sync"
         total = _empty_counts()
@@ -13791,13 +13755,9 @@ def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
                 "blocked_names": set(),
             },
         ]
-        omp_deleted: list[str] = []
         for collection in collections:
             counts, deleted = _reconcile_collection(state=state, home_key=home_key, **collection)
             _add_counts(total, counts)
-            if collection["collection_key"] == "prompts.omp":
-                omp_deleted = deleted
-        _generate_omp_prompt_commands(home, source_root / "omp", omp_deleted)
         return total
 
     def _sync_skills(home: Path, state: dict, home_key: str) -> dict[str, int]:
