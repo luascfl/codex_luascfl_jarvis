@@ -1,0 +1,1029 @@
+1
+00:00:06,850 --> 00:00:09,975
+Avançando aqui para a próxima etapa,
+ele veio aqui,
+
+2
+00:00:09,975 --> 00:00:12,620
+é preciso mapear o campo nome,
+identidade, cidade
+
+3
+00:00:12,620 --> 00:00:13,802
+da empresa.
+
+4
+00:00:13,802 --> 00:00:17,328
+E a gente volta para
+checar o nosso mapeamento.
+
+5
+00:00:17,328 --> 00:00:19,732
+Eu estava mapeando
+aqui a cidade da pessoa e aí
+
+6
+00:00:19,732 --> 00:00:23,799
+passei a mapear a cidade
+da empresa.
+
+7
+00:00:23,799 --> 00:00:28,406
+Vou mapear aqui tudo
+como cidade da empresa.
+
+8
+00:00:28,406 --> 00:00:34,146
+E assim, mapear o nome e avançar
+para a próxima etapa.
+
+9
+00:00:34,146 --> 00:00:36,748
+Ele me dá um resumo aqui,
+pessoal, de nenhum erro
+
+10
+00:00:36,748 --> 00:00:38,550
+encontrado
+na planilha.
+
+11
+00:00:38,550 --> 00:00:42,714
+O que quer dizer que todas
+as linhas vão ser importadas.
+
+12
+00:00:42,714 --> 00:00:45,537
+Não teve nenhuma
+informação faltando, não teve
+
+13
+00:00:45,537 --> 00:00:49,200
+nenhuma informação que o
+sistema não conseguiu ler.
+
+14
+00:00:49,200 --> 00:00:49,801
+Nenhum erro.
+
+15
+00:00:49,801 --> 00:00:53,024
+A gente pode prosseguir
+finalmente com a importação.
+
+16
+00:00:53,024 --> 00:00:54,766
+A gente confirma.
+
+17
+00:00:54,766 --> 00:00:56,888
+E aqui ele já
+está me mostrando.
+
+18
+00:00:56,888 --> 00:01:00,631
+Ele vai me dando um resumo
+de linhas processadas,
+
+19
+00:01:00,631 --> 00:01:02,953
+linhas processadas com sucesso,
+linhas processadas
+
+20
+00:01:02,953 --> 00:01:04,129
+com erro,
+
+21
+00:01:04,129 --> 00:01:08,718
+Entidades criadas, ou seja, a somatória
+de pessoas e empresas
+
+22
+00:01:08,718 --> 00:01:13,366
+criadas durante essa
+importação e entidades atualizadas.
+
+23
+00:01:13,366 --> 00:01:17,633
+E aqui a gente vai acompanhando
+até o final.
+
+24
+00:01:17,633 --> 00:01:21,139
+Você pode ver que essa
+barrinha vai preenchendo
+
+25
+00:01:21,139 --> 00:01:25,206
+até que a gente receba a nossa
+mensagem final de importação.
+
+26
+00:01:25,206 --> 00:01:26,709
+Dependendo do tamanho
+da planilha que você está
+
+27
+00:01:26,709 --> 00:01:30,306
+querendo importar, você
+pode levar aí alguns minutos.
+
+28
+00:01:30,306 --> 00:01:33,069
+Depois do tempo carregando,
+a gente tem aqui a mensagem
+
+29
+00:01:33,069 --> 00:01:35,332
+de
+importação concluída.
+
+30
+00:01:35,332 --> 00:01:39,676
+Ele continua te retornando
+quantas linhas foram processadas,
+
+31
+00:01:39,676 --> 00:01:42,159
+quantas foram com sucesso
+ou com erro, número de entidades
+
+32
+00:01:42,159 --> 00:01:45,182
+criadas e entidades atualizadas.
+
+33
+00:01:45,182 --> 00:01:48,846
+A gente clica em finalizar
+a importação.
+
+34
+00:01:48,846 --> 00:01:50,748
+A tela já some.
+
+35
+00:01:50,748 --> 00:01:52,470
+E a gente pode ver aqui,
+por exemplo, a nossa base
+
+36
+00:01:52,470 --> 00:01:54,793
+de pessoas.
+
+37
+00:01:54,793 --> 00:01:58,437
+Já o nome de cada um dos
+nossos contatos que a
+
+38
+00:01:58,437 --> 00:02:01,090
+gente importou.
+
+39
+00:02:01,090 --> 00:02:04,034
+Pode clicar em cima
+para checar a página.
+
+40
+00:02:04,034 --> 00:02:07,259
+Pode ver que o link com a
+empresa já está feito certinho.
+
+41
+00:02:07,259 --> 00:02:11,765
+E a empresa está
+criada da maneira correta.
+
+42
+00:02:11,765 --> 00:02:15,250
+E assim a gente conseguiu
+passar de uma base de clientes
+
+43
+00:02:15,250 --> 00:02:19,697
+e de contatos zerada
+para uma base com mais de 2
+
+44
+00:02:19,697 --> 00:02:23,623
+mil itens para você
+fazer a sua gestão de clientes,
+
+45
+00:02:23,623 --> 00:02:27,066
+criar seus negócios,
+suas vendas e tudo mais.
+
+46
+00:02:39,266 --> 00:02:42,691
+Com a planilha carregada,
+como a gente disse no último vídeo,
+
+47
+00:02:42,691 --> 00:02:46,096
+a gente avança para a etapa
+de mapeamento,
+
+48
+00:02:46,096 --> 00:02:49,561
+clicando aqui
+em próxima etapa.
+
+49
+00:02:49,561 --> 00:02:52,665
+Agora que a gente tem que
+mapear os campos do Plumes
+
+50
+00:02:52,665 --> 00:02:56,311
+com a nossa planilha, o que
+vai acontecer, pessoal?
+
+51
+00:02:56,311 --> 00:02:58,774
+Você tem que pensar
+muito bem, a gente tem que
+
+52
+00:02:58,774 --> 00:03:02,019
+planejar bem a nossa
+planilha para que a gente não chegue
+
+53
+00:03:02,019 --> 00:03:07,362
+aqui e tenha que ter
+algum tipo de retrabalho
+
+54
+00:03:07,362 --> 00:03:09,705
+para mudar a planilha
+para depois fazer a importação
+
+55
+00:03:09,705 --> 00:03:10,727
+de novo.
+
+56
+00:03:10,727 --> 00:03:13,570
+Eu vou para a planilha
+que a gente está utilizando
+
+57
+00:03:13,570 --> 00:03:15,213
+para a gente
+dar uma olhada.
+
+58
+00:03:15,213 --> 00:03:17,456
+Nesse caso, o que
+eu vou estar fazendo?
+
+59
+00:03:17,456 --> 00:03:19,979
+Como o Plumes entende
+por clientes, tanto pessoas
+
+60
+00:03:19,979 --> 00:03:24,545
+quanto empresas, eu vou
+estar criando diretamente
+
+61
+00:03:24,545 --> 00:03:28,891
+pessoas e empresas de uma
+vez só, com a mesma planilha.
+
+62
+00:03:28,891 --> 00:03:31,054
+E como eu estou
+fazendo isso?
+
+63
+00:03:31,054 --> 00:03:33,538
+Como eu tinha dito lá no
+primeiro vídeo, cada coluna
+
+64
+00:03:33,538 --> 00:03:36,898
+da minha
+planilha vai corresponder
+
+65
+00:03:36,898 --> 00:03:40,003
+a um
+campo do Plumes.
+
+66
+00:03:40,003 --> 00:03:43,047
+Então, você tem ali já o
+seu Plumes estruturado com X
+
+67
+00:03:43,047 --> 00:03:46,152
+informações sobre as pessoas
+e X informações sobre
+
+68
+00:03:46,152 --> 00:03:46,833
+as empresas.
+
+69
+00:03:46,833 --> 00:03:50,278
+Você criou seus campos
+de cliente dentro do Plumes.
+
+70
+00:03:50,278 --> 00:03:52,582
+Na hora que você for importar,
+você vai ou extrair
+
+71
+00:03:52,582 --> 00:03:55,065
+essa base de outro
+sistema que você estava utilizando,
+
+72
+00:03:55,065 --> 00:03:56,908
+ou você vai realmente
+preparar essa planilha para
+
+73
+00:03:56,908 --> 00:04:01,675
+fazer uma importação, a gente
+tem que deixar isso certinho.
+
+74
+00:04:01,675 --> 00:04:04,600
+Então, eu comecei aqui
+com informação das pessoas,
+
+75
+00:04:04,600 --> 00:04:07,362
+nome, sobrenome,
+
+76
+00:04:07,362 --> 00:04:13,428
+o endereço, cidade,
+estado, a sigla do estado na UF,
+
+77
+00:04:13,428 --> 00:04:17,652
+país, o e-mail de contato,
+telefone, tem informação
+
+78
+00:04:17,652 --> 00:04:19,373
+de aniversário.
+
+79
+00:04:19,373 --> 00:04:21,295
+E também eu tenho
+informação da empresa, eu tenho
+
+80
+00:04:21,295 --> 00:04:23,117
+menos informação aqui
+da empresa, eu tenho só o
+
+81
+00:04:23,117 --> 00:04:26,660
+nome dessa
+empresa por aqui.
+
+82
+00:04:26,660 --> 00:04:30,444
+Mas eu posso vir aqui e adicionar,
+por exemplo, a coluna CNPJ,
+
+83
+00:04:30,444 --> 00:04:33,547
+se eu já quiser jogar isso para
+dentro do Plumes, ou categoria
+
+84
+00:04:33,547 --> 00:04:36,994
+de cliente, ou qualquer
+informação que você já capture
+
+85
+00:04:36,994 --> 00:04:39,538
+da sua base de clientes
+dentro do Plumes.
+
+86
+00:04:39,538 --> 00:04:42,984
+O importante é, a gente está
+sempre fazendo a correspondência
+
+87
+00:04:42,984 --> 00:04:47,992
+de cada linha da nossa
+planilha ser a informação de um
+
+88
+00:04:47,992 --> 00:04:50,316
+cliente ou uma pessoa.
+
+89
+00:04:50,316 --> 00:04:52,740
+Não tem como a gente
+criar aqui, por exemplo,
+
+90
+00:04:52,740 --> 00:04:56,887
+quatro, cinco linhas da mesma
+empresa e você só preenche
+
+91
+00:04:56,887 --> 00:05:00,793
+ali as
+informações em algumas delas.
+
+92
+00:05:00,793 --> 00:05:02,416
+Cada uma dessas
+linhas vai estar com uma
+
+93
+00:05:02,416 --> 00:05:04,162
+informação
+diferente da empresa.
+
+94
+00:05:04,162 --> 00:05:07,325
+porque aí na hora da gente
+fazer a seleção dentro do Plumes,
+
+95
+00:05:07,325 --> 00:05:10,329
+a gente vai ter que
+escolher um campo para eliminar
+
+96
+00:05:10,329 --> 00:05:12,651
+esse tipo
+de duplicidade.
+
+97
+00:05:12,651 --> 00:05:17,416
+Então, por aqui, a gente
+está criando, focando em criar
+
+98
+00:05:17,416 --> 00:05:19,859
+só uma vez as empresas,
+mas cada uma das
+
+99
+00:05:19,859 --> 00:05:23,143
+empresas pode ter mais
+de uma pessoa na nossa base.
+
+100
+00:05:23,143 --> 00:05:26,286
+Se você achar mais fácil,
+faça essa importação
+
+101
+00:05:26,286 --> 00:05:29,269
+primeiro só das empresas,
+com todas as informações
+
+102
+00:05:29,269 --> 00:05:33,858
+da empresa, e aí depois
+faça a importação dos contatos
+
+103
+00:05:33,858 --> 00:05:37,362
+Apenas com a informação da qual
+empresa eles pertencem,
+
+104
+00:05:37,362 --> 00:05:39,984
+nome e todas as informações
+obrigatórias que você
+
+105
+00:05:39,984 --> 00:05:43,147
+achar necessário
+para os seus contatos.
+
+106
+00:05:43,147 --> 00:05:44,749
+Beleza?
+
+107
+00:05:44,749 --> 00:05:46,971
+Então, nossa
+planilha é preparada.
+
+108
+00:05:46,971 --> 00:05:51,936
+A gente vai fazer uma importação
+de clientes e contatos conjuntamente.
+
+109
+00:05:51,936 --> 00:05:53,498
+Vou voltar
+para o Plumes.
+
+110
+00:05:53,498 --> 00:05:55,960
+A gente vai fazer
+o mapeamento.
+
+111
+00:05:55,960 --> 00:05:57,122
+E aí a gente começa.
+
+112
+00:05:57,122 --> 00:05:59,684
+Primeira coluna é o
+nome da pessoa.
+
+113
+00:05:59,684 --> 00:06:01,858
+Você pode ver que
+você tem aqui...
+
+114
+00:06:01,858 --> 00:06:05,422
+no campo de cima, na caixinha
+que fica em branco,
+
+115
+00:06:05,422 --> 00:06:08,726
+a correspondência de qual
+entidade do plumes a gente
+
+116
+00:06:08,726 --> 00:06:11,490
+está falando que aquela
+coluna corresponde.
+
+117
+00:06:11,490 --> 00:06:17,317
+Então aqui é pessoa,
+inclusive já está aqui até com o nome,
+
+118
+00:06:17,317 --> 00:06:20,220
+já é detectado
+automaticamente dependendo da nomeação
+
+119
+00:06:20,220 --> 00:06:22,683
+de colunas
+que você fez.
+
+120
+00:06:22,683 --> 00:06:26,007
+E vem a opção de detectar
+duplicado por esse campo.
+
+121
+00:06:26,007 --> 00:06:28,350
+Não vou colocar detectar
+duplicado por esse campo,
+
+122
+00:06:28,350 --> 00:06:30,433
+porque pode ter mais de um
+Matheus na minha planilha,
+
+123
+00:06:30,433 --> 00:06:31,650
+pode ter mais
+de um Pedro,
+
+124
+00:06:31,650 --> 00:06:35,434
+eu vou utilizar informações
+que façam sentido de eliminar
+
+125
+00:06:35,434 --> 00:06:37,335
+essa duplicidade.
+
+126
+00:06:37,335 --> 00:06:44,062
+Então, eu estou aqui,
+nome, como o sobrenome não tem
+
+127
+00:06:44,062 --> 00:06:46,745
+aqui o campo específico,
+eu posso até não mapear
+
+128
+00:06:46,745 --> 00:06:51,269
+esse campo, então não vai
+vir essa informação.
+
+129
+00:06:51,269 --> 00:06:59,997
+O endereço da pessoa,
+cidade, cidade da empresa da pessoa,
+
+130
+00:06:59,997 --> 00:07:01,794
+posso mapear até
+
+131
+00:07:01,794 --> 00:07:05,377
+Os dois campos,
+na cidade da pessoa.
+
+132
+00:07:05,377 --> 00:07:06,959
+Nome.
+
+133
+00:07:06,959 --> 00:07:10,202
+Aqui ele já vem
+detectado por esse campo para
+
+134
+00:07:10,202 --> 00:07:15,967
+impedir que criem-se
+novas cidades dentro do Plumes.
+
+135
+00:07:15,967 --> 00:07:18,048
+Cidade da pessoa.
+
+136
+00:07:20,852 --> 00:07:22,392
+Estado.
+
+137
+00:07:26,517 --> 00:07:28,219
+Cidade da pessoa.
+
+138
+00:07:28,219 --> 00:07:29,340
+Estado também.
+
+139
+00:07:29,340 --> 00:07:32,578
+Lembrando sempre que as
+informações de localização
+
+140
+00:07:32,578 --> 00:07:35,302
+estão aqui com esse
+detectar duplicado para evitar
+
+141
+00:07:35,302 --> 00:07:41,029
+que se criem novas
+cidades e estados dentro daqui.
+
+142
+00:07:41,029 --> 00:07:46,317
+E aí, por fim, cidade,
+pessoa, país, mais uma vez, eu vou
+
+143
+00:07:46,317 --> 00:07:50,122
+utilizar o campo de e-mail
+para detectar os meus duplicados,
+
+144
+00:07:50,122 --> 00:07:52,525
+porque cada contato só tem
+um e-mail, então se tiver
+
+145
+00:07:52,525 --> 00:07:54,227
+duas vezes ali o mesmo e-mail,
+quer dizer que eu
+
+146
+00:07:54,227 --> 00:07:57,832
+estou tentando importar
+duas vezes a mesma pessoa.
+
+147
+00:07:57,832 --> 00:08:00,956
+Então, pessoa, e-mail, e eu
+vou botar para detectar
+
+148
+00:08:00,956 --> 00:08:03,842
+duplicado
+por esse campo.
+
+149
+00:08:03,842 --> 00:08:06,426
+Código de país
+eu não vou colocar.
+
+150
+00:08:06,426 --> 00:08:08,108
+Pessoa.
+
+151
+00:08:08,108 --> 00:08:10,691
+Vou importar
+os seus telefones.
+
+152
+00:08:14,258 --> 00:08:17,823
+Eu não tenho aqui o campo
+data de nascimento, por exemplo,
+
+153
+00:08:17,823 --> 00:08:19,285
+para
+importar o aniversário.
+
+154
+00:08:19,285 --> 00:08:22,790
+Então, eu simplesmente
+posso não importar esse campo.
+
+155
+00:08:22,790 --> 00:08:26,376
+Ou então, volto para o meu Plumes,
+crio essa informação,
+
+156
+00:08:26,376 --> 00:08:27,457
+crio esse campo.
+
+157
+00:08:27,457 --> 00:08:30,582
+E aí sim, faço a correspondência.
+
+158
+00:08:30,582 --> 00:08:32,485
+Finalmente, o meu
+campo de empresa.
+
+159
+00:08:32,485 --> 00:08:34,850
+Então, empresa.
+
+160
+00:08:34,850 --> 00:08:41,179
+nome e vou detectar
+duplicado por esse campo para
+
+161
+00:08:41,179 --> 00:08:47,649
+que ele não crie mais de uma
+vez a mesma empresa
+
+162
+00:08:47,649 --> 00:08:54,840
+e por fim pessoa e o cargo eu já
+posso clicar aqui na próxima
+
+163
+00:08:54,840 --> 00:08:58,445
+etapa que é onde a gente
+vai ver o resumo da nossa
+
+164
+00:08:58,445 --> 00:09:00,026
+importação
+
+165
+00:09:12,994 --> 00:09:15,036
+Já estamos aqui no nosso
+Plumes para a gente
+
+166
+00:09:15,036 --> 00:09:19,501
+começar a nossa
+importação de clientes e contatos.
+
+167
+00:09:19,501 --> 00:09:21,063
+Estou na tela
+de resumo.
+
+168
+00:09:21,063 --> 00:09:24,687
+Eu vou primeiro clicar para
+visitar a minha tela de clientes.
+
+169
+00:09:24,687 --> 00:09:27,189
+E aí vocês podem ver que
+eu limpei essa conta teste
+
+170
+00:09:27,189 --> 00:09:29,592
+que a gente está
+usando para esse curso.
+
+171
+00:09:29,592 --> 00:09:33,676
+Não tem nenhuma empresa
+e nenhuma pessoa cadastrada.
+
+172
+00:09:33,676 --> 00:09:37,881
+A gente vai fazer todos
+esses cadastros via importação.
+
+173
+00:09:37,881 --> 00:09:39,234
+Estou aqui na minha
+tela de clientes.
+
+174
+00:09:39,234 --> 00:09:42,018
+Para fazer essa importação,
+você como usuário tem que
+
+175
+00:09:42,018 --> 00:09:43,701
+ter a
+permissão para isso.
+
+176
+00:09:43,701 --> 00:09:46,184
+O seu perfil tem que ser
+o administrador ou então
+
+177
+00:09:46,184 --> 00:09:48,808
+qualquer tipo de perfil
+desde que tenha a permissão
+
+178
+00:09:48,808 --> 00:09:51,753
+expressa para
+fazer a importação.
+
+179
+00:09:51,753 --> 00:09:55,458
+Você vai em
+menu aqui em cima.
+
+180
+00:09:55,458 --> 00:09:58,723
+E aqui a gente vai selecionar
+a opção de importar
+
+181
+00:09:58,723 --> 00:10:00,946
+clientes pelo Excel.
+
+182
+00:10:00,946 --> 00:10:04,892
+E aí a gente vai se
+deparar com essa tela aqui.
+
+183
+00:10:04,892 --> 00:10:07,456
+Essa tela está mostrando
+para a gente as três etapas
+
+184
+00:10:07,456 --> 00:10:08,834
+que a
+gente vai passar
+
+185
+00:10:08,834 --> 00:10:11,818
+para fazer essa importação,
+também a maioria,
+
+186
+00:10:11,818 --> 00:10:14,841
+qualquer outra
+importação dentro do Plumes.
+
+187
+00:10:14,841 --> 00:10:17,685
+A gente carrega uma planilha primeiro,
+depois faz um
+
+188
+00:10:17,685 --> 00:10:20,909
+mapeamento de campos,
+quais colunas da sua
+
+189
+00:10:20,909 --> 00:10:23,712
+planilha correspondem
+a quais campos do Plumes.
+
+190
+00:10:23,712 --> 00:10:26,115
+E aí, por último, tem um
+resumo ali que já adianta
+
+191
+00:10:26,115 --> 00:10:28,518
+para a gente se existe
+alguma linha com erro, algo
+
+192
+00:10:28,518 --> 00:10:32,342
+que não conseguiu
+ser lido pelo sistema.
+
+193
+00:10:32,342 --> 00:10:36,848
+E aí, de fato, a gente
+finaliza a importação.
+
+194
+00:10:36,848 --> 00:10:38,109
+Primeira coisa que a
+gente tem que fazer aqui,
+
+195
+00:10:38,109 --> 00:10:38,850
+então,
+
+196
+00:10:38,850 --> 00:10:43,315
+é o upload da planilha
+clicando aqui ele vai abrir as suas
+
+197
+00:10:43,315 --> 00:10:46,378
+opções do computador
+você vai ali nos seus
+
+198
+00:10:46,378 --> 00:10:52,364
+downloads então na pasta
+onde você tiver saldo as suas
+
+199
+00:10:52,364 --> 00:10:55,848
+planilhas tem aqui essa
+planilha de clientes fake
+
+200
+00:10:55,848 --> 00:11:00,633
+aqui para colocar já está
+selecionada e aí a próxima
+
+201
+00:11:00,633 --> 00:11:03,196
+etapa que é a de
+mapeamento ela vai ter um
+
+202
+00:11:03,196 --> 00:11:05,298
+vídeozinho separado né que
+é o próximo vídeo para
+
+203
+00:11:05,298 --> 00:11:07,541
+a gente falar um pouco
+melhor sobre como esse
+
+204
+00:11:07,541 --> 00:11:08,898
+processo
+deve ser feito
+
+205
+00:11:08,898 --> 00:11:11,281
+não só nessa tela que a
+gente está vendo, mas na
+
+206
+00:11:11,281 --> 00:11:26,998
+sua preparação da planilha
+para importar para o Plumes.
+
+207
+00:11:26,998 --> 00:11:30,101
+Olá, seja bem-vindo a mais
+um curso da Universidade Plumes.
+
+208
+00:11:30,101 --> 00:11:32,403
+Eu sou o João e você é o
+seu instrutor nesse curso
+
+209
+00:11:32,403 --> 00:11:34,826
+que a gente começa
+agora sobre como importar
+
+210
+00:11:34,826 --> 00:11:37,689
+clientes e contatos para o seu
+Plumes a partir de uma
+
+211
+00:11:37,689 --> 00:11:38,754
+planilha Excel.
+
+212
+00:11:38,754 --> 00:11:39,347
+Vamos lá?
+

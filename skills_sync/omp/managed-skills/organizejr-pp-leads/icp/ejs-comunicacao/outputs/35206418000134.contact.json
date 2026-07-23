@@ -1,0 +1,64 @@
+{
+  "contact_goat": {
+    "error": "/home/lucas/go/bin/contact-goat-pp-cli failed: warning: Happenstance unavailable: --source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+    "status": "unavailable"
+  },
+  "input": "Pégaso",
+  "local_matches": [
+    {
+      "address": {
+        "city": "Curitiba",
+        "state": "PR"
+      },
+      "cnpj": "35.206.418/0001-34",
+      "contacts": {
+        "email": "produtorapegaso@gmail.com",
+        "site": "sem site no relatório"
+      },
+      "lead_context": {
+        "acessibilidade": "15",
+        "aderência": "30",
+        "camada": "Meio, EJs e startups",
+        "capacidade": "5.3",
+        "cidade_uf": "Curitiba/PR",
+        "classe": "A/B - validação ativa",
+        "cnpj": "35.206.418/0001-34",
+        "contato": "produtorapegaso@gmail.com",
+        "demanda": "8.6",
+        "encaixe": "14.0",
+        "evidência": "23 membros, 12 contratos, R$ 18.861,57 de faturamento, cluster 1, cursos: Comunicação Institucional, Design De Produto, Design Gráfico, Jornalismo, Produção Cênica, Publicidade E Propaganda, Relações Públicas",
+        "federação": "FEJEPAR",
+        "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+        "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+        "lead": "Pégaso",
+        "link_email_pronto": "mailto:produtorapegaso@gmail.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+P%C3%A9gaso.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+23+membros+e+12+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+        "lote": "Lote 2, escala da semana",
+        "oferta_sugerida": "Oficina de briefing, feedback e debriefing para squads criativos",
+        "ordem": "15",
+        "primeira_mensagem": "Oi, pessoal da Pégaso. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 23 membros e 12 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+        "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+        "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+        "score": "72.9",
+        "site": "sem site no relatório"
+      },
+      "name": "Pégaso",
+      "status": "lead-local",
+      "use_case": {
+        "label": "ejs comunicacao",
+        "name": "ejs-comunicacao"
+      }
+    }
+  ],
+  "prospecting_links": {
+    "email": "produtorapegaso@gmail.com",
+    "link_email_pronto": "mailto:produtorapegaso@gmail.com?body=Oi%2C+pessoal+da+P%C3%A9gaso.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+23+membros+e+12+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:produtorapegaso@gmail.com?body=Oi%2C+pessoal+da+P%C3%A9gaso.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+23+membros+e+12+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"} | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}",
+    "status": "unavailable"
+  },
+  "status": "contact-goat-local"
+}

@@ -1,0 +1,78 @@
+{
+  "contact_goat": {
+    "result": {
+      "company": "Rastro Agência Jr.",
+      "count": 0,
+      "results": [],
+      "scope": "Rastro Agência Jr.",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first"
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-14T20:36:22Z"
+    },
+    "status": "ok"
+  },
+  "input": "Rastro Agência Jr.",
+  "local_matches": [
+    {
+      "address": {
+        "city": "Fortaleza",
+        "state": "CE"
+      },
+      "cnpj": "23.353.442/0001-17",
+      "contacts": {
+        "email": "diretoria.rastroufc@gmail.com",
+        "site": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0TLOsSI4vKzA0YLRSMagwTzY3sUwzsUw0SE42SjS0MqgwTTWyME4xszBOS7ZIM7ZI8RIsSiwuKcpXSExPzUvOTFTIKgIA8bEVwA\u0026q=rastro+agencia+jr\u0026oq=ras\u0026aqs=chrome.1.69i57j46i39i175i199j0i131i433i512j0i433i512j0i131i433i512j69i60l3.1962j0j7\u0026sourceid=chrome\u0026ie=UTF-8"
+      },
+      "lead_context": {
+        "acessibilidade": "20",
+        "aderência": "26",
+        "camada": "Meio, EJs e startups",
+        "capacidade": "8.7",
+        "cidade_uf": "Fortaleza/CE",
+        "classe": "A/B - validação ativa",
+        "cnpj": "23.353.442/0001-17",
+        "contato": "diretoria.rastroufc@gmail.com",
+        "demanda": "10.3",
+        "encaixe": "11.0",
+        "evidência": "34 membros, 20 contratos, R$ 54.031,03 de faturamento, cluster 3, cursos: Comunicação Social - Publicidade E Propaganda",
+        "federação": "FEJECE",
+        "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+        "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+        "lead": "Rastro Agência Jr.",
+        "link_email_pronto": "mailto:diretoria.rastroufc@gmail.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+        "lote": "Lote 2, escala da semana",
+        "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+        "ordem": "11",
+        "primeira_mensagem": "Oi, pessoal da Rastro Agência Jr.. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 34 membros e 20 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+        "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+        "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+        "score": "76.0",
+        "site": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0TLOsSI4vKzA0YLRSMagwTzY3sUwzsUw0SE42SjS0MqgwTTWyME4xszBOS7ZIM7ZI8RIsSiwuKcpXSExPzUvOTFTIKgIA8bEVwA\u0026q=rastro+agencia+jr\u0026oq=ras\u0026aqs=chrome.1.69i57j46i39i175i199j0i131i433i512j0i433i512j0i131i433i512j69i60l3.1962j0j7\u0026sourceid=chrome\u0026ie=UTF-8"
+      },
+      "name": "Rastro Agência Jr.",
+      "status": "lead-local",
+      "use_case": {
+        "label": "ejs comunicacao",
+        "name": "ejs-comunicacao"
+      }
+    }
+  ],
+  "prospecting_links": {
+    "email": "diretoria.rastroufc@gmail.com",
+    "link_email_pronto": "mailto:diretoria.rastroufc@gmail.com?body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:diretoria.rastroufc@gmail.com?body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"} | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}",
+    "status": "unavailable"
+  },
+  "status": "contact-goat-local"
+}

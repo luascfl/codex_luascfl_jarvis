@@ -1,0 +1,340 @@
+{
+  "cnpj": "23.353.442/0001-17",
+  "company": {
+    "address": {
+      "city": "Fortaleza",
+      "state": "CE"
+    },
+    "casadosdados": {
+      "error": "Casa dos Dados API key not configured; set CASA_DADOS_API_KEY or PP_LEADS_CASA_DADOS_API_KEY",
+      "status": "unavailable"
+    },
+    "cnpj": "23.353.442/0001-17",
+    "contacts": {
+      "email": "diretoria.rastroufc@gmail.com",
+      "site": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0TLOsSI4vKzA0YLRSMagwTzY3sUwzsUw0SE42SjS0MqgwTTWyME4xszBOS7ZIM7ZI8RIsSiwuKcpXSExPzUvOTFTIKgIA8bEVwA&q=rastro+agencia+jr&oq=ras&aqs=chrome.1.69i57j46i39i175i199j0i131i433i512j0i433i512j0i131i433i512j69i60l3.1962j0j7&sourceid=chrome&ie=UTF-8"
+    },
+    "lead_context": {
+      "acessibilidade": "20",
+      "aderência": "26",
+      "camada": "Meio, EJs e startups",
+      "capacidade": "8.7",
+      "cidade_uf": "Fortaleza/CE",
+      "classe": "A/B - validação ativa",
+      "cnpj": "23.353.442/0001-17",
+      "contato": "diretoria.rastroufc@gmail.com",
+      "demanda": "10.3",
+      "encaixe": "11.0",
+      "evidência": "34 membros, 20 contratos, R$ 54.031,03 de faturamento, cluster 3, cursos: Comunicação Social - Publicidade E Propaganda",
+      "federação": "FEJECE",
+      "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+      "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+      "lead": "Rastro Agência Jr.",
+      "link_email_pronto": "mailto:diretoria.rastroufc@gmail.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+      "lote": "Lote 2, escala da semana",
+      "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+      "ordem": "11",
+      "pp_company_goat": "leads-brasil-pp-cli company-goat \"23.353.442/0001-17\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-company-goat.json",
+      "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Rastro Agência Jr.\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-contact-goat.json",
+      "pp_leads_company": "leads-brasil-pp-cli company \"23.353.442/0001-17\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-company.json",
+      "pp_leads_enrich": "leads-brasil-pp-cli enrich \"23.353.442/0001-17\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-enrich.json",
+      "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-scrape.json",
+      "primeira_mensagem": "Oi, pessoal da Rastro Agência Jr.. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 34 membros e 20 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+      "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+      "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+      "score": "76.0",
+      "site": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0TLOsSI4vKzA0YLRSMagwTzY3sUwzsUw0SE42SjS0MqgwTTWyME4xszBOS7ZIM7ZI8RIsSiwuKcpXSExPzUvOTFTIKgIA8bEVwA&q=rastro+agencia+jr&oq=ras&aqs=chrome.1.69i57j46i39i175i199j0i131i433i512j0i433i512j0i131i433i512j69i60l3.1962j0j7&sourceid=chrome&ie=UTF-8"
+    },
+    "name": "Rastro Agência Jr.",
+    "sources": [
+      "local_lead_table"
+    ],
+    "status": "lead-local",
+    "use_case": {
+      "label": "OrganizeJr | EJs de comunicação",
+      "name": "organizejr-ejs-comunicacao"
+    }
+  },
+  "company_goat": {
+    "result": {
+      "domain": "google.com",
+      "generated_at": "2026-07-11T12:55:42Z",
+      "sources": [
+        {
+          "data": {
+            "cik_summaries": [
+              {
+                "cik": "0001288776",
+                "entity_name": "Google Inc.",
+                "filing_count": 3,
+                "latest_filing_date": "2010-06-18",
+                "state_of_inc": "DELAWARE"
+              }
+            ],
+            "form_d_filings_count": 3,
+            "is_ambiguous": false,
+            "latest_filing": {
+              "accession": "0001288776-09-000002",
+              "amount_sold": 0,
+              "cik": "0001288776",
+              "entity_name": "Google Inc.",
+              "entity_type": "Corporation",
+              "exemptions_claimed": [
+                "06"
+              ],
+              "filing_date": "2009-11-24",
+              "industry_group": "Other Technology",
+              "offering_amount": 750000000,
+              "related_persons": [
+                {
+                  "name": "Eric Schmidt",
+                  "relationships": [
+                    "Executive Officer",
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Sergey Brin",
+                  "relationships": [
+                    "Executive Officer",
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Larry Page",
+                  "relationships": [
+                    "Executive Officer",
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "L. Doerr",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "K. Shriram",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "John Hennessy",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Paul Otellini",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Shirley Tilghman",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Ann Mather",
+                  "relationships": [
+                    "Director"
+                  ]
+                },
+                {
+                  "name": "Nikesh Arora",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                },
+                {
+                  "name": "Shona Brown",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                },
+                {
+                  "name": "david Drummond",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                },
+                {
+                  "name": "Alan Eustace",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                },
+                {
+                  "name": "Patrick Pichette",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                },
+                {
+                  "name": "Jonathan Rosenberg",
+                  "relationships": [
+                    "Executive Officer"
+                  ]
+                }
+              ],
+              "state_of_inc": "DELAWARE"
+            }
+          },
+          "elapsed": "1.683s",
+          "source": "funding",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "entity_type": "Corporation",
+            "issuer_name": "Google Inc.",
+            "region": "us",
+            "source": "SEC EDGAR Form D",
+            "state_inc": "DELAWARE"
+          },
+          "elapsed": "823ms",
+          "source": "legal",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "description": "Google ❤️ Open Source",
+            "followers": 75322,
+            "login": "google",
+            "public_repos": 2883
+          },
+          "elapsed": "715ms",
+          "source": "engineering",
+          "status": "ok"
+        },
+        {
+          "elapsed": "5.085s",
+          "note": "no Show HN posts found",
+          "source": "launches",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "344ms",
+          "note": "no HN mentions found",
+          "source": "mentions",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.233s",
+          "note": "no YC entry found",
+          "source": "yc",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "country": "",
+            "founded": "",
+            "founders": null,
+            "hq": "",
+            "industry": "",
+            "label": "list of Google domains",
+            "qid": "Q4679321"
+          },
+          "elapsed": "701ms",
+          "source": "wiki",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "expires": "2028-09-14T04:00:00Z",
+            "hosting": "Google DNS",
+            "hosting_cname": "google.com",
+            "nameservers": [
+              "ns3.google.com",
+              "ns4.google.com",
+              "ns1.google.com",
+              "ns2.google.com"
+            ],
+            "registered": "1997-09-15T04:00:00Z"
+          },
+          "elapsed": "887ms",
+          "source": "domain",
+          "status": "ok"
+        }
+      ]
+    },
+    "status": "ok"
+  },
+  "contact_goat": {
+    "result": {
+      "company": "Rastro Agência Jr.",
+      "count": 0,
+      "results": [],
+      "scope": "Rastro Agência Jr.",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+        "li_search": "tool \"search_people\" returned error: LinkedIn setup is not complete yet: the server is downloading the Patchright Chromium browser in the background and will use it automatically once ready. Do not install the browser yourself (no `patchright install` or `uv run patchright install`), and do not restart the server. A manual install only fights the background one for the same lock and slows it down. Just wait and call this tool again in a minute or two."
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-11T12:56:05Z"
+    },
+    "status": "ok"
+  },
+  "lead_context": {
+    "acessibilidade": "20",
+    "aderência": "26",
+    "camada": "Meio, EJs e startups",
+    "capacidade": "8.7",
+    "cidade_uf": "Fortaleza/CE",
+    "classe": "A/B - validação ativa",
+    "cnpj": "23.353.442/0001-17",
+    "contato": "diretoria.rastroufc@gmail.com",
+    "demanda": "10.3",
+    "encaixe": "11.0",
+    "evidência": "34 membros, 20 contratos, R$ 54.031,03 de faturamento, cluster 3, cursos: Comunicação Social - Publicidade E Propaganda",
+    "federação": "FEJECE",
+    "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+    "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+    "lead": "Rastro Agência Jr.",
+    "link_email_pronto": "mailto:diretoria.rastroufc@gmail.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+    "lote": "Lote 2, escala da semana",
+    "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+    "ordem": "11",
+    "pp_company_goat": "leads-brasil-pp-cli company-goat \"23.353.442/0001-17\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-company-goat.json",
+    "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Rastro Agência Jr.\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-contact-goat.json",
+    "pp_leads_company": "leads-brasil-pp-cli company \"23.353.442/0001-17\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-company.json",
+    "pp_leads_enrich": "leads-brasil-pp-cli enrich \"23.353.442/0001-17\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-enrich.json",
+    "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/23353442000117-scrape.json",
+    "primeira_mensagem": "Oi, pessoal da Rastro Agência Jr.. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 34 membros e 20 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+    "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+    "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+    "score": "76.0",
+    "site": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0TLOsSI4vKzA0YLRSMagwTzY3sUwzsUw0SE42SjS0MqgwTTWyME4xszBOS7ZIM7ZI8RIsSiwuKcpXSExPzUvOTFTIKgIA8bEVwA&q=rastro+agencia+jr&oq=ras&aqs=chrome.1.69i57j46i39i175i199j0i131i433i512j0i433i512j0i131i433i512j69i60l3.1962j0j7&sourceid=chrome&ie=UTF-8"
+  },
+  "prospecting_links": {
+    "email": "diretoria.rastroufc@gmail.com",
+    "link_email_pronto": "mailto:diretoria.rastroufc@gmail.com?body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:diretoria.rastroufc@gmail.com?body=Oi%2C+pessoal+da+Rastro+Ag%C3%AAncia+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+34+membros+e+20+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status. | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.",
+    "status": "unavailable"
+  },
+  "source": "local lead table + Casa dos Dados quando configurado",
+  "sources_used": [
+    "local_lead_table",
+    "casa_dos_dados",
+    "company-goat",
+    "contact-goat",
+    "scrape-creators"
+  ],
+  "status": "enriched-local",
+  "use_case": {
+    "label": "OrganizeJr | EJs de comunicação",
+    "name": "organizejr-ejs-comunicacao"
+  }
+}

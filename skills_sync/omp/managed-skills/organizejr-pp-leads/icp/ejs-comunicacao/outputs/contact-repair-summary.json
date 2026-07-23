@@ -1,0 +1,169 @@
+{
+  "report": {
+    "total": 20,
+    "ok": 20,
+    "failed": 0
+  },
+  "items": [
+    {
+      "row": 1,
+      "lead": "Facto Agência de Comunicação",
+      "cnpj": "11370755000102",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 2,
+      "lead": "Acesso Comunicação Júnior",
+      "cnpj": "04229669000100",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 3,
+      "lead": "Cria UFMG",
+      "cnpj": "03401931000190",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 4,
+      "lead": "Pupila Audiovisual",
+      "cnpj": "12556073000143",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 5,
+      "lead": "Produtora Júnior",
+      "cnpj": "08106974000166",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 6,
+      "lead": "Iris Comunicação",
+      "cnpj": "11674747000141",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 7,
+      "lead": "59mil",
+      "cnpj": "28769490000104",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 8,
+      "lead": "Ponto",
+      "cnpj": "23905004000114",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 9,
+      "lead": "Jangadeiros",
+      "cnpj": "34100549000170",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 10,
+      "lead": "Doisnovemeia Publicidade",
+      "cnpj": "01350243000112",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 11,
+      "lead": "Rastro Agência Jr.",
+      "cnpj": "23353442000117",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 12,
+      "lead": "Nuvem Jr.",
+      "cnpj": "31316267000116",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 13,
+      "lead": "Marketing Júnior USP",
+      "cnpj": "11565122000141",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 14,
+      "lead": "Matriz Comunicação",
+      "cnpj": "05607458000127",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 15,
+      "lead": "Pégaso",
+      "cnpj": "35206418000134",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 16,
+      "lead": "Agência de Comunicações ECA Jr.",
+      "cnpj": "67004424000103",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 17,
+      "lead": "ESPM Jr.",
+      "cnpj": "03419601000121",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 18,
+      "lead": "ESPM Jr.",
+      "cnpj": "67135038000142",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 19,
+      "lead": "Aspecto Empreendimento Criativo",
+      "cnpj": "14495150000128",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    },
+    {
+      "row": 20,
+      "lead": "Inventório - Empresa Júnior de Design e Moda",
+      "cnpj": "09548993000105",
+      "exit": 0,
+      "status": "ok",
+      "stderr": ""
+    }
+  ]
+}

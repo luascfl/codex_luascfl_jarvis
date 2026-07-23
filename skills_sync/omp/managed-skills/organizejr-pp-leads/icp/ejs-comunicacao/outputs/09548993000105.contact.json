@@ -1,0 +1,64 @@
+{
+  "contact_goat": {
+    "error": "/home/lucas/go/bin/contact-goat-pp-cli failed: warning: Happenstance unavailable: --source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+    "status": "unavailable"
+  },
+  "input": "Inventório - Empresa Júnior de Design e Moda",
+  "local_matches": [
+    {
+      "address": {
+        "city": "Florianópolis",
+        "state": "SC"
+      },
+      "cnpj": "09.548.993/0001-05",
+      "contacts": {
+        "email": "presidencia@inventorio.org.br",
+        "site": "http://inventorio.org.br/"
+      },
+      "lead_context": {
+        "acessibilidade": "20",
+        "aderência": "22",
+        "camada": "Meio, EJs e startups",
+        "capacidade": "11.6",
+        "cidade_uf": "Florianópolis/SC",
+        "classe": "Benchmark - validar maturidade",
+        "cnpj": "09.548.993/0001-05",
+        "contato": "presidencia@inventorio.org.br",
+        "demanda": "11.0",
+        "encaixe": "9.5",
+        "evidência": "21 membros, 23 contratos, R$ 148.172,56 de faturamento, cluster 5, cursos: Administração, Design Gráfico, Design - Industrial, Moda",
+        "federação": "FEJESC",
+        "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+        "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+        "lead": "Inventório - Empresa Júnior de Design e Moda",
+        "link_email_pronto": "mailto:presidencia@inventorio.org.br?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+Invent%C3%B3rio+-+Empresa+J%C3%BAnior+de+Design+e+Moda.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+21+membros+e+23+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+        "lote": "Lote 3, benchmark e maturidade",
+        "oferta_sugerida": "Oficina de briefing, feedback e debriefing para squads criativos",
+        "ordem": "20",
+        "primeira_mensagem": "Oi, pessoal da Inventório - Empresa Júnior de Design e Moda. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 21 membros e 23 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+        "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+        "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+        "score": "74.1",
+        "site": "http://inventorio.org.br/"
+      },
+      "name": "Inventório - Empresa Júnior de Design e Moda",
+      "status": "lead-local",
+      "use_case": {
+        "label": "ejs comunicacao",
+        "name": "ejs-comunicacao"
+      }
+    }
+  ],
+  "prospecting_links": {
+    "email": "presidencia@inventorio.org.br",
+    "link_email_pronto": "mailto:presidencia@inventorio.org.br?body=Oi%2C+pessoal+da+Invent%C3%B3rio+-+Empresa+J%C3%BAnior+de+Design+e+Moda.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+21+membros+e+23+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:presidencia@inventorio.org.br?body=Oi%2C+pessoal+da+Invent%C3%B3rio+-+Empresa+J%C3%BAnior+de+Design+e+Moda.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+21+membros+e+23+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"} | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}",
+    "status": "unavailable"
+  },
+  "status": "contact-goat-local"
+}

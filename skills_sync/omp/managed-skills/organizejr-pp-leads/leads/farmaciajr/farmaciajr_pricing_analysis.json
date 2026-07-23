@@ -1,0 +1,41 @@
+{
+  "source_workbook": "Tabela Orçamentária - serviços.xlsx",
+  "relevant_service_sheets_for_farmaciajr": {
+    "Consultoria": {
+      "gross_price": 446.96,
+      "discount_40_final": 268.18,
+      "discount_50_final": 223.48,
+      "fit_for_lead": "best base for pacote 1 or as pricing block inside pacote 2"
+    },
+    "Treinamento  desenvolvimento": {
+      "gross_price": 423.5,
+      "discount_40_final": 254.1,
+      "discount_50_final": 211.75,
+      "fit_for_lead": "best add-on for pacote 3 leadership training expansion"
+    },
+    "Pesquisa de clima org.": {
+      "gross_price": 285.1,
+      "discount_40_final": 171.06,
+      "discount_50_final": 142.55,
+      "fit_for_lead": "optional diagnostic add-on, not primary recommendation right now"
+    }
+  },
+  "currently_less_aligned_sheets": [
+    "R&S",
+    "Fit dps de R&S",
+    "Cópia de Fit dps de R&S",
+    "Cópia de Cópia de R&S"
+  ],
+  "workbook_issues": [
+    "Most sheets show discount amounts but not a consistently explicit final discounted price row.",
+    "Several sheets use MINUS() formulas, which are fragile for Excel compatibility and should be replaced with simple subtraction formulas.",
+    "The workbook is service-based, not package-based, so it does not yet map directly to Pacote 1 to 4 for Farmácia Jr."
+  ],
+  "pricing_direction_for_story_003": {
+    "package_1": "Anchor on consultoria-level diagnosis and executive prioritization.",
+    "package_2": "Use consultoria as the base and expand scope through additional structuring effort, not through standalone training.",
+    "package_3": "Package 2 plus one leadership training block.",
+    "package_4": "Package 3 plus broader sustainment or climate/engagement support."
+  },
+  "next_story_recommendation": "Create a package pricing ladder sheet for Farmácia Jr. that maps Pacotes 1-4 to workbook pricing blocks, fixes discount visibility, and makes final prices decision-ready."
+}

@@ -1,0 +1,269 @@
+{
+  "cnpj": "11.565.122/0001-41",
+  "company": {
+    "address": {
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "casadosdados": {
+      "error": "Casa dos Dados API key not configured; set CASA_DADOS_API_KEY or PP_LEADS_CASA_DADOS_API_KEY",
+      "status": "unavailable"
+    },
+    "cnpj": "11.565.122/0001-41",
+    "contacts": {
+      "email": "presidencia@marketingjr.com.br",
+      "site": "https://www.marketingjr.com.br/"
+    },
+    "lead_context": {
+      "acessibilidade": "20",
+      "aderência": "22",
+      "camada": "Meio, EJs e startups",
+      "capacidade": "13.0",
+      "cidade_uf": "São Paulo/SP",
+      "classe": "A/B - validação ativa",
+      "cnpj": "11.565.122/0001-41",
+      "contato": "presidencia@marketingjr.com.br",
+      "demanda": "14.0",
+      "encaixe": "9.5",
+      "evidência": "46 membros, 24 contratos, R$ 200.449,13 de faturamento, cluster 5, cursos: Marketing",
+      "federação": "FEJESP",
+      "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+      "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+      "lead": "Marketing Júnior USP",
+      "link_email_pronto": "mailto:presidencia@marketingjr.com.br?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Marketing+J%C3%BAnior+USP.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+46+membros+e+24+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+      "lote": "Lote 2, escala da semana",
+      "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+      "ordem": "13",
+      "pp_company_goat": "leads-brasil-pp-cli company-goat \"11.565.122/0001-41\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-company-goat.json",
+      "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Marketing Júnior USP\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-contact-goat.json",
+      "pp_leads_company": "leads-brasil-pp-cli company \"11.565.122/0001-41\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-company.json",
+      "pp_leads_enrich": "leads-brasil-pp-cli enrich \"11.565.122/0001-41\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-enrich.json",
+      "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-scrape.json",
+      "primeira_mensagem": "Oi, pessoal da Marketing Júnior USP. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 46 membros e 24 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+      "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+      "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+      "score": "78.5",
+      "site": "https://www.marketingjr.com.br/"
+    },
+    "name": "Marketing Júnior USP",
+    "sources": [
+      "local_lead_table"
+    ],
+    "status": "lead-local",
+    "use_case": {
+      "label": "OrganizeJr | EJs de comunicação",
+      "name": "organizejr-ejs-comunicacao"
+    }
+  },
+  "company_goat": {
+    "result": {
+      "domain": "marketingjr.com.br",
+      "generated_at": "2026-07-11T12:56:48Z",
+      "sources": [
+        {
+          "elapsed": "526ms",
+          "note": "no Form D filings found",
+          "source": "funding",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "526ms",
+          "note": "no US Form D issuer; UK lookup needs COMPANIES_HOUSE_API_KEY",
+          "source": "legal",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.952s",
+          "note": "no GitHub org found",
+          "source": "engineering",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "top_posts": [
+              {
+                "_tags": [
+                  "story",
+                  "author_vipulsharma144",
+                  "story_46871307",
+                  "show_hn"
+                ],
+                "author": "vipulsharma144",
+                "created_at": "2026-02-03T14:20:45Z",
+                "created_at_i": 1770128445,
+                "num_comments": 1,
+                "objectID": "46871307",
+                "points": 1,
+                "story_id": 46871307,
+                "title": "Show HN: Building a AI junior marketing team. tell me why this won't work",
+                "url": "https://www.blinkadz.com/"
+              },
+              {
+                "_tags": [
+                  "story",
+                  "author_pingananth",
+                  "story_46272018",
+                  "show_hn"
+                ],
+                "author": "pingananth",
+                "created_at": "2025-12-15T09:04:47Z",
+                "created_at_i": 1765789487,
+                "num_comments": 0,
+                "objectID": "46272018",
+                "points": 1,
+                "story_id": 46272018,
+                "title": "Show HN: I built a simulator to teach PMs why they shouldn't interrupt migration",
+                "url": "https://apmcommunication.com"
+              },
+              {
+                "_tags": [
+                  "story",
+                  "author_acjm",
+                  "story_43204082",
+                  "show_hn"
+                ],
+                "author": "acjm",
+                "created_at": "2025-02-28T10:38:38Z",
+                "created_at_i": 1740739118,
+                "num_comments": 0,
+                "objectID": "43204082",
+                "points": 1,
+                "story_id": 43204082,
+                "title": "Show HN: I Automated Resume ATS Checks – Open for Feedback",
+                "url": "https://www.resumeadapter.com/"
+              }
+            ],
+            "total_show_hn": 3
+          },
+          "elapsed": "13.612s",
+          "source": "launches",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "by_year_sample": {
+              "2010": 4,
+              "2011": 5,
+              "2012": 1,
+              "2013": 3,
+              "2014": 2,
+              "2017": 1,
+              "2018": 2,
+              "2019": 1,
+              "2023": 2,
+              "2024": 3,
+              "2025": 3,
+              "2026": 2
+            },
+            "total_mentions": 29
+          },
+          "elapsed": "725ms",
+          "source": "mentions",
+          "status": "ok"
+        },
+        {
+          "elapsed": "1.218s",
+          "note": "no YC entry found",
+          "source": "yc",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "693ms",
+          "note": "no Wikidata entry found",
+          "source": "wiki",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "expires": "2026-11-25T10:12:38Z",
+            "hosting": "",
+            "hosting_cname": "marketingjr.com.br",
+            "nameservers": [
+              "ns932.hostgator.com.br",
+              "ns933.hostgator.com.br"
+            ],
+            "registered": "2009-11-25T10:12:38Z"
+          },
+          "elapsed": "611ms",
+          "source": "domain",
+          "status": "ok"
+        }
+      ]
+    },
+    "status": "ok"
+  },
+  "contact_goat": {
+    "result": {
+      "company": "Marketing Júnior USP",
+      "count": 0,
+      "results": [],
+      "scope": "Marketing Júnior USP",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+        "li_search": "tool \"search_people\" returned error: LinkedIn setup is not complete yet: the server is downloading the Patchright Chromium browser in the background and will use it automatically once ready. Do not install the browser yourself (no `patchright install` or `uv run patchright install`), and do not restart the server. A manual install only fights the background one for the same lock and slows it down. Just wait and call this tool again in a minute or two."
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-11T12:57:07Z"
+    },
+    "status": "ok"
+  },
+  "lead_context": {
+    "acessibilidade": "20",
+    "aderência": "22",
+    "camada": "Meio, EJs e startups",
+    "capacidade": "13.0",
+    "cidade_uf": "São Paulo/SP",
+    "classe": "A/B - validação ativa",
+    "cnpj": "11.565.122/0001-41",
+    "contato": "presidencia@marketingjr.com.br",
+    "demanda": "14.0",
+    "encaixe": "9.5",
+    "evidência": "46 membros, 24 contratos, R$ 200.449,13 de faturamento, cluster 5, cursos: Marketing",
+    "federação": "FEJESP",
+    "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+    "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+    "lead": "Marketing Júnior USP",
+    "link_email_pronto": "mailto:presidencia@marketingjr.com.br?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Marketing+J%C3%BAnior+USP.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+46+membros+e+24+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+    "lote": "Lote 2, escala da semana",
+    "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+    "ordem": "13",
+    "pp_company_goat": "leads-brasil-pp-cli company-goat \"11.565.122/0001-41\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-company-goat.json",
+    "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Marketing Júnior USP\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-contact-goat.json",
+    "pp_leads_company": "leads-brasil-pp-cli company \"11.565.122/0001-41\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-company.json",
+    "pp_leads_enrich": "leads-brasil-pp-cli enrich \"11.565.122/0001-41\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-enrich.json",
+    "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/11565122000141-scrape.json",
+    "primeira_mensagem": "Oi, pessoal da Marketing Júnior USP. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 46 membros e 24 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+    "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+    "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+    "score": "78.5",
+    "site": "https://www.marketingjr.com.br/"
+  },
+  "prospecting_links": {
+    "email": "presidencia@marketingjr.com.br",
+    "link_email_pronto": "mailto:presidencia@marketingjr.com.br?body=Oi%2C+pessoal+da+Marketing+J%C3%BAnior+USP.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+46+membros+e+24+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:presidencia@marketingjr.com.br?body=Oi%2C+pessoal+da+Marketing+J%C3%BAnior+USP.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+46+membros+e+24+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status. | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.",
+    "status": "unavailable"
+  },
+  "source": "local lead table + Casa dos Dados quando configurado",
+  "sources_used": [
+    "local_lead_table",
+    "casa_dos_dados",
+    "company-goat",
+    "contact-goat",
+    "scrape-creators"
+  ],
+  "status": "enriched-local",
+  "use_case": {
+    "label": "OrganizeJr | EJs de comunicação",
+    "name": "organizejr-ejs-comunicacao"
+  }
+}

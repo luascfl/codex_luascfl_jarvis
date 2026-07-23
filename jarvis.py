@@ -13326,6 +13326,9 @@ def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
             dedup_homes.append(home)
     homes = dedup_homes
 
+    state_path = BASE_DIR / ".agent-assets-sync-state.json"
+    ignored_names = {".git", "__pycache__", ".DS_Store"}
+
     def _write_or_update(path: Path, content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
@@ -13353,132 +13356,475 @@ def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
             out += "\n"
         return out
 
-    def _copy_named_files(source_dir: Path, target_dir: Path, *, suffixes: set[str], label: str) -> int:
-        if not source_dir.exists():
-            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
-            return 0
-        target_dir.mkdir(parents=True, exist_ok=True)
-        copied = 0
-        for source in sorted(source_dir.iterdir()):
-            if not source.is_file() or source.name.startswith("."):
+    def _empty_counts() -> dict[str, int]:
+        return {"imported": 0, "deployed": 0, "updated": 0, "deleted": 0, "conflicts": 0}
+
+    def _add_counts(total: dict[str, int], delta: dict[str, int]) -> None:
+        for key in total:
+            total[key] += delta.get(key, 0)
+
+    def _home_key(home: Path) -> str:
+        try:
+            return str(home.expanduser().resolve(strict=False))
+        except Exception:
+            return str(home.expanduser().absolute())
+
+    def _load_state() -> dict:
+        if not state_path.exists():
+            return {"version": 1, "homes": {}}
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"⚠️ Estado de sync inválido em {state_path}; iniciando estado vazio: {exc}")
+            return {"version": 1, "homes": {}}
+        if not isinstance(data, dict):
+            return {"version": 1, "homes": {}}
+        if not isinstance(data.get("homes"), dict):
+            data["homes"] = {}
+        data["version"] = 1
+        return data
+
+    def _ensure_state_ignored() -> None:
+        git_dir = BASE_DIR / ".git"
+        if not git_dir.is_dir():
+            return
+        exclude_path = git_dir / "info" / "exclude"
+        try:
+            exclude_path.parent.mkdir(parents=True, exist_ok=True)
+            content = exclude_path.read_text(encoding="utf-8", errors="ignore") if exclude_path.exists() else ""
+            tracked_lines = {
+                line.strip()
+                for line in content.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            }
+            if state_path.name not in tracked_lines:
+                prefix = "" if not content or content.endswith("\n") else "\n"
+                with exclude_path.open("a", encoding="utf-8") as fh:
+                    fh.write(f"{prefix}{state_path.name}\n")
+        except Exception as exc:
+            print(f"⚠️ Não foi possível registrar {state_path.name} em .git/info/exclude: {exc}")
+
+    def _save_state(state: dict) -> None:
+        _ensure_state_ignored()
+        state["version"] = 1
+        if not isinstance(state.get("homes"), dict):
+            state["homes"] = {}
+        tmp_path = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
+        payload = json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path.write_text(payload, encoding="utf-8")
+        os.replace(tmp_path, state_path)
+
+    def _collection_items(state: dict, home_key: str, collection_key: str) -> dict[str, str]:
+        homes_state = state.setdefault("homes", {})
+        home_state = homes_state.get(home_key)
+        if not isinstance(home_state, dict):
+            return {}
+        collections = home_state.get("collections")
+        if not isinstance(collections, dict):
+            return {}
+        collection_state = collections.get(collection_key)
+        if not isinstance(collection_state, dict):
+            return {}
+        items = collection_state.get("items")
+        if isinstance(items, dict):
+            return {str(key): str(value) for key, value in items.items() if isinstance(value, str)}
+        return {str(key): str(value) for key, value in collection_state.items() if isinstance(value, str)}
+
+    def _set_collection_items(state: dict, home_key: str, collection_key: str, items: dict[str, str]) -> None:
+        homes_state = state.setdefault("homes", {})
+        home_state = homes_state.setdefault(home_key, {})
+        if not isinstance(home_state, dict):
+            home_state = {}
+            homes_state[home_key] = home_state
+        collections = home_state.setdefault("collections", {})
+        if not isinstance(collections, dict):
+            collections = {}
+            home_state["collections"] = collections
+        collections[collection_key] = {"items": dict(sorted(items.items()))}
+
+    def _hash_file(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _hash_skill_dir(path: Path) -> str:
+        digest = hashlib.sha256()
+        for item in sorted(path.rglob("*"), key=lambda p: p.relative_to(path).as_posix()):
+            rel = item.relative_to(path)
+            if any(part in ignored_names for part in rel.parts):
                 continue
-            if suffixes and source.suffix.lower() not in suffixes:
+            if not item.is_file():
+                continue
+            rel_name = rel.as_posix()
+            digest.update(b"file\0")
+            digest.update(rel_name.encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(_hash_file(item).encode("ascii"))
+            digest.update(b"\0")
+        return digest.hexdigest()
+
+    def _scan_files(root: Path, suffixes: set[str]) -> dict[str, dict[str, object]]:
+        entries: dict[str, dict[str, object]] = {}
+        if not root.exists():
+            return entries
+        if not root.is_dir():
+            print(f"⚠️ Coleção de prompts não é diretório: {root}")
+            return entries
+        for item in sorted(root.iterdir()):
+            if item.name.startswith(".") or not item.is_file():
+                continue
+            if suffixes and item.suffix.lower() not in suffixes:
                 continue
             try:
-                _write_or_update(target_dir / source.name, source.read_text(encoding="utf-8"))
-                copied += 1
+                entries[item.name] = {"path": item, "hash": _hash_file(item)}
             except Exception as exc:
-                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
-        return copied
+                print(f"⚠️ Falha ao calcular hash de {item}: {exc}")
+        return entries
 
-    def _sync_prompts(home: Path) -> tuple[int, int, int, int]:
-        source_root = BASE_DIR / "prompts_sync"
-        copied_codex = _copy_named_files(
-            source_root / "codex",
-            home / ".codex" / "prompts",
-            suffixes={".md"},
-            label="Prompts Codex",
-        )
-        copied_gemini = _copy_named_files(
-            source_root / "gemini",
-            home / ".gemini" / "commands",
-            suffixes={".toml"},
-            label="Prompts Gemini",
-        )
+    def _scan_skills(root: Path) -> dict[str, dict[str, object]]:
+        entries: dict[str, dict[str, object]] = {}
+        if not root.exists():
+            return entries
+        if not root.is_dir():
+            print(f"⚠️ Coleção de skills não é diretório: {root}")
+            return entries
+        for item in sorted(root.iterdir()):
+            if item.name.startswith(".") or not item.is_dir() or item.is_symlink():
+                continue
+            if not (item / "SKILL.md").is_file():
+                continue
+            try:
+                entries[item.name] = {"path": item, "hash": _hash_skill_dir(item)}
+            except Exception as exc:
+                print(f"⚠️ Falha ao calcular hash de {item}: {exc}")
+        return entries
 
-        omp_source_dir = source_root / "omp"
-        omp_prompts_dir = home / ".omp" / "agent" / "prompts"
-        omp_commands_dir = home / ".omp" / "agent" / "commands"
-        copied_omp_prompts = 0
-        copied_omp_commands = 0
-        if not omp_source_dir.exists():
-            print(f"⚠️ Prompts OMP: origem não encontrada em {omp_source_dir}")
+    def _is_under(path: Path, root: Path) -> bool:
+        try:
+            root_abs = root.expanduser().absolute()
+            path_abs = path.expanduser().absolute()
+            if path_abs == root_abs:
+                return False
+            path_abs.relative_to(root_abs)
+            return True
+        except Exception:
+            return False
+
+    def _delete_path(path: Path, root: Path, *, label: str) -> bool:
+        if not _is_under(path, root):
+            print(f"⚠️ {label}: remoção recusada fora da raiz configurada: {path}")
+            return False
+        if not path.exists() and not path.is_symlink():
+            return True
+        try:
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            else:
+                path.unlink(missing_ok=True)
+            return True
+        except Exception as exc:
+            print(f"⚠️ {label}: falha ao remover {path}: {exc}")
+            return False
+
+    def _copy_file_item(source: Path, target: Path, target_root: Path, *, label: str) -> bool:
+        if not _is_under(target, target_root):
+            print(f"⚠️ {label}: cópia recusada fora da raiz configurada: {target}")
+            return False
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists() and target.is_dir():
+                print(f"⚠️ {label}: destino é diretório, não arquivo: {target}")
+                return False
+            if target.is_symlink():
+                target.unlink()
+            shutil.copy2(source, target)
+            return True
+        except Exception as exc:
+            print(f"⚠️ {label}: falha ao copiar {source} -> {target}: {exc}")
+            return False
+
+    def _copy_skill_item(source: Path, target: Path, target_root: Path, *, label: str) -> bool:
+        if not _is_under(target, target_root):
+            print(f"⚠️ {label}: cópia recusada fora da raiz configurada: {target}")
+            return False
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists() or target.is_symlink():
+                if target.is_symlink():
+                    target.unlink()
+                elif target.is_dir():
+                    if not _delete_path(target, target_root, label=label):
+                        return False
+                else:
+                    print(f"⚠️ {label}: destino não é diretório: {target}")
+                    return False
+            shutil.copytree(
+                source,
+                target,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("__pycache__", ".git", ".DS_Store"),
+            )
+            return True
+        except Exception as exc:
+            print(f"⚠️ {label}: falha ao copiar {source} -> {target}: {exc}")
+            return False
+
+    def _reconcile_collection(
+        *,
+        state: dict,
+        home_key: str,
+        collection_key: str,
+        label: str,
+        source_root: Path,
+        target_root: Path,
+        kind: str,
+        suffixes: set[str] | None = None,
+        blocked_names: set[str] | None = None,
+    ) -> tuple[dict[str, int], list[str]]:
+        counts = _empty_counts()
+        conflicts: list[str] = []
+        deleted_rels: list[str] = []
+        blocked_names = blocked_names or set()
+        prior_items = _collection_items(state, home_key, collection_key)
+
+        if kind == "file":
+            source_items = _scan_files(source_root, suffixes or set())
+            target_items = _scan_files(target_root, suffixes or set())
+        elif kind == "skill":
+            source_items = _scan_skills(source_root)
+            target_items = _scan_skills(target_root)
         else:
-            omp_prompts_dir.mkdir(parents=True, exist_ok=True)
-            omp_commands_dir.mkdir(parents=True, exist_ok=True)
-            for source in sorted(omp_source_dir.iterdir()):
-                if not source.is_file() or source.name.startswith(".") or source.suffix.lower() != ".md":
+            raise ValueError(f"Tipo de coleção inválido: {kind}")
+
+        for blocked in sorted(blocked_names):
+            blocked_source = source_items.pop(blocked, None)
+            if blocked_source is not None:
+                source_path = blocked_source.get("path")
+                if isinstance(source_path, Path) and _delete_path(source_path, source_root, label=label):
+                    counts["deleted"] += 1
+                    deleted_rels.append(blocked)
+                    print(f"🧹 {label}: prompt bloqueado removido da origem: {source_path}")
+                else:
+                    counts["conflicts"] += 1
+                    conflicts.append(f"{label}/{blocked}: falha ao remover prompt bloqueado da origem")
+            blocked_target = target_items.pop(blocked, None)
+            if blocked_target is not None:
+                target_path = blocked_target["path"]
+                if isinstance(target_path, Path) and _delete_path(target_path, target_root, label=label):
+                    counts["deleted"] += 1
+                    deleted_rels.append(blocked)
+                    print(f"🧹 {label}: prompt bloqueado removido do cliente: {target_path}")
+                else:
+                    counts["conflicts"] += 1
+                    conflicts.append(f"{label}/{blocked}: falha ao remover prompt bloqueado")
+
+        new_items: dict[str, str] = {}
+
+        def _copy(source_path: Path, target_path: Path, root: Path) -> bool:
+            if kind == "file":
+                return _copy_file_item(source_path, target_path, root, label=label)
+            return _copy_skill_item(source_path, target_path, root, label=label)
+
+        def _conflict(rel: str, reason: str) -> None:
+            counts["conflicts"] += 1
+            conflicts.append(f"{label}/{rel}: {reason}")
+            prior_hash = prior_items.get(rel)
+            if prior_hash:
+                new_items[rel] = prior_hash
+
+        all_rels = sorted(set(prior_items) | set(source_items) | set(target_items))
+        for rel in all_rels:
+            source_entry = source_items.get(rel)
+            target_entry = target_items.get(rel)
+            prior_hash = prior_items.get(rel)
+            known = prior_hash is not None
+            source_hash = source_entry.get("hash") if source_entry else None
+            target_hash = target_entry.get("hash") if target_entry else None
+            source_path = source_entry.get("path") if source_entry else source_root / rel
+            target_path = target_entry.get("path") if target_entry else target_root / rel
+
+            if source_hash and target_hash:
+                if source_hash == target_hash:
+                    new_items[rel] = str(source_hash)
                     continue
-                try:
-                    prompt_content = source.read_text(encoding="utf-8")
-                except Exception as exc:
-                    print(f"⚠️ Prompts OMP: falha ao ler {source}: {exc}")
+                if prior_hash is None:
+                    _conflict(rel, "repo e cliente existem com conteúdo diferente sem base anterior")
                     continue
+                source_changed = source_hash != prior_hash
+                target_changed = target_hash != prior_hash
+                if source_changed and not target_changed:
+                    if isinstance(source_path, Path) and isinstance(target_path, Path) and _copy(source_path, target_path, target_root):
+                        counts["updated"] += 1
+                        new_items[rel] = str(source_hash)
+                    else:
+                        _conflict(rel, "falha ao atualizar cliente a partir do repo")
+                    continue
+                if target_changed and not source_changed:
+                    if isinstance(source_path, Path) and isinstance(target_path, Path) and _copy(target_path, source_path, source_root):
+                        counts["updated"] += 1
+                        new_items[rel] = str(target_hash)
+                    else:
+                        _conflict(rel, "falha ao atualizar repo a partir do cliente")
+                    continue
+                _conflict(rel, "repo e cliente mudaram desde o último sync")
+                continue
 
-                prompt_name = source.stem
-                legacy_prompt_alias = omp_prompts_dir / f"prompts:{prompt_name}.md"
-                if legacy_prompt_alias.exists() or legacy_prompt_alias.is_symlink():
-                    try:
-                        legacy_prompt_alias.unlink()
-                    except Exception as exc:
-                        print(f"⚠️ Prompts OMP: falha ao remover alias legado {legacy_prompt_alias}: {exc}")
+            if source_hash and not target_hash:
+                if known:
+                    if isinstance(source_path, Path) and _delete_path(source_path, source_root, label=label):
+                        counts["deleted"] += 1
+                        deleted_rels.append(rel)
+                    else:
+                        _conflict(rel, "cliente deletou, mas não foi possível deletar no repo")
+                    continue
+                if isinstance(source_path, Path) and isinstance(target_path, Path) and _copy(source_path, target_path, target_root):
+                    counts["deployed"] += 1
+                    new_items[rel] = str(source_hash)
+                else:
+                    _conflict(rel, "falha ao implantar item do repo no cliente")
+                continue
 
-                legacy_command_target = omp_commands_dir / source.name
-                if legacy_command_target.exists() or legacy_command_target.is_symlink():
-                    try:
-                        legacy_command_target.unlink()
-                    except Exception as exc:
-                        print(f"⚠️ Prompts OMP: falha ao remover comando legado {legacy_command_target}: {exc}")
+            if target_hash and not source_hash:
+                if known:
+                    if isinstance(target_path, Path) and _delete_path(target_path, target_root, label=label):
+                        counts["deleted"] += 1
+                        deleted_rels.append(rel)
+                    else:
+                        _conflict(rel, "repo deletou, mas não foi possível deletar no cliente")
+                    continue
+                if isinstance(source_path, Path) and isinstance(target_path, Path) and _copy(target_path, source_path, source_root):
+                    counts["imported"] += 1
+                    new_items[rel] = str(target_hash)
+                else:
+                    _conflict(rel, "falha ao importar item do cliente para o repo")
+                continue
 
-                _write_or_update(omp_prompts_dir / source.name, prompt_content)
-                copied_omp_prompts += 1
-                _write_or_update(omp_commands_dir / f"prompts:{prompt_name}.md", prompt_content)
-                copied_omp_commands += 1
-
+        _set_collection_items(state, home_key, collection_key, new_items)
         print(
-            "✅ Prompts sincronizados "
-            f"(Codex: {copied_codex}, Gemini commands: {copied_gemini}, "
-            f"OMP prompts: {copied_omp_prompts}, OMP commands: {copied_omp_commands})"
+            f"✅ {label}: imported={counts['imported']}, deployed={counts['deployed']}, "
+            f"updated={counts['updated']}, deleted={counts['deleted']}, conflicts={counts['conflicts']}"
         )
-        return copied_codex, copied_gemini, copied_omp_prompts, copied_omp_commands
+        for conflict in conflicts:
+            print(f"❌ Conflito: {conflict}")
+        return counts, deleted_rels
 
-    def _copy_skill_collection(source_dir: Path, target_root: Path, *, label: str) -> int:
-        if not source_dir.exists():
-            print(f"⚠️ {label}: origem não encontrada em {source_dir}")
-            return 0
-        target_root.mkdir(parents=True, exist_ok=True)
-        copied = 0
-        for source in sorted(source_dir.iterdir()):
-            if not source.is_dir() or source.name.startswith("."):
+    def _generate_omp_prompt_commands(home: Path, source_root: Path, deleted_rels: list[str]) -> int:
+        prompts_dir = home / ".omp" / "agent" / "prompts"
+        commands_dir = home / ".omp" / "agent" / "commands"
+        source_items = _scan_files(source_root, {".md"})
+        generated = 0
+        cleanup_names = set(deleted_rels)
+        cleanup_names.update(source_items)
+        commands_dir.mkdir(parents=True, exist_ok=True)
+        for rel in sorted(cleanup_names):
+            prompt_name = Path(rel).stem
+            legacy_prompt_alias = prompts_dir / f"prompts:{prompt_name}.md"
+            if legacy_prompt_alias.exists() or legacy_prompt_alias.is_symlink():
+                _delete_path(legacy_prompt_alias, prompts_dir, label="Prompts OMP")
+            legacy_command_target = commands_dir / rel
+            if legacy_command_target.exists() or legacy_command_target.is_symlink():
+                _delete_path(legacy_command_target, commands_dir, label="Prompts OMP")
+            if rel in deleted_rels and rel not in source_items:
+                generated_command = commands_dir / f"prompts:{prompt_name}.md"
+                if generated_command.exists() or generated_command.is_symlink():
+                    _delete_path(generated_command, commands_dir, label="Prompts OMP")
+        for rel, entry in sorted(source_items.items()):
+            source_path = entry.get("path")
+            if not isinstance(source_path, Path):
                 continue
-            if not (source / "SKILL.md").exists():
-                continue
-            target = target_root / source.name
-            if target.exists() and not target.is_dir():
-                print(f"⚠️ {label}: destino não é diretório, pulando {target}")
-                continue
+            command_path = commands_dir / f"prompts:{source_path.stem}.md"
             try:
-                shutil.copytree(
-                    source,
-                    target,
-                    dirs_exist_ok=True,
-                    ignore=shutil.ignore_patterns("__pycache__", ".git", ".DS_Store"),
-                )
-                copied += 1
+                content = source_path.read_text(encoding="utf-8")
+                current = command_path.read_text(encoding="utf-8", errors="ignore") if command_path.exists() else None
+                if current != content:
+                    _write_or_update(command_path, content)
+                generated += 1
             except Exception as exc:
-                print(f"⚠️ {label}: falha ao copiar {source}: {exc}")
-        return copied
+                print(f"⚠️ Prompts OMP: falha ao gerar comando {command_path}: {exc}")
+        print(f"✅ Prompts OMP: comandos gerados={generated}")
+        return generated
 
-    def _sync_skills(home: Path) -> tuple[int, int, int, int]:
+    def _sync_prompts(home: Path, state: dict, home_key: str) -> dict[str, int]:
+        source_root = BASE_DIR / "prompts_sync"
+        total = _empty_counts()
+        collections = [
+            {
+                "collection_key": "prompts.codex",
+                "label": "Prompts Codex",
+                "source_root": source_root / "codex",
+                "target_root": home / ".codex" / "prompts",
+                "kind": "file",
+                "suffixes": {".md"},
+                "blocked_names": {"projeto.md"},
+            },
+            {
+                "collection_key": "prompts.gemini",
+                "label": "Prompts Gemini",
+                "source_root": source_root / "gemini",
+                "target_root": home / ".gemini" / "commands",
+                "kind": "file",
+                "suffixes": {".toml"},
+                "blocked_names": {"projeto.toml"},
+            },
+            {
+                "collection_key": "prompts.omp",
+                "label": "Prompts OMP",
+                "source_root": source_root / "omp",
+                "target_root": home / ".omp" / "agent" / "prompts",
+                "kind": "file",
+                "suffixes": {".md"},
+                "blocked_names": set(),
+            },
+        ]
+        omp_deleted: list[str] = []
+        for collection in collections:
+            counts, deleted = _reconcile_collection(state=state, home_key=home_key, **collection)
+            _add_counts(total, counts)
+            if collection["collection_key"] == "prompts.omp":
+                omp_deleted = deleted
+        _generate_omp_prompt_commands(home, source_root / "omp", omp_deleted)
+        return total
+
+    def _sync_skills(home: Path, state: dict, home_key: str) -> dict[str, int]:
         source_root = BASE_DIR / "skills_sync"
-        copied_codex = _copy_skill_collection(source_root / "codex", home / ".codex" / "skills", label="Skills Codex")
-        copied_gemini = _copy_skill_collection(source_root / "gemini", home / ".gemini" / "skills", label="Skills Gemini")
-        copied_omp = _copy_skill_collection(
-            source_root / "omp" / "skills",
-            home / ".omp" / "agent" / "skills",
-            label="Skills OMP",
-        )
-        copied_omp_managed = _copy_skill_collection(
-            source_root / "omp" / "managed-skills",
-            home / ".omp" / "agent" / "managed-skills",
-            label="Managed skills OMP",
-        )
-        print(
-            "✅ Skills sincronizadas "
-            f"(Codex: {copied_codex}, Gemini: {copied_gemini}, "
-            f"OMP: {copied_omp}, OMP managed: {copied_omp_managed})"
-        )
-        return copied_codex, copied_gemini, copied_omp, copied_omp_managed
+        total = _empty_counts()
+        collections = [
+            {
+                "collection_key": "skills.codex",
+                "label": "Skills Codex",
+                "source_root": source_root / "codex",
+                "target_root": home / ".codex" / "skills",
+                "kind": "skill",
+            },
+            {
+                "collection_key": "skills.gemini",
+                "label": "Skills Gemini",
+                "source_root": source_root / "gemini",
+                "target_root": home / ".gemini" / "skills",
+                "kind": "skill",
+            },
+            {
+                "collection_key": "skills.omp",
+                "label": "Skills OMP",
+                "source_root": source_root / "omp" / "skills",
+                "target_root": home / ".omp" / "agent" / "skills",
+                "kind": "skill",
+            },
+            {
+                "collection_key": "skills.omp.managed",
+                "label": "Managed skills OMP",
+                "source_root": source_root / "omp" / "managed-skills",
+                "target_root": home / ".omp" / "agent" / "managed-skills",
+                "kind": "skill",
+            },
+        ]
+        for collection in collections:
+            counts, _ = _reconcile_collection(state=state, home_key=home_key, **collection)
+            _add_counts(total, counts)
+        return total
 
     def _ensure_symlink(link: Path, target: Path, *, label: str) -> None:
         link.parent.mkdir(parents=True, exist_ok=True)
@@ -13534,17 +13880,32 @@ def _sync_agent_assets_core(target_home: str = "", quiet: bool = False) -> int:
                 break
         if prompt_source is not None:
             omp_system_path = home / ".omp" / "agent" / "APPEND_SYSTEM.md"
-            _write_or_update(omp_system_path, prompt_source.read_text(encoding="utf-8", errors="ignore"))
-            print(f"✅ Oh My Pi APPEND_SYSTEM.md atualizado em {omp_system_path}")
+            _ensure_symlink(omp_system_path, prompt_source, label="OMP APPEND_SYSTEM")
 
+    state = _load_state()
+    summary = _empty_counts()
     for home in homes:
+        home = home.expanduser()
+        current_home_key = _home_key(home)
+        print(f"🔁 Sincronizando agent assets para {home}")
         _sync_global_rules(home)
         _sync_system_prompts(home)
-        _sync_prompts(home)
-        _sync_skills(home)
+        _add_counts(summary, _sync_prompts(home, state, current_home_key))
+        _add_counts(summary, _sync_skills(home, state, current_home_key))
 
-    print("✅ sync-agent-assets concluído.")
-    return 0
+    try:
+        _save_state(state)
+    except Exception as exc:
+        print(f"❌ Falha ao salvar estado de sync em {state_path}: {exc}", file=sys.stderr)
+        return 1
+
+    status = "❌" if summary["conflicts"] else "✅"
+    print(
+        f"{status} sync-agent-assets concluído: imported={summary['imported']}, "
+        f"deployed={summary['deployed']}, updated={summary['updated']}, "
+        f"deleted={summary['deleted']}, conflicts={summary['conflicts']}"
+    )
+    return 1 if summary["conflicts"] else 0
 
 
 def _sync_mcp_core(target_home: str = "", include_sudo: bool = True, quiet: bool = False) -> int:
@@ -14227,7 +14588,8 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 
     assets_sync = sub.add_parser(
         "sync-agent-assets",
-        help="Sincroniza prompts, system prompts, global rules e skills para os clientes.",
+        help="Sincroniza prompts e skills em duas vias, além de global rules/system prompts repo→clientes.",
+        description="Sincroniza prompts e skills em duas vias, além de manter global rules/system prompts como referências repo→clientes.",
     )
     assets_sync.add_argument("--target-home", default="", help=argparse.SUPPRESS)
     assets_sync.add_argument("--quiet", action="store_true", help=argparse.SUPPRESS)

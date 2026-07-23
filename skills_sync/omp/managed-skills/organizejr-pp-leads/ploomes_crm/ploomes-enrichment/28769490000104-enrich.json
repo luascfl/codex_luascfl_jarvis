@@ -1,0 +1,274 @@
+{
+  "cnpj": "28.769.490/0001-04",
+  "company": {
+    "address": {
+      "city": "Natal",
+      "state": "RN"
+    },
+    "casadosdados": {
+      "error": "Casa dos Dados API key not configured; set CASA_DADOS_API_KEY or PP_LEADS_CASA_DADOS_API_KEY",
+      "status": "unavailable"
+    },
+    "cnpj": "28.769.490/0001-04",
+    "contacts": {
+      "email": "ej@59mil.com",
+      "site": "http://www.59mil.com.br/"
+    },
+    "lead_context": {
+      "acessibilidade": "20",
+      "aderência": "26",
+      "camada": "Meio, EJs e startups",
+      "capacidade": "11.3",
+      "cidade_uf": "Natal/RN",
+      "classe": "A - abordar agora",
+      "cnpj": "28.769.490/0001-04",
+      "contato": "ej@59mil.com",
+      "demanda": "11.8",
+      "encaixe": "11.0",
+      "evidência": "42 membros, 21 contratos, R$ 117.760,00 de faturamento, cluster 3, cursos: Comunicação Social - Publicidade E Propaganda",
+      "federação": "RN Júnior",
+      "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+      "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+      "lead": "59mil",
+      "link_email_pronto": "mailto:ej@59mil.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+59mil.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+42+membros+e+21+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+      "lote": "Lote 1, validação do ICP",
+      "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+      "ordem": "7",
+      "pp_company_goat": "leads-brasil-pp-cli company-goat \"28.769.490/0001-04\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-company-goat.json",
+      "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"59mil\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-contact-goat.json",
+      "pp_leads_company": "leads-brasil-pp-cli company \"28.769.490/0001-04\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-company.json",
+      "pp_leads_enrich": "leads-brasil-pp-cli enrich \"28.769.490/0001-04\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-enrich.json",
+      "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-scrape.json",
+      "primeira_mensagem": "Oi, pessoal da 59mil. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 42 membros e 21 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+      "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+      "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+      "score": "80.1",
+      "site": "http://www.59mil.com.br/"
+    },
+    "name": "59mil",
+    "sources": [
+      "local_lead_table"
+    ],
+    "status": "lead-local",
+    "use_case": {
+      "label": "OrganizeJr | EJs de comunicação",
+      "name": "organizejr-ejs-comunicacao"
+    }
+  },
+  "company_goat": {
+    "result": {
+      "domain": "59mil.com.br",
+      "generated_at": "2026-07-11T12:53:58Z",
+      "sources": [
+        {
+          "elapsed": "781ms",
+          "note": "no Form D filings found",
+          "source": "funding",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "786ms",
+          "note": "no US Form D issuer; UK lookup needs COMPANIES_HOUSE_API_KEY",
+          "source": "legal",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "918ms",
+          "note": "no GitHub org found",
+          "source": "engineering",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "top_posts": [
+              {
+                "_tags": [
+                  "story",
+                  "author_franck",
+                  "story_42212644",
+                  "show_hn"
+                ],
+                "author": "franck",
+                "created_at": "2024-11-22T10:31:56Z",
+                "created_at_i": 1732271516,
+                "num_comments": 230,
+                "objectID": "42212644",
+                "points": 616,
+                "story_id": 42212644,
+                "title": "Show HN: A Marble Madness-inspired WebGL game we built for Netlify",
+                "url": "https://5-million-devs.netlify.com/"
+              },
+              {
+                "_tags": [
+                  "story",
+                  "author_sbraford",
+                  "story_41466445",
+                  "show_hn"
+                ],
+                "author": "sbraford",
+                "created_at": "2024-09-06T14:15:13Z",
+                "created_at_i": 1725632113,
+                "num_comments": 0,
+                "objectID": "41466445",
+                "points": 1,
+                "story_id": 41466445,
+                "title": "Show HN: 9Mpixels – a web mmo painting game inspired by R/Place",
+                "url": "https://9millionpixels.com/"
+              },
+              {
+                "_tags": [
+                  "story",
+                  "author_99miles",
+                  "story_13238516",
+                  "show_hn"
+                ],
+                "author": "99miles",
+                "created_at": "2016-12-22T16:57:22Z",
+                "created_at_i": 1482425842,
+                "num_comments": 0,
+                "objectID": "13238516",
+                "points": 2,
+                "story_id": 13238516,
+                "title": "Show HN: Growing business through creating great experiences with Lee Rubenstein",
+                "url": "https://itunes.apple.com/us/podcast/tsb009-growing-business-through/id1171237328?i=1000379239983&mt=2"
+              }
+            ],
+            "total_show_hn": 3
+          },
+          "elapsed": "726ms",
+          "source": "launches",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "by_year_sample": {
+              "2010": 1,
+              "2011": 8,
+              "2012": 3,
+              "2013": 8,
+              "2014": 4,
+              "2015": 1,
+              "2016": 3,
+              "2017": 2,
+              "2018": 3,
+              "2019": 2,
+              "2020": 2,
+              "2021": 3,
+              "2022": 1,
+              "2023": 2,
+              "2024": 5,
+              "2025": 1,
+              "2026": 1
+            },
+            "total_mentions": 68
+          },
+          "elapsed": "534ms",
+          "source": "mentions",
+          "status": "ok"
+        },
+        {
+          "elapsed": "1.256s",
+          "note": "no YC entry found",
+          "source": "yc",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "649ms",
+          "note": "no Wikidata entry found",
+          "source": "wiki",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "expires": "2027-02-21T21:50:25Z",
+            "hosting": "",
+            "hosting_cname": "",
+            "nameservers": [
+              "ns1.dns-parking.com",
+              "ns2.dns-parking.com"
+            ],
+            "registered": "2018-02-21T21:50:25Z"
+          },
+          "elapsed": "1.35s",
+          "source": "domain",
+          "status": "ok"
+        }
+      ]
+    },
+    "status": "ok"
+  },
+  "contact_goat": {
+    "result": {
+      "company": "59mil",
+      "count": 0,
+      "results": [],
+      "scope": "59mil",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+        "li_search": "tool \"search_people\" returned error: LinkedIn setup is not complete yet: the server is downloading the Patchright Chromium browser in the background and will use it automatically once ready. Do not install the browser yourself (no `patchright install` or `uv run patchright install`), and do not restart the server. A manual install only fights the background one for the same lock and slows it down. Just wait and call this tool again in a minute or two."
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-11T12:54:17Z"
+    },
+    "status": "ok"
+  },
+  "lead_context": {
+    "acessibilidade": "20",
+    "aderência": "26",
+    "camada": "Meio, EJs e startups",
+    "capacidade": "11.3",
+    "cidade_uf": "Natal/RN",
+    "classe": "A - abordar agora",
+    "cnpj": "28.769.490/0001-04",
+    "contato": "ej@59mil.com",
+    "demanda": "11.8",
+    "encaixe": "11.0",
+    "evidência": "42 membros, 21 contratos, R$ 117.760,00 de faturamento, cluster 3, cursos: Comunicação Social - Publicidade E Propaganda",
+    "federação": "RN Júnior",
+    "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+    "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+    "lead": "59mil",
+    "link_email_pronto": "mailto:ej@59mil.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+59mil.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+42+membros+e+21+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+    "lote": "Lote 1, validação do ICP",
+    "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+    "ordem": "7",
+    "pp_company_goat": "leads-brasil-pp-cli company-goat \"28.769.490/0001-04\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-company-goat.json",
+    "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"59mil\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-contact-goat.json",
+    "pp_leads_company": "leads-brasil-pp-cli company \"28.769.490/0001-04\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-company.json",
+    "pp_leads_enrich": "leads-brasil-pp-cli enrich \"28.769.490/0001-04\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-enrich.json",
+    "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/28769490000104-scrape.json",
+    "primeira_mensagem": "Oi, pessoal da 59mil. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 42 membros e 21 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+    "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+    "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+    "score": "80.1",
+    "site": "http://www.59mil.com.br/"
+  },
+  "prospecting_links": {
+    "email": "ej@59mil.com",
+    "link_email_pronto": "mailto:ej@59mil.com?body=Oi%2C+pessoal+da+59mil.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+42+membros+e+21+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:ej@59mil.com?body=Oi%2C+pessoal+da+59mil.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+42+membros+e+21+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status. | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.",
+    "status": "unavailable"
+  },
+  "source": "local lead table + Casa dos Dados quando configurado",
+  "sources_used": [
+    "local_lead_table",
+    "casa_dos_dados",
+    "company-goat",
+    "contact-goat",
+    "scrape-creators"
+  ],
+  "status": "enriched-local",
+  "use_case": {
+    "label": "OrganizeJr | EJs de comunicação",
+    "name": "organizejr-ejs-comunicacao"
+  }
+}

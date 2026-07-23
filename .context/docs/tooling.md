@@ -110,19 +110,34 @@ python3 jarvis.py sync-agent-assets
 
 ## Sincronização de agent assets
 
-`python3 jarvis.py sync-agent-assets` lê as fontes versionadas abaixo e sincroniza os clientes globais. `mcp-sync-clients` fica restrito à configuração MCP e ao bridge Codex/Gemini:
+`python3 jarvis.py sync-agent-assets` é o ponto único de sincronização de prompts e skills entre o repositório e os clientes globais. `mcp-sync-clients` fica restrito à configuração MCP e ao bridge Codex/Gemini; ele não deve copiar prompts ou skills.
 
-| Fonte no repositório | Destino sincronizado |
+Para prompts e skills, a sincronização é bidirecional e segura:
+
+- se um item existe só no cliente e ainda não aparece no manifesto local, ele é importado para a fonte correspondente no repositório;
+- se um item existe só no repositório e ainda não aparece no manifesto local, ele é implantado no cliente;
+- se um item já era conhecido pelo manifesto e foi removido de um lado, ele é removido do outro lado em vez de ser restaurado;
+- se repositório e cliente mudaram desde o manifesto e os conteúdos divergem, o comando preserva os dois lados, reporta conflito e encerra com erro diferente de zero.
+
+O manifesto local usado para diferenciar importação inicial de deleção sincronizada deve ficar no repositório como arquivo ignorado, em `.agent-assets-sync-state.json`.
+
+| Fonte no repositório | Cliente sincronizado |
 |---|---|
 | `prompts_sync/codex/*.md` | `~/.codex/prompts/*.md` |
 | `prompts_sync/gemini/*.toml` | `~/.gemini/commands/*.toml` |
-| `prompts_sync/omp/*.md` | `~/.omp/agent/prompts/*.md` e `~/.omp/agent/commands/prompts:*.md` |
+| `prompts_sync/omp/*.md` | `~/.omp/agent/prompts/*.md` e mirrors gerados em `~/.omp/agent/commands/prompts:*.md` |
 | `skills_sync/codex/<skill>/SKILL.md` | `~/.codex/skills/<skill>/` |
 | `skills_sync/gemini/<skill>/SKILL.md` | `~/.gemini/skills/<skill>/` |
 | `skills_sync/omp/skills/<skill>/SKILL.md` | `~/.omp/agent/skills/<skill>/` |
 | `skills_sync/omp/managed-skills/<skill>/SKILL.md` | `~/.omp/agent/managed-skills/<skill>/` |
 
-Os prompts Codex que antes ficavam diretamente em `prompts_sync/*.md` agora ficam em `prompts_sync/codex/`. O prompt `projeto` do Oh My Pi fica em `prompts_sync/omp/projeto.md`.
+`global_rule_sync/` continua sendo saída do AlignTrue e permanece repo-to-client only: os clientes recebem essas regras como referência gerada, mas mudanças feitas no cliente não são importadas de volta como fonte.
+
+`system_prompts_sync/` continua sendo configuração/fonte repo-to-client only para prompts de sistema. Arquivos alterados nos clientes devem ser tratados como cópias derivadas, não como origem de verdade.
+
+Os arquivos de prompt de comando do Oh My Pi em `~/.omp/agent/commands/prompts:*.md` são mirrors gerados a partir de `prompts_sync/omp/`; eles nunca são fonte de importação. O sync deve importar apenas o prompt OMP canônico correspondente, não o mirror de comando.
+
+O prompt de projeto é OMP-only: a fonte canônica é `prompts_sync/omp/projeto.md`. Arquivos `prompts_sync/codex/projeto.md` e `prompts_sync/gemini/projeto.toml` são nomes bloqueados/stale; se aparecerem nos clientes, devem ser removidos em vez de importados para o repositório.
 
 ## Related resources
 

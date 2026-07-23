@@ -1,0 +1,40 @@
+project:
+  name: "farmaciajr-lead-workspace"
+  scale: SMALL
+  started: "2026-07-10T16:27:38.378Z"
+  current_phase: P
+
+phases:
+  P:
+    status: in_progress
+    started_at: "2026-07-10T16:27:38.378Z"
+  R:
+    status: skipped
+    reason: "Not required for scale SMALL"
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: skipped
+    reason: "Not required for scale SMALL"
+
+execution:
+  history:
+    - timestamp: "2026-07-10T16:27:38.378Z"
+      phase: P
+      action: started
+    - timestamp: "2026-07-10T16:27:38.406Z"
+      phase: R
+      action: phase_skipped
+    - timestamp: "2026-07-10T16:27:38.406Z"
+      phase: C
+      action: phase_skipped
+  last_activity: "2026-07-10T16:27:38.406Z"
+  resume_context: "Fase P (Planejamento) em progresso"
+
+settings:
+  autonomous_mode: true
+  require_plan: false
+  require_approval: false
+

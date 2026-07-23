@@ -1,0 +1,78 @@
+{
+  "contact_goat": {
+    "result": {
+      "company": "Acesso Comunicação Júnior",
+      "count": 0,
+      "results": [],
+      "scope": "Acesso Comunicação Júnior",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first"
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-14T20:22:31Z"
+    },
+    "status": "ok"
+  },
+  "input": "Acesso Comunicação Júnior",
+  "local_matches": [
+    {
+      "address": {
+        "city": "Juiz de Fora",
+        "state": "MG"
+      },
+      "cnpj": "04.229.669/0001-00",
+      "contacts": {
+        "email": "presidencia@acessojr.com",
+        "site": "https://www.google.com.br/maps/place/Acesso+Comunica%C3%A7%C3%A3o+Jr./@-21.7752658,-43.3688957,17z/data=!3m1!4b1!4m5!3m4!1s0x989b7517ddaf81:0x4e611749257d1a62!8m2!3d-21.7752708!4d-43.366707"
+      },
+      "lead_context": {
+        "acessibilidade": "20",
+        "aderência": "24",
+        "camada": "Meio, EJs e startups",
+        "capacidade": "10.6",
+        "cidade_uf": "Juiz de Fora/MG",
+        "classe": "A - abordar agora",
+        "cnpj": "04.229.669/0001-00",
+        "contato": "presidencia@acessojr.com",
+        "demanda": "11.6",
+        "encaixe": "11.0",
+        "evidência": "32 membros, 31 contratos, R$ 68.255,05 de faturamento, cluster 3, cursos: Jornalismo, Rádio, Tv E Internet",
+        "federação": "FEJEMG",
+        "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+        "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+        "lead": "Acesso Comunicação Júnior",
+        "link_email_pronto": "mailto:presidencia@acessojr.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+Acesso+Comunica%C3%A7%C3%A3o+J%C3%BAnior.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+32+membros+e+31+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+        "lote": "Lote 1, validação do ICP",
+        "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+        "ordem": "2",
+        "primeira_mensagem": "Oi, pessoal da Acesso Comunicação Júnior. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 32 membros e 31 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+        "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+        "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+        "score": "77.2",
+        "site": "https://www.google.com.br/maps/place/Acesso+Comunica%C3%A7%C3%A3o+Jr./@-21.7752658,-43.3688957,17z/data=!3m1!4b1!4m5!3m4!1s0x989b7517ddaf81:0x4e611749257d1a62!8m2!3d-21.7752708!4d-43.366707"
+      },
+      "name": "Acesso Comunicação Júnior",
+      "status": "lead-local",
+      "use_case": {
+        "label": "ejs comunicacao",
+        "name": "ejs-comunicacao"
+      }
+    }
+  ],
+  "prospecting_links": {
+    "email": "presidencia@acessojr.com",
+    "link_email_pronto": "mailto:presidencia@acessojr.com?body=Oi%2C+pessoal+da+Acesso+Comunica%C3%A7%C3%A3o+J%C3%BAnior.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+32+membros+e+31+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:presidencia@acessojr.com?body=Oi%2C+pessoal+da+Acesso+Comunica%C3%A7%C3%A3o+J%C3%BAnior.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+32+membros+e+31+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"} | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}",
+    "status": "unavailable"
+  },
+  "status": "contact-goat-local"
+}

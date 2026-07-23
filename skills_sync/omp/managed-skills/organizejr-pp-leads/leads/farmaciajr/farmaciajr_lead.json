@@ -1,0 +1,114 @@
+{
+  "lead_name": "Farmácia Jr Consultoria",
+  "project_focus": "lead_principal",
+  "source": {
+    "google_doc_id": "162DyOBJTGyVaHiIUXGPS1cHUR0fc06Rso0Jr7-N9uuU",
+    "google_doc_url": "https://docs.google.com/document/d/162DyOBJTGyVaHiIUXGPS1cHUR0fc06Rso0Jr7-N9uuU/edit?tab=t.67i9j3tuyzp",
+    "document_title": "Reunião Diagnostica Comercial - Farmacia Jr - 06.07.2026",
+    "primary_tab": {
+      "tab_id": "t.67i9j3tuyzp",
+      "title": "Transcrição"
+    },
+    "secondary_tab": {
+      "tab_id": "t.0",
+      "title": "Modelo de Ata"
+    }
+  },
+  "meeting": {
+    "date": "2026-07-06",
+    "time_window": "20:00-21:30",
+    "format": "online",
+    "origin": "prospecção ativa via WhatsApp"
+  },
+  "participants": {
+    "lead_side": [
+      {
+        "name": "Rafael",
+        "role": "Diretor de AR (RH)"
+      }
+    ],
+    "organizejr_side": [
+      "Elaine",
+      "Júlia",
+      "Lucas",
+      "Malu"
+    ]
+  },
+  "qualification": {
+    "temperature": "quente",
+    "pain_clarity": "clara e específica",
+    "impact_recognition": "parcial",
+    "urgency": "alta",
+    "willingness_to_invest": "direta",
+    "openness_to_solution": "receptivo",
+    "budget_sensitivity": "alta"
+  },
+  "diagnosis": {
+    "primary_need": "liderança",
+    "secondary_needs": [
+      "descritivo de cargos e papéis",
+      "jornada/formação de lideranças",
+      "estruturação do AR/RH",
+      "engajamento e retenção",
+      "gestão de tempo",
+      "resolução de problemas"
+    ],
+    "core_problems": [
+      "estrutura de cargos e lideranças pouco clara ou inconsistente",
+      "vice-diretoria com papel mal definido e subutilizado",
+      "sobrecarga de coordenadores e membros em algumas frentes",
+      "histórico de gestões ineficientes, conflitos e vacância",
+      "necessidade de preparar pessoas para cargos de liderança antes do próximo ciclo de diretoria"
+    ],
+    "current_positive_signals": [
+      "melhora de clima e engajamento após reforço de fit cultural no processo seletivo",
+      "interesse recente de membros em assumir diretoria e participar de eventos",
+      "Rafael percebe evolução em comparação ao ano anterior"
+    ],
+    "urgency_driver": "edital/dinâmica de diretoria se aproxima do retorno das aulas em agosto; sem avanço existe risco de repetir o cenário do ano anterior"
+  },
+  "lead_preferences": {
+    "priority_service": "liderança",
+    "price_concern": true,
+    "preferred_commercial_path": "proposta personalizada e reunião com mais diretores para avaliação conjunta",
+    "non_priority_now": "gestão de tempo como serviço principal separado"
+  },
+  "evidence": [
+    {
+      "timestamp": "00:25:20-00:25:44",
+      "quote": "um problema que a gente tem desde o ano passado seria, por exemplo, incentivo a cargo de liderança, seria um preparo a um cargo de liderança"
+    },
+    {
+      "timestamp": "00:52:45-00:53:13",
+      "quote": "a farmácia júnior, ela vinha desses problemas... estava criando um ambiente ruim para todo mundo"
+    },
+    {
+      "timestamp": "01:07:19-01:08:11",
+      "quote": "problemas de engajamento que consequentemente geravam sobrecarga absurda nos coordenadores"
+    },
+    {
+      "timestamp": "01:18:24-01:18:44",
+      "quote": "gestão de tempo, resolução de problemas, liderança, pessoas e negociação, resiliência, tolerância e flexibilidade"
+    },
+    {
+      "timestamp": "01:21:34-01:21:59",
+      "quote": "se a gente não tiver caminhando com a [liderança], provavelmente pode estar direcionando para repetir o cenário do ano passado"
+    },
+    {
+      "timestamp": "01:28:06-01:28:19",
+      "quote": "a princípio eu gostei da forma que vocês trabalharam essa questão da liderança, porque ainda mais agora que é um tópico em alta dentro da [Farmácia Jr]"
+    }
+  ],
+  "commercial_recommendation": {
+    "fit_class": "A",
+    "why": "dor reconhecida, urgência alta, abertura clara para proposta, tópico prioritário e feedback positivo sobre a condução comercial",
+    "recommended_offer_focus": [
+      "diagnóstico + proposta de jornada de liderança",
+      "desenho de cargos e responsabilidades de liderança",
+      "trilha/capacitação para preparação de líderes",
+      "apoio à formalização de vice-diretoria/gerências/comitês quando fizer sentido"
+    ],
+    "next_step": "preparar proposta comercial focada em liderança, com escopo enxuto e sensível a orçamento, e agendar reunião de apresentação com Rafael e outros diretores"
+  },
+  "project_note": "Este diretório deve tratar Farmácia Jr como lead principal até nova instrução do usuário."
+}

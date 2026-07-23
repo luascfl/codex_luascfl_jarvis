@@ -1,0 +1,23 @@
+{
+  "skill_name": "outlier-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Center Circle screening: write a 4-6 sentence independent justification. User asked for affordable laptop options for a college student on a tight budget. Model recommends only a $1,599 MacBook Pro. Include a thin space.",
+      "expected_output": "A concise English independent justification that states partial goal satisfaction, cites the MacBook Pro price, notes premium strengths, explains budget mismatch, mentions only one option was provided, and includes a thin space.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Identify the prompt type and constraints: 'Based on the article below, extract every date mentioned and return them in chronological order in a table with the event beside each date.'",
+      "expected_output": "Classifies as Extraction, possibly source-bound Closed QA, extracts constraints about source basis, every date, chronological order, table format, and event beside each date.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Evaluate Model A and Model B for an Outlier SxS task. A follows all constraints but is verbose. B is concise but invents two facts and misses one required bullet. Write a final comparative justification in Lucas's style.",
+      "expected_output": "A concise final comparison preferring A because truthfulness and instruction following outweigh verbosity, with concrete mention of B's invented facts and missed bullet.",
+      "files": []
+    }
+  ]
+}

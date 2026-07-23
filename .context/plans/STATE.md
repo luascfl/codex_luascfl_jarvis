@@ -18,11 +18,14 @@ python3 jarvis.py mcp-sync-clients --target-home /home/lucas/Downloads/codex_lua
 graphify update .
 ```
 
-Resultado observado:
+Resultado e contrato operacional registrados:
 
 - `jarvis.py` compila sem erro.
-- `sync-agent-assets` sincroniza prompts por cliente: Codex em `prompts_sync/codex`, Gemini em `prompts_sync/gemini`, Oh My Pi em `prompts_sync/omp`.
-- `sync-agent-assets` sincroniza `skills_sync` para Codex, Gemini, Oh My Pi e managed skills do Oh My Pi.
+- `sync-agent-assets` deve operar como sincronização bidirecional segura para prompts e skills: importa itens novos que existam só no cliente, implanta itens novos que existam só no repositório, propaga deleções de itens já conhecidos pelo manifesto e falha com conflito quando ambos os lados mudaram de forma divergente.
+- O manifesto local ignorado `.agent-assets-sync-state.json` distingue importação inicial de deleção sincronizada.
+- `global_rule_sync/` continua saída AlignTrue repo-to-client only; `system_prompts_sync/` continua fonte/config repo-to-client only.
+- Prompts de comando do Oh My Pi são mirrors gerados a partir de `prompts_sync/omp`, não fontes de importação.
+- O prompt de projeto permanece OMP-only em `prompts_sync/omp/projeto.md`; equivalentes Codex/Gemini (`projeto.md`/`projeto.toml`) são bloqueados/stale se aparecerem em clientes.
 - `mcp-sync-clients` não copia prompts ou skills no sandbox testado.
 - Graphify atualizou `.context/graphify-out`.
 

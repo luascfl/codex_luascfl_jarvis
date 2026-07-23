@@ -1,0 +1,178 @@
+{
+  "product": {
+    "name": "Farmácia Jr lead workspace",
+    "type": "commercial-artifact-workspace",
+    "status": "active"
+  },
+  "stories": [
+    {
+      "id": "STORY-001",
+      "title": "Consolidate Farmácia Jr lead evidence and commercial tabs",
+      "status": "done",
+      "definition_of_done": [
+        "Transcript exported locally",
+        "Ata tab updated from evidence",
+        "Proposal tab created and refined",
+        "Recommendation hierarchy clarified",
+        "Each tab reread after write"
+      ],
+      "evidence": [
+        "farmaciajr_transcricao.txt",
+        "farmaciajr_modelo_ata.txt",
+        "farmaciajr_lead.json"
+      ]
+    },
+    {
+      "id": "STORY-002",
+      "title": "Turn the proposal guide into a decision-ready commercial proposal",
+      "status": "done",
+      "definition_of_done": [
+        "Single recommended package is defended with scope and rationale",
+        "Deliverables are sequenced clearly",
+        "Budget-sensitive objection handling is written down",
+        "Open questions for lead-side approval are explicit"
+      ],
+      "dependencies": [
+        "STORY-001"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto",
+        "Validated recommendation hierarchy",
+        "Validated package ladder",
+        "Validated deliverable sequencing",
+        "Validated budget objection handling",
+        "Validated approval questions"
+      ]
+    },
+    {
+      "id": "STORY-003",
+      "title": "Build a Farmácia Jr package pricing ladder from the service workbook",
+      "status": "done",
+      "definition_of_done": [
+        "Package 1 to 4 are mapped explicitly to workbook pricing logic",
+        "Final discounted prices are visible instead of only discount amounts",
+        "Excel-unsafe MINUS formulas are replaced in touched pricing paths",
+        "Decision-ready pricing sheet exists for Farmácia Jr."
+      ],
+      "dependencies": [
+        "STORY-002"
+      ],
+      "evidence": [
+        "farmaciajr_pricing_analysis.json",
+        "Tabela Orçamentária - serviços_farmaciajr.xlsx",
+        "Package ladder sheet with explicit final 40% and 50% prices"
+      ]
+    },
+    {
+      "id": "STORY-004",
+      "title": "Inject the pricing ladder into the proposal narrative and prepare meeting-ready price positioning",
+      "status": "done",
+      "definition_of_done": [
+        "Proposal narrative references package ladder coherently",
+        "Meeting-facing price positioning is concise and defensible",
+        "Optional negotiation guardrails are written down"
+      ],
+      "dependencies": [
+        "STORY-003"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto with pricing positioning section",
+        "Meeting-ready package ladder references",
+        "Commercial guardrails embedded in the proposal narrative"
+      ]
+    },
+    {
+      "id": "STORY-005",
+      "title": "Create a final meeting script and objection-handling flow for Rafael and the wider decision group",
+      "status": "done",
+      "definition_of_done": [
+        "Opening narrative is concise",
+        "Package recommendation sequence is scripted",
+        "Budget and scope objections have prepared replies",
+        "Decision questions are sequenced for the meeting"
+      ],
+      "dependencies": [
+        "STORY-004"
+      ],
+      "evidence": [
+        "Google Doc tab: Roteiro da reunião final",
+        "Package sequence scripted",
+        "Pricing ranges scripted",
+        "Objection handling scripted",
+        "Decision questions scripted"
+      ]
+    },
+    {
+      "id": "STORY-006",
+      "title": "Explain isolated project prices, package composition, and bundle savings in the proposal stack",
+      "status": "done",
+      "definition_of_done": [
+        "Proposal tab shows isolated project prices",
+        "Proposal tab shows how projects combine into packages",
+        "Proposal tab shows bundle savings versus isolated projects",
+        "Workbook sheet mirrors isolated project rows and package savings"
+      ],
+      "dependencies": [
+        "STORY-004",
+        "STORY-005"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto sections 12-15",
+        "Workbook sheet: Farmácia Jr - pacotes with isolated projects and savings table"
+      ]
+    },
+    {
+      "id": "STORY-007",
+      "title": "Document market-vs-EJ pricing comparison and public sources inside the proposal docs",
+      "status": "done",
+      "definition_of_done": [
+        "Proposal tab compares market, Organize Jr. to market, and Organize Jr. to EJ",
+        "Comparison is presented in table form",
+        "Public sources are listed inside the docs"
+      ],
+      "dependencies": [
+        "STORY-006"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto sections 16-18",
+        "Public sources from IMAM, FreelaSemCrise, and SSMQ embedded in the doc"
+      ]
+    },
+    {
+      "id": "STORY-008",
+      "title": "Convert benchmark comparison into a real table and add Farmácia Jr. public-context research",
+      "status": "done",
+      "definition_of_done": [
+        "Comparison is an actual Google Docs table, not pipe-delimited text",
+        "Proposal tab includes researched public context about Farmácia Jr. Consultoria",
+        "Farmácia Jr. sources are listed in the proposal docs",
+        "Recommendation explicitly treats the conversation as EJ-to-EJ"
+      ],
+      "dependencies": [
+        "STORY-007"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto section 16 contains a real 4x4 table",
+        "Google Doc tab: Proposta de Projeto section 19 contains Farmácia Jr. public context and sources",
+        "Verified via Google Docs API includeTabsContent=true"
+      ]
+    },
+    {
+      "id": "STORY-009",
+      "title": "Document public Farmácia Jr. leadership examples without false attribution",
+      "status": "done",
+      "definition_of_done": [
+        "Proposal tab lists public leadership names found for Farmácia Jr.",
+        "Proposal tab distinguishes named leaders from institution-level impacts",
+        "Proposal tab includes leadership and impact source links"
+      ],
+      "dependencies": [
+        "STORY-008"
+      ],
+      "evidence": [
+        "Google Doc tab: Proposta de Projeto section 20",
+        "Verified via Google Docs API includeTabsContent=true"
+      ]
+    }
+  ]
+}

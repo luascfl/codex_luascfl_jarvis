@@ -1,0 +1,181 @@
+{
+  "cnpj": "03.419.601/0001-21",
+  "company": {
+    "address": {
+      "city": "Rio de Janeiro",
+      "state": "RJ"
+    },
+    "casadosdados": {
+      "error": "Casa dos Dados forbidden: api-key lacks access or balance",
+      "status": "unavailable"
+    },
+    "cnpj": "03.419.601/0001-21",
+    "contacts": {
+      "email": "diretoriapresidencia@espmjr.com",
+      "site": "http://www.espmjr.com/"
+    },
+    "lead_context": {
+      "acessibilidade": "20",
+      "aderência": "28",
+      "camada": "Meio, EJs e startups",
+      "capacidade": "13.4",
+      "cidade_uf": "Rio de Janeiro/RJ",
+      "classe": "Benchmark - validar maturidade",
+      "cnpj": "03.419.601/0001-21",
+      "contato": "diretoriapresidencia@espmjr.com",
+      "demanda": "18.0",
+      "encaixe": "12.5",
+      "evidência": "37 membros, 27 contratos, R$ 302.121,00 de faturamento, cluster 5, cursos: Administração, Comunicação Social - Publicidade E Propaganda, Design",
+      "federação": "RioJunior",
+      "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+      "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+      "lead": "ESPM Jr.",
+      "link_email_pronto": "mailto:diretoriapresidencia@espmjr.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+      "lote": "Lote 3, benchmark e maturidade",
+      "oferta_sugerida": "Oficina de briefing, feedback e debriefing para squads criativos",
+      "ordem": "17",
+      "primeira_mensagem": "Oi, pessoal da ESPM Jr.. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 37 membros e 27 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+      "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+      "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+      "score": "91.9",
+      "site": "http://www.espmjr.com/"
+    },
+    "name": "ESPM Jr.",
+    "sources": [
+      "local_lead_table"
+    ],
+    "status": "lead-local",
+    "use_case": {
+      "label": "ejs comunicacao",
+      "name": "ejs-comunicacao"
+    }
+  },
+  "company_goat": {
+    "result": {
+      "domain": "espmjr.com",
+      "generated_at": "2026-07-14T20:45:38Z",
+      "sources": [
+        {
+          "elapsed": "845ms",
+          "note": "no Form D filings found",
+          "source": "funding",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "846ms",
+          "note": "no US Form D issuer; UK lookup needs COMPANIES_HOUSE_API_KEY",
+          "source": "legal",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.787s",
+          "note": "no GitHub org found",
+          "source": "engineering",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "608ms",
+          "note": "no Show HN posts found",
+          "source": "launches",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "333ms",
+          "note": "no HN mentions found",
+          "source": "mentions",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.197s",
+          "note": "no YC entry found",
+          "source": "yc",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "721ms",
+          "note": "no Wikidata entry found",
+          "source": "wiki",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "expires": "2027-05-07T20:44:27Z",
+            "hosting": "Cloudflare DNS",
+            "hosting_cname": "espmjr.com",
+            "nameservers": [
+              "aspen.ns.cloudflare.com",
+              "coen.ns.cloudflare.com"
+            ],
+            "registered": "2009-05-07T20:44:27Z"
+          },
+          "elapsed": "2.257s",
+          "source": "domain",
+          "status": "ok"
+        }
+      ]
+    },
+    "status": "ok"
+  },
+  "contact_goat": {
+    "error": "/home/lucas/go/bin/contact-goat-pp-cli failed: warning: Happenstance unavailable: --source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+    "status": "unavailable"
+  },
+  "lead_context": {
+    "acessibilidade": "20",
+    "aderência": "28",
+    "camada": "Meio, EJs e startups",
+    "capacidade": "13.4",
+    "cidade_uf": "Rio de Janeiro/RJ",
+    "classe": "Benchmark - validar maturidade",
+    "cnpj": "03.419.601/0001-21",
+    "contato": "diretoriapresidencia@espmjr.com",
+    "demanda": "18.0",
+    "encaixe": "12.5",
+    "evidência": "37 membros, 27 contratos, R$ 302.121,00 de faturamento, cluster 5, cursos: Administração, Comunicação Social - Publicidade E Propaganda, Design",
+    "federação": "RioJunior",
+    "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+    "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+    "lead": "ESPM Jr.",
+    "link_email_pronto": "mailto:diretoriapresidencia@espmjr.com?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o\u0026body=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+    "lote": "Lote 3, benchmark e maturidade",
+    "oferta_sugerida": "Oficina de briefing, feedback e debriefing para squads criativos",
+    "ordem": "17",
+    "primeira_mensagem": "Oi, pessoal da ESPM Jr.. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 37 membros e 27 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+    "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+    "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+    "score": "91.9",
+    "site": "http://www.espmjr.com/"
+  },
+  "prospecting_links": {
+    "email": "diretoriapresidencia@espmjr.com",
+    "link_email_pronto": "mailto:diretoriapresidencia@espmjr.com?body=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [
+      "https://wa.me/5521976110940?text=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F"
+    ],
+    "mailto": "mailto:diretoriapresidencia@espmjr.com?body=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F\u0026subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": [
+      {
+        "link_whatsapp_pronto": "https://wa.me/5521976110940?text=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+        "phone": "5521976110940",
+        "wa_me": "https://wa.me/5521976110940?text=Oi%2C+pessoal+da+ESPM+Jr..+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+37+membros+e+27+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F"
+      }
+    ]
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"} | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}\nGET /v1/google/search returned HTTP 402: {\"success\":false,\"message\":\"Looks like you're out of credits :( You'll need to buy more to continue using the service.\"}",
+    "status": "unavailable"
+  },
+  "source": "local lead table + Casa dos Dados quando configurado",
+  "sources_used": [
+    "local_lead_table",
+    "casa_dos_dados",
+    "company-goat",
+    "contact-goat",
+    "scrape-creators"
+  ],
+  "status": "enriched-local",
+  "use_case": {
+    "label": "ejs comunicacao",
+    "name": "ejs-comunicacao"
+  }
+}

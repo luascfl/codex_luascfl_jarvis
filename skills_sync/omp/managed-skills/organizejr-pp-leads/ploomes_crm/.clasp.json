@@ -1,0 +1,17 @@
+{
+  "scriptId": "1mGckM7e9mgdva4pufnwqO2nXlrk68jDfWcVSU0WA70XzD8_kRYwMIPOT",
+  "projectId": "subtle-well-502521-v2",
+  "rootDir": "",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}

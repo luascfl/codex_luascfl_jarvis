@@ -1,0 +1,213 @@
+{
+  "cnpj": "34.100.549/0001-70",
+  "company": {
+    "address": {
+      "city": "Maceió",
+      "state": "AL"
+    },
+    "casadosdados": {
+      "error": "Casa dos Dados API key not configured; set CASA_DADOS_API_KEY or PP_LEADS_CASA_DADOS_API_KEY",
+      "status": "unavailable"
+    },
+    "cnpj": "34.100.549/0001-70",
+    "contacts": {
+      "email": "direx@ejangadeiros.com.br",
+      "site": "https://instagram.com/ejangadeiros"
+    },
+    "lead_context": {
+      "acessibilidade": "17",
+      "aderência": "24",
+      "camada": "Meio, EJs e startups",
+      "capacidade": "11.8",
+      "cidade_uf": "Maceió/AL",
+      "classe": "A/B - validação ativa",
+      "cnpj": "34.100.549/0001-70",
+      "contato": "direx@ejangadeiros.com.br",
+      "demanda": "14.8",
+      "encaixe": "9.5",
+      "evidência": "19 membros, 33 contratos, R$ 129.362,00 de faturamento, cluster 5, cursos: Jornalismo, Relações Públicas",
+      "federação": "FEJEA",
+      "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+      "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+      "lead": "Jangadeiros",
+      "link_email_pronto": "mailto:direx@ejangadeiros.com.br?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Jangadeiros.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+19+membros+e+33+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+      "lote": "Lote 2, escala da semana",
+      "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+      "ordem": "9",
+      "pp_company_goat": "leads-brasil-pp-cli company-goat \"34.100.549/0001-70\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-company-goat.json",
+      "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Jangadeiros\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-contact-goat.json",
+      "pp_leads_company": "leads-brasil-pp-cli company \"34.100.549/0001-70\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-company.json",
+      "pp_leads_enrich": "leads-brasil-pp-cli enrich \"34.100.549/0001-70\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-enrich.json",
+      "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-scrape.json",
+      "primeira_mensagem": "Oi, pessoal da Jangadeiros. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 19 membros e 33 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+      "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+      "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+      "score": "77.1",
+      "site": "https://instagram.com/ejangadeiros"
+    },
+    "name": "Jangadeiros",
+    "sources": [
+      "local_lead_table"
+    ],
+    "status": "lead-local",
+    "use_case": {
+      "label": "OrganizeJr | EJs de comunicação",
+      "name": "organizejr-ejs-comunicacao"
+    }
+  },
+  "company_goat": {
+    "result": {
+      "domain": "instagram.com",
+      "generated_at": "2026-07-11T12:54:46Z",
+      "sources": [
+        {
+          "elapsed": "1.617s",
+          "note": "no Form D filings found",
+          "source": "funding",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "2.028s",
+          "note": "no US Form D issuer; UK lookup needs COMPANIES_HOUSE_API_KEY",
+          "source": "legal",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "description": "",
+            "followers": 1013,
+            "login": "Instagram",
+            "public_repos": 27
+          },
+          "elapsed": "778ms",
+          "source": "engineering",
+          "status": "ok"
+        },
+        {
+          "elapsed": "613ms",
+          "note": "no Show HN posts found",
+          "source": "launches",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.617s",
+          "note": "no HN mentions found",
+          "source": "mentions",
+          "status": "no-data"
+        },
+        {
+          "elapsed": "1.234s",
+          "note": "no YC entry found",
+          "source": "yc",
+          "status": "no-data"
+        },
+        {
+          "data": {
+            "country": "Bulgaria",
+            "founded": "",
+            "founders": null,
+            "hq": "",
+            "industry": "",
+            "label": "Q103849538",
+            "qid": "Q103849538"
+          },
+          "elapsed": "791ms",
+          "source": "wiki",
+          "status": "ok"
+        },
+        {
+          "data": {
+            "expires": "2034-06-04T13:37:18Z",
+            "hosting": "",
+            "hosting_cname": "instagram.com",
+            "nameservers": [
+              "d.ns.instagram.com",
+              "c.ns.instagram.com",
+              "b.ns.instagram.com",
+              "a.ns.instagram.com"
+            ],
+            "registered": "2004-06-04T13:37:18Z"
+          },
+          "elapsed": "1.163s",
+          "source": "domain",
+          "status": "ok"
+        }
+      ]
+    },
+    "status": "ok"
+  },
+  "contact_goat": {
+    "result": {
+      "company": "Jangadeiros",
+      "count": 0,
+      "results": [],
+      "scope": "Jangadeiros",
+      "scope_kind": "company",
+      "source_errors": {
+        "hp": "--source hp requires Happenstance cookie auth — run `contact-goat-pp-cli auth login --chrome --service happenstance` first",
+        "li_search": "tool \"search_people\" returned error: LinkedIn setup is not complete yet: the server is downloading the Patchright Chromium browser in the background and will use it automatically once ready. Do not install the browser yourself (no `patchright install` or `uv run patchright install`), and do not restart the server. A manual install only fights the background one for the same lock and slows it down. Just wait and call this tool again in a minute or two."
+      },
+      "sources": [
+        "li",
+        "hp"
+      ],
+      "timestamp": "2026-07-11T12:55:04Z"
+    },
+    "status": "ok"
+  },
+  "lead_context": {
+    "acessibilidade": "17",
+    "aderência": "24",
+    "camada": "Meio, EJs e startups",
+    "capacidade": "11.8",
+    "cidade_uf": "Maceió/AL",
+    "classe": "A/B - validação ativa",
+    "cnpj": "34.100.549/0001-70",
+    "contato": "direx@ejangadeiros.com.br",
+    "demanda": "14.8",
+    "encaixe": "9.5",
+    "evidência": "19 membros, 33 contratos, R$ 129.362,00 de faturamento, cluster 5, cursos: Jornalismo, Relações Públicas",
+    "federação": "FEJEA",
+    "fonte": "Relatório Portal BJ EJs 2025 0101.xlsx",
+    "icp": "ICP 2.3, EJs de Comunicação com Sobrecarga Criativa e Relacional",
+    "lead": "Jangadeiros",
+    "link_email_pronto": "mailto:direx@ejangadeiros.com.br?subject=Troca+r%C3%A1pida+sobre+rotina+de+times+criativos+em+EJs+de+comunica%C3%A7%C3%A3o&body=Oi%2C+pessoal+da+Jangadeiros.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+19+membros+e+33+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F",
+    "lote": "Lote 2, escala da semana",
+    "oferta_sugerida": "Diagnóstico de clima criativo + rotina de aprovação e limites com clientes",
+    "ordem": "9",
+    "pp_company_goat": "leads-brasil-pp-cli company-goat \"34.100.549/0001-70\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-company-goat.json",
+    "pp_contact_goat": "leads-brasil-pp-cli contact-goat \"Jangadeiros\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-contact-goat.json",
+    "pp_leads_company": "leads-brasil-pp-cli company \"34.100.549/0001-70\" --agent --select name,cnpj,status,address,contacts --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-company.json",
+    "pp_leads_enrich": "leads-brasil-pp-cli enrich \"34.100.549/0001-70\" --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-enrich.json",
+    "pp_scrape_creators": "scrape-creators-pp-cli linkedin list-company --url https://www.linkedin.com/company/ --agent --deliver file:organizejr-pp-leads/icp/ejs-comunicacao/outputs/34100549000170-scrape.json",
+    "primeira_mensagem": "Oi, pessoal da Jangadeiros. Sou Lucas, da OrganizeJr, EJ de Psicologia Organizacional da UNEB. Estou validando um recorte nacional de EJs de comunicação para entender como times criativos lidam com rotina, feedback, aprovação, onboarding e limites com clientes. Vi no Portal BJ 2025 que vocês têm 19 membros e 33 contratos, então parecem um bom caso para essa conversa. Topariam 20 minutos para trocar sobre essas dores e avaliar se faz sentido um diagnóstico ou oficina da OrganizeJr?",
+    "próximo_passo": "1) rodar pp-leads company; 2) se houver dados úteis, rodar enrich; 3) registrar no Ploomes; 4) abordar por e-mail institucional; 5) usar Instagram/LinkedIn se e-mail ausente ou sem resposta.",
+    "risco_pendência": "Dor ainda é hipótese. Validar sobrecarga criativa/relacional antes de vender solução.",
+    "score": "77.1",
+    "site": "https://instagram.com/ejangadeiros"
+  },
+  "prospecting_links": {
+    "email": "direx@ejangadeiros.com.br",
+    "link_email_pronto": "mailto:direx@ejangadeiros.com.br?body=Oi%2C+pessoal+da+Jangadeiros.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+19+membros+e+33+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "link_whatsapp_pronto": [],
+    "mailto": "mailto:direx@ejangadeiros.com.br?body=Oi%2C+pessoal+da+Jangadeiros.+Sou+Lucas%2C+da+OrganizeJr%2C+EJ+de+Psicologia+Organizacional+da+UNEB.+Estou+validando+um+recorte+nacional+de+EJs+de+comunica%C3%A7%C3%A3o+para+entender+como+times+criativos+lidam+com+rotina%2C+feedback%2C+aprova%C3%A7%C3%A3o%2C+onboarding+e+limites+com+clientes.+Vi+no+Portal+BJ+2025+que+voc%C3%AAs+t%C3%AAm+19+membros+e+33+contratos%2C+ent%C3%A3o+parecem+um+bom+caso+para+essa+conversa.+Topariam+20+minutos+para+trocar+sobre+essas+dores+e+avaliar+se+faz+sentido+um+diagn%C3%B3stico+ou+oficina+da+OrganizeJr%3F&subject=Troca+r%C3%A1pida+sobre+a+opera%C3%A7%C3%A3o+do+lead",
+    "whatsapp": []
+  },
+  "scrape_creators": {
+    "error": "scrape-creators sem dados utilizáveis; linkedin search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status. | instagram search: /home/lucas/go/bin/scrape-creators-pp-cli failed: Error: GET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.\nGET /v1/google/search returned HTTP 401: {\"success\":false,\"message\":\"Invalid API key\"}\nhint: check your API key. Set it with: export SCRAPE_CREATORS_API_KEY_AUTH=<your-key>\n      Run 'scrape-creators-pp-cli doctor' to check auth status.",
+    "status": "unavailable"
+  },
+  "source": "local lead table + Casa dos Dados quando configurado",
+  "sources_used": [
+    "local_lead_table",
+    "casa_dos_dados",
+    "company-goat",
+    "contact-goat",
+    "scrape-creators"
+  ],
+  "status": "enriched-local",
+  "use_case": {
+    "label": "OrganizeJr | EJs de comunicação",
+    "name": "organizejr-ejs-comunicacao"
+  }
+}
