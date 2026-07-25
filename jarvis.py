@@ -9941,6 +9941,22 @@ def _harden_ai_coders_context_global_install(apply_if_needed: bool = True) -> di
                 ("target: zod_1.z.enum(['docs', 'agents', 'plans', 'all']).optional()", "target: zod_1.z.literal('docs').optional()"),
                 ("action: zod_1.z.enum(['exportRules', 'exportDocs', 'exportAgents', 'exportContext', 'exportSkills', 'reverseSync', 'importDocs', 'importAgents', 'importSkills'])", "action: zod_1.z.enum(['exportRules', 'exportDocs', 'exportContext', 'reverseSync', 'importDocs'])"),
                 ("action: zod_1.z.enum(['list', 'getContent', 'getForPhase', 'scaffold', 'export', 'fill'])", "action: zod_1.z.enum(['list', 'getContent', 'getForPhase'])"),
+                (
+                    "                archive_previous: zod_1.z.boolean().optional()\n                    .describe('Archive existing workflow'),\n            }",
+                    "                archive_previous: zod_1.z.boolean().optional()\n                    .describe('Archive existing workflow'),\n                repoPath: zod_1.z.string().optional()\n                    .describe('Repository path (defaults to cwd)'),\n            }",
+                ),
+                (
+                    "            inputSchema: {\n            // No required parameters\n            }",
+                    "            inputSchema: {\n                repoPath: zod_1.z.string().optional()\n                    .describe('Repository path (defaults to cwd)'),\n            }",
+                ),
+                (
+                    "                force: zod_1.z.boolean().optional()\n                    .describe('Force advancement even if gates block'),\n            }",
+                    "                force: zod_1.z.boolean().optional()\n                    .describe('Force advancement even if gates block'),\n                repoPath: zod_1.z.string().optional()\n                    .describe('Repository path (defaults to cwd)'),\n            }",
+                ),
+                (
+                    "                reason: zod_1.z.string().optional()\n                    .describe('(setAutonomous) Reason for change'),\n            }",
+                    "                reason: zod_1.z.string().optional()\n                    .describe('(setAutonomous) Reason for change'),\n                repoPath: zod_1.z.string().optional()\n                    .describe('Repository path (defaults to cwd)'),\n            }",
+                ),
             ],
         ),
     ]
@@ -11169,17 +11185,21 @@ def _run_internal_quality_gates_step(target_dir: Path | None = None, label: str 
     return {"ok": overall_ok, "returncode": 0 if overall_ok else 1, "summary_path": str(summary_path), "results": results}
 
 
-def _workflow_unified_status_payload(prd_path: str = RALPH_PRD_DEFAULT_REL) -> dict:
+def _workflow_unified_status_payload(
+    prd_path: str = RALPH_PRD_DEFAULT_REL,
+    target_dir: Path | None = None,
+) -> dict:
+    project_dir = (target_dir or Path.cwd()).resolve()
     workspace = _resolve_gsd_ralph_workspace()
     scripts_dir = workspace / "scripts"
     context_script = scripts_dir / "02_context_update_routine.sh"
     quality_script = scripts_dir / "07_quality_gates.sh"
-    context_readme_path = BASE_DIR / ".context" / "docs" / "README.md"
-    prd_file = (BASE_DIR / prd_path).resolve() if not Path(prd_path).is_absolute() else Path(prd_path)
-    remote_url = _project_origin_remote_url(BASE_DIR)
+    context_readme_path = project_dir / ".context" / "docs" / "README.md"
+    prd_file = (project_dir / prd_path).resolve() if not Path(prd_path).is_absolute() else Path(prd_path)
+    remote_url = _project_origin_remote_url(project_dir)
     github_remote = "github.com" in remote_url.lower()
-    current_branch = _current_git_branch(BASE_DIR)
-    oracle_sync_configured = (BASE_DIR / ".context" / "docs" / "oracle-sync.md").exists()
+    current_branch = _current_git_branch(project_dir)
+    oracle_sync_configured = (project_dir / ".context" / "docs" / "oracle-sync.md").exists()
 
     story_summary: dict = {"found": False, "total": 0, "next_story": None}
     if prd_file.exists():
@@ -11270,7 +11290,7 @@ def workflow_stack(
     op = (action or "status").strip().lower()
 
     if op == "status":
-        return _workflow_unified_status_payload(prd_path=prd_path)
+        return _workflow_unified_status_payload(prd_path=prd_path, target_dir=Path.cwd())
 
     if op == "sync":
         py_bin = _resolve_project_python()
@@ -11288,7 +11308,7 @@ def workflow_stack(
             "include_gemini": bool(include_gemini),
             "include_bridge": bool(include_bridge),
             "note": "Gemini é opcional. Se indisponível, mantenha execução no Codex.",
-            "status": _workflow_unified_status_payload(prd_path=prd_path),
+            "status": _workflow_unified_status_payload(prd_path=prd_path, target_dir=Path.cwd()),
         }
 
     workspace = _resolve_gsd_ralph_workspace()
@@ -11299,11 +11319,11 @@ def workflow_stack(
         results["steps"].append({"name": "context_refresh", **step})
         results["ok"] = results["ok"] and bool(step.get("ok"))
         if op == "context_refresh":
-            results["status"] = _workflow_unified_status_payload(prd_path=prd_path)
+            results["status"] = _workflow_unified_status_payload(prd_path=prd_path, target_dir=Path.cwd())
             return results
 
     if op in {"pick_story", "cycle"}:
-        status = _workflow_unified_status_payload(prd_path=prd_path)
+        status = _workflow_unified_status_payload(prd_path=prd_path, target_dir=Path.cwd())
         story = (status.get("prd") or {}).get("next_story")
         pick = {"ok": bool(story), "next_story": story, "prd": status.get("prd")}
         if not story:
@@ -11324,7 +11344,7 @@ def workflow_stack(
             "allowed_actions": ["status", "sync", "context_refresh", "pick_story", "cycle"],
         }
 
-    results["status"] = _workflow_unified_status_payload(prd_path=prd_path)
+    results["status"] = _workflow_unified_status_payload(prd_path=prd_path, target_dir=Path.cwd())
     return results
 
 
