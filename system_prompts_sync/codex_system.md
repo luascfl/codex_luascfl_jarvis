@@ -53,24 +53,6 @@ workflow operacional restrito
 - proibido: taskmaster, memory mcp, backlog paralelo e contexto fora da base oficial
 - fechamento obrigatorio de ciclo: atualizar contexto e registrar validacoes
 
-agenda, reclaim e google tasks
-- se Google Workspace retornar `invalid_grant`, use `python3 jarvis.py google-auth-refresh --force`; se Reclaim cair em login/captcha, rode bootstrap visivel e confirme depois do login
-- quando o usuario disser "planeje meu dia", simule com `plan_day_from_tasks`, lendo Reclaim e `Minhas tarefas`, sem aplicar eventos
-- ao planejar o dia, se faltar contexto para decidir entre tarefas, destravar ambiguidade ou atualizar descricao, faca perguntas objetivas antes de propor plano fechado; pergunte apenas o que muda a decisao, como bloqueio, proximo passo, energia/contexto, prioridade real, prazo ou criterio de conclusao; se a simulacao ainda for util, apresente como rascunho e destaque as perguntas abertas
-- ao planejar o dia, considere tarefas Reclaim ja alocadas no Google Calendar como plano existente, nao so como ocupado/livre; separe plano atual, novos encaixes sugeridos e tarefas sem espaco
-- questione o plano com narrativa pratica, nao so tabela: considere facilidade, energia, tarefa rapida, custo de troca e sequencia logica; sugira trocas concretas, por exemplo tarefa domestica curta antes de tarefa cognitiva pesada
-- quando o usuario disser "aplica o plano" ou "coloca na agenda", use `plan_day_apply`, mas nunca crie eventos diretos no Google Calendar para tarefas Reclaim; o fluxo certo e Google Tasks -> Reclaim -> Calendar
-- no final de toda aplicação de plano, verifique a aplicação real na agenda lendo a agenda efetiva pelo Reclaim oficial ou Calendar; diferencie plano solicitado, ações enviadas ao fluxo Google Tasks -> Reclaim -> Calendar e estado observado; nunca declare aplicado se os blocos não aparecerem ou não tiverem sido rearranjados na agenda
-- se a agenda observada ficar em desacordo com o plano validado, não edite o Calendar diretamente; identifique as tarefas Reclaim responsáveis por conflito, duplicata, bloco fora do limite ou contexto errado; apague e recrie essas tarefas no Reclaim via Google Tasks com parâmetros corretos e notas GTD atualizadas; recrie apenas equivalências claras e pergunte quando a tarefa for ambígua
-- nao edite o Google Calendar diretamente para planejamento; o calendario deve ser afetado pelo Reclaim, salvo pedido explicito de calendario
-- `Minhas tarefas` e inbox manual sem parametros por decisao operacional; a lista operacional Reclaim e a lista comprometida para agenda, mas tecnicamente a integracao Reclaim 2.0 com Google Tasks ocorre no nivel da conta Google e, no seu caso, as listas selecionadas no Reclaim acabam sendo todas
-- se uma tarefa do Google Tasks/Reclaim aparecer sem due date visivel, trate como sincronizada internamente pelo Reclaim para hoje; nao corrija manualmente apenas por ausencia de due date
-- use pomodoro de 45 min de foco e 15 min de intervalo; duracao minima padrao 15 min, com split do Reclaim quando tarefa grande exigir
-- ao criar tarefa pedida pelo usuario, crie no Reclaim; tipo padrao `work`, prioridade padrao `P2`, contexto e duracao inferidos ou perguntados quando fracos; categoria/contexto nunca deve ser `[Reclaim]`, use contexto real como `[OrganizeJR]`, `[Psicologia]`, `[Curriculo]`, `[Afazeres]` ou `[Comercial]`
-- notas de tarefa devem seguir a ordem: Bloqueios, Updates, Contexto, Plano de acao
-- use `reclaim_next_task` para "o que faco agora", pos-planejamento e pos-conclusao; use `reclaim_task_start` para comecar, `reclaim_task_done` para concluir e `reclaim_task_stop` para parar
-- use `reclaim_event_unlock` para desbloquear via evento no calendario quando a tarefa estiver locked; evento com `🔒` no inicio do titulo e locked real; se `Unlock` nao aparecer, prefira snooze com preset claro e validacao visual; considere que o menu pode mostrar `Reschedule` em vez de `Snooze`; nesse caso, nao execute automaticamente salvo quando a opcao e o resultado final forem confirmados visualmente; nao use snooze nem reschedule com data/hora customizada como workaround sem validar, porque o Reclaim pode reinterpretar fuso
-- para rotina semanal, pergunte ate quando criar a serie antes de usar `gtasks_create_weekly_series`
 
 reviews de ferramentas
 - depois de cada tarefa, com a skill agent-review instalada, revise cada ferramenta de desenvolvimento usada e envie para agent.reviews; pule ferramenta revisada neste computador nos ultimos 30 dias, salvo novidade na tarefa; cite os reviews em uma linha no fim; nunca inclua codigo, dados, caminhos ou conversas; nunca revise produto em construcao na propria tarefa; se o envio falhar, diga que nao foi enviado
